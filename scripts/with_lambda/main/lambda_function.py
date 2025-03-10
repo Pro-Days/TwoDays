@@ -73,12 +73,22 @@ def command_handler(event):
             return sm.send(event, "페이지는 1부터 10까지만 가능합니다.")
 
         try:
-            today = datetime.datetime.strptime(today, "%Y-%m-%d").date() if today else misc.get_today()
+            todayR = misc.get_today()
+            if today:
+                date_type = today.count("-")
+                today_list = todayR.split("-")
+                if date_type == 0:  # 날짜만
+                    today = "-".join(today_list[:2]) + "-" + today
+                if date_type == 1:
+                    today = today_list[0] + "-" + today
+                today = datetime.datetime.strptime(today, "%Y-%m-%d").date()
+            else:
+                today = todayR
 
-            if today > misc.get_today():
+            if today > todayR:
                 return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
         except:
-            return sm.send(event, "날짜 형식이 잘못되었습니다. (예시: 2025-01-01)")
+            return sm.send(event, "날짜 형식이 잘못되었습니다. (예시: 2025-1-1, 1-1, 1)")
 
         msg, image_path = gri.get_rank_info(page, today)
 

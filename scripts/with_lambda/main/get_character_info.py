@@ -1,3 +1,4 @@
+import os
 import misc
 import random
 import datetime
@@ -24,6 +25,7 @@ prop = fm.FontProperties(fname=font_path)
 plt.rcParams["font.family"] = prop.get_name()
 
 matplotlib.use("Agg")
+os.environ["MPLCONFIGDIR"] = "/tmp/"
 
 
 def get_current_character_data(name):

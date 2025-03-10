@@ -1,13 +1,3 @@
-- 비슷한 레벨 캐릭터의 평균 레벨 함께 보여주기
-- 특정 날짜의 캐릭터 정보, 랭킹 정보 보여주기
-- 혼자보기 옵션 추가
-- 랭킹 히스토리
-
-캐릭터 정보
-- 일일 평균 경험치
-- 레벨업 예상 날짜
-(- 만렙 예상 날짜)
-
 playerdata: 매일 새벽 0시 0분에 전날 최종 데이터 업데이트 / 오늘(실시간) 정보는 검색하여 처리
 rankdata: 매일 새벽 0시 0분에 전날 최종 데이터 업데이트 / 오늘(실시간) 정보는 검색하여 처리
 registered_player_list: 실시간 정보 검색하여 처리
@@ -17,57 +7,3 @@ registered_player_list: 실시간 정보 검색하여 처리
 
 
 # 2주간 변동이 없는 캐릭터는 등록 리스트에서 제거
-
-
-
-
-{
-    "name": "랭킹",
-    "description": "캐릭터 레벨 랭킹을 보여줍니다.",
-    "options": [{"name": "페이지", "description": "페이지 번호 (1~10)", "type": 4}],
-    "type": 1,
-}
-{
-    "name": "검색",
-    "type": 1,
-    "description": "캐릭터의 정보를 보여줍니다.",
-    "options": [
-        {
-            "name": "닉네임",
-            "description": "캐릭터 닉네임",
-            "type": 3,
-            "required": True,
-        },
-        {
-            "name": "슬롯",
-            "description": "캐릭터 슬롯 번호 (1~5)",
-            "type": 4,
-            "required": False,
-        },
-        {
-            "name": "기간",
-            "description": "캐릭터 정보를 조회할 기간 (1~365)",
-            "type": 4,
-            "required": False,
-        },
-    ],
-}
-{
-    "name": "등록",
-    "type": 1,
-    "description": "일일 정보를 저장하는 캐릭터 목록에 캐릭터를 추가합니다. 과거 시점의 캐릭터 정보 검색을 이용할 수 있게됩니다.",
-    "options": [
-        {
-            "name": "닉네임",
-            "description": "캐릭터 닉네임",
-            "type": 3,
-            "required": True,
-        },
-        {
-            "name": "슬롯",
-            "description": "메인 캐릭터 (본캐) 슬롯 번호 (1~5)",
-            "type": 4,
-            "required": False,
-        },
-    ],
-}
