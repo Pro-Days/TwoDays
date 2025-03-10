@@ -151,6 +151,24 @@ def get_today():
     return today_kst
 
 
+def get_today_from_input(today):
+    # YYYY-MM-DD, MM-DD, DD, 1일전, ...
+    todayR = get_today()
+    if today:
+        date_type = today.count("-")
+        today_list = todayR.split("-")
+        if date_type == 0:  # 날짜만
+            today = "-".join(today_list[:2]) + "-" + today
+        if date_type == 1:
+            today = today_list[0] + "-" + today
+        today = datetime.datetime.strptime(today, "%Y-%m-%d").date()
+    else:
+        today = todayR
+
+    if today > todayR:
+        return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
+
+
 if __name__ == "__main__":
     # print(get_guild_list())
     # print(get_max_id())
