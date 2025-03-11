@@ -153,20 +153,36 @@ def get_today():
 
 def get_today_from_input(today):
     # YYYY-MM-DD, MM-DD, DD, 1일전, ...
-    todayR = get_today()
-    if today:
-        date_type = today.count("-")
-        today_list = todayR.split("-")
-        if date_type == 0:  # 날짜만
-            today = "-".join(today_list[:2]) + "-" + today
-        if date_type == 1:
-            today = today_list[0] + "-" + today
-        today = datetime.datetime.strptime(today, "%Y-%m-%d").date()
-    else:
-        today = todayR
+    try:
+        todayR = get_today()
+
+        if today:
+            if (idx := today.find("일전")) != -1:
+                date = int(today[:idx])
+                today = todayR - datetime.timedelta(days=date)
+
+            else:
+                date_type = today.count("-")
+                today_list = todayR.split("-")
+
+                if date_type == 0:  # 날짜만
+                    today = "-".join(today_list[:2]) + "-" + today
+
+                if date_type == 1:
+                    today = today_list[0] + "-" + today
+
+                today = datetime.datetime.strptime(today, "%Y-%m-%d").date()
+
+        else:
+            today = todayR
+
+    except:
+        return -1
 
     if today > todayR:
-        return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
+        return -1
+
+    return today
 
 
 if __name__ == "__main__":
@@ -174,5 +190,6 @@ if __name__ == "__main__":
     # print(get_max_id())
     # print(get_profile_from_mc(name="aasdwdddddwdwdwd"))
     # print(get_main_slot("prodays"))
+    print(get_today_from_input("1일전"))
 
     pass

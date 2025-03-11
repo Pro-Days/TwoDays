@@ -75,7 +75,7 @@ def command_handler(event):
         try:
             today = misc.get_today_from_input(today)
         except:
-            return sm.send(event, "날짜 형식이 잘못되었습니다. (예시: 2025-1-1, 1-1, 1)")
+            return sm.send(event, "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)")
 
         msg, image_path = gri.get_rank_info(page, today)
 
