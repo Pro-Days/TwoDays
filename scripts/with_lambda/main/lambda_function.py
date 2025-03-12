@@ -100,9 +100,6 @@ def command_handler(event):
             elif i["name"] == "날짜":
                 today = i["value"]
 
-            elif i["name"] == "나만보기":
-                today = i["value"]
-
         if rp.is_registered(name) is False:
             result = rp.register_player(name, 1)
             sm.send(event, f"{name}님을 등록했습니다.")

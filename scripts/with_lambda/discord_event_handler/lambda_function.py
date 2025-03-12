@@ -42,6 +42,14 @@ def lambda_handler(event, context):
                 FunctionName=functionName, InvocationType="Event", Payload=json.dumps(event)
             )
 
+            body = json.loads(event["body"])
+            options = body["data"]["options"] if "options" in body["data"] else []
+
+            flag = 128
+            for i in options:
+                if i["name"] == "나만보기" and i["value"]:
+                    flag = 192
+
             return {
                 "statusCode": 200,
                 "headers": {"Content-Type": "application/json"},
@@ -49,7 +57,7 @@ def lambda_handler(event, context):
                     {
                         "type": 5,
                         "data": {
-                            "flags": 192,
+                            "flags": flag,
                         },
                     }
                 ),
