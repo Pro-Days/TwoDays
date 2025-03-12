@@ -152,6 +152,11 @@ def get_today():
 
 
 def get_today_from_input(today):
+    """
+    -1: 날짜 입력이 올바르지 않음
+    -2: 미래 날짜
+    today: datetime.date
+    """
     # YYYY-MM-DD, MM-DD, DD, 1일전, ...
     try:
         todayR = get_today()
@@ -180,7 +185,7 @@ def get_today_from_input(today):
         return -1
 
     if today > todayR:
-        return -1
+        return -2
 
     return today
 

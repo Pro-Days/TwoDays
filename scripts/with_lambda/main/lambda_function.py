@@ -72,10 +72,11 @@ def command_handler(event):
         if not (1 <= page <= 3):  # 임시로 3까지만
             return sm.send(event, "페이지는 1부터 10까지만 가능합니다.")
 
-        try:
-            today = misc.get_today_from_input(today)
-        except:
+        today = misc.get_today_from_input(today)
+        if today == -1:
             return sm.send(event, "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)")
+        elif today == -2:
+            return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
         msg, image_path = gri.get_rank_info(page, today)
 
@@ -112,13 +113,11 @@ def command_handler(event):
         if not (1 <= period <= 365):
             return sm.send(event, "기간은 1부터 365까지만 가능합니다.")
 
-        try:
-            today = datetime.datetime.strptime(today, "%Y-%m-%d").date() if today else misc.get_today()
-
-            if today > misc.get_today():
-                return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
-        except:
-            return sm.send(event, "날짜 형식이 잘못되었습니다. (예시: 2025-01-01)")
+        today = misc.get_today_from_input(today)
+        if today == -1:
+            return sm.send(event, "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)")
+        elif today == -2:
+            return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
         msg, image_path = gci.get_character_info(name, slot, period, default, today)
 
