@@ -49,7 +49,7 @@ def lambda_handler(event, context):
                     {
                         "type": 5,
                         "data": {
-                            "content": "잠시 기다려주세요",
+                            "flags": 192,
                         },
                     }
                 ),

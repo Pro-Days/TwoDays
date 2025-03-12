@@ -58,12 +58,16 @@ json = {
             "description": "캐릭터 슬롯 번호 (1~5)",
             "type": 4,
             "required": False,
+            "min_value": 1,
+            "max_value": 5,
         },
         {
             "name": "기간",
             "description": "캐릭터 정보를 조회할 기간 (1~365)",
             "type": 4,
             "required": False,
+            "min_value": 1,
+            "max_value": 365,
         },
         {
             "name": "날짜",
@@ -95,8 +99,22 @@ print(r.json())
     "integration_types": [0, 1],
     "description": "캐릭터 레벨 랭킹을 보여줍니다.",
     "options": [
-        {"name": "페이지", "description": "페이지 번호 (1~10)", "type": 4, "required": False},
-        {"name": "기간", "description": "랭킹을 조회할 기간 (1~365)", "type": 4, "required": False},
+        {
+            "name": "페이지",
+            "description": "페이지 번호 (1~10)",
+            "type": 4,
+            "required": False,
+            "min_value": 1,
+            "max_value": 10,
+        },
+        {
+            "name": "기간",
+            "description": "랭킹을 조회할 기간 (1~365)",
+            "type": 4,
+            "required": False,
+            "min_value": 1,
+            "max_value": 365,
+        },
         {
             "name": "날짜",
             "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",  # choices 추가
