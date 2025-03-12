@@ -163,7 +163,7 @@ def get_today_from_input(today):
 
             else:
                 date_type = today.count("-")
-                today_list = todayR.split("-")
+                today_list = str(todayR).split("-")
 
                 if date_type == 0:  # 날짜만
                     today = "-".join(today_list[:2]) + "-" + today
@@ -190,6 +190,6 @@ if __name__ == "__main__":
     # print(get_max_id())
     # print(get_profile_from_mc(name="aasdwdddddwdwdwd"))
     # print(get_main_slot("prodays"))
-    print(get_today_from_input("1일전"))
+    print(get_today_from_input("12일전"))
 
     pass
