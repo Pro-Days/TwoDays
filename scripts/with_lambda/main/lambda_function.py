@@ -100,9 +100,13 @@ def command_handler(event):
             elif i["name"] == "날짜":
                 today = i["value"]
 
+        reg_msg = None
         if rp.is_registered(name) is False:
             result = rp.register_player(name, 1)
-            sm.send(event, f"{name}님을 등록했습니다.")
+            if result:
+                reg_msg = f"등록되어있지 않은 플레이어네요. {name}님을 등록했어요.\n\n"
+            else:
+                return sm.send(event, f"오류가 발생했어요. 등록을 먼저 해주세요.")
 
         if slot is None:
             slot = misc.get_main_slot(name)
@@ -121,6 +125,9 @@ def command_handler(event):
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
         msg, image_path = gci.get_character_info(name, slot, period, default, today)
+
+        if reg_msg:
+            msg = reg_msg + msg
 
         return sm.send(event, msg, image=image_path)
 
