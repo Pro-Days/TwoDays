@@ -376,7 +376,7 @@ def get_similar_character_avg(period, today, level):
         if today == todayR.strftime("%Y-%m-%d"):
             if (
                 date == (todayR - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-                and (level - 10 <= i["level"] <= level + 10)
+                and (level - 1 <= i["level"] <= level + 1)
                 and not (i["id"], slot) in chars
             ):
                 chars.append((i["id"], slot))
