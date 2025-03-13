@@ -60,6 +60,8 @@ def get_character_info(name, slot, period, default, today):
 
     all_character_avg = get_all_character_avg(period, today)
     similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
+    print(all_character_avg)
+    print(similar_character_avg)
 
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
@@ -152,7 +154,7 @@ def get_character_info(name, slot, period, default, today):
             plt.plot(
                 df_sim["date"],
                 df_sim["level"],
-                color="C2",
+                color="C3",
                 marker="o",
                 label=labels["sim"],
                 linestyle="",
@@ -160,7 +162,7 @@ def get_character_info(name, slot, period, default, today):
             plt.plot(
                 df_sim["date"][0] + pd.to_timedelta(x_new_sim, unit="D"),
                 y_smooth_sim,
-                color="C2",
+                color="C3",
             )
 
     if y_min == y_max:
@@ -241,7 +243,7 @@ def get_character_info(name, slot, period, default, today):
     if os_name == "Linux":
         image_path = misc.convert_path("\\tmp\\character_info.png")
     else:
-        image_path = misc.convert_path("assets\\images\\character_info.png")
+        image_path = "character_info.png"
 
     plt.savefig(image_path, dpi=300, bbox_inches="tight")
     plt.close()
@@ -360,22 +362,33 @@ def get_similar_character_avg(period, today, level):
         index="date-slot-level-index",
         filter_dict={
             "date-slot": [f"{start_date}#0", f"{today}#4"],
-            "level": [level - 10, level + 10],
         },
     )
 
     if not db_data:
         return None
 
-    dates = {}
+    chars = []
 
     for i in db_data:
-        date, _ = i["date-slot"].split("#")
+        date, slot = i["date-slot"].split("#")
+
+        if (
+            date == today
+            and (level - 10 <= int(i["level"]) <= level + 10)
+            and not (i["id"], int(slot)) in chars
+        ):
+            chars.append((i["id"], int(slot)))
+
+    dates = {}
+    for i in db_data:
+        date, slot = i["date-slot"].split("#")
 
         if not date in dates.keys():
             dates[date] = []
 
-        dates[date].append(int(i["level"]))
+        if (i["id"], int(slot)) in chars:
+            dates[date].append(int(i["level"]))
 
     for date in sorted(dates.keys()):
         data["date"].append(date)
