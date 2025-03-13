@@ -62,31 +62,50 @@ def send_log(log_type, event, msg="", image=None):
     """
 
     body = json.loads(event["body"])
+    command_type = event["authorizing_integration_owners"].keys()  # 0: 서버, 1: 유저
 
     guild_id = body["guild_id"]
-    guild_name = misc.get_guild_name(guild_id)
     channel_id = body["channel"]["id"]
-    channel_name = body["channel"]["name"]
     member_id = body["member"]["user"]["id"]
     member_name = body["member"]["user"]["global_name"]
     member_username = body["member"]["user"]["username"]
+
+    if "0" in command_type:
+        guild_name = misc.get_guild_name(guild_id)
+        channel_name = body["channel"]["name"]
 
     now = datetime.datetime.now() + datetime.timedelta(hours=9)
 
     if (log_type == 1) or (log_type == 2):
 
-        embed_json = {
-            "time": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "server": f"{guild_name} ({guild_id})",
-            "channel": f"{channel_name} ({channel_id})",
-            "author": f"{member_name} - {member_username} ({member_id})",
-            "cmd": (
-                f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
-                if "options" in body["data"]
-                else body["data"]["name"]
-            ),
-            "msg": msg,
-        }
+        if "0" in command_type:
+            embed_json = {
+                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "서버",
+                "server": f"{guild_name} ({guild_id})",
+                "channel": f"{channel_name} ({channel_id})",
+                "author": f"{member_name} - {member_username} ({member_id})",
+                "cmd": (
+                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    if "options" in body["data"]
+                    else body["data"]["name"]
+                ),
+                "msg": msg,
+            }
+        else:
+            embed_json = {
+                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "유저",
+                "server": f"{guild_id}",
+                "channel": f"{channel_id}",
+                "author": f"{member_name} - {member_username} ({member_id})",
+                "cmd": (
+                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    if "options" in body["data"]
+                    else body["data"]["name"]
+                ),
+                "msg": msg,
+            }
 
         if log_type == 1:
             title = "투다이스 어시스턴트 명령어 로그"
@@ -108,18 +127,34 @@ def send_log(log_type, event, msg="", image=None):
                 )
 
     elif log_type == 3:
-        embed_json = {
-            "time": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "server": f"{guild_name} ({guild_id})",
-            "channel": f"{channel_name} ({channel_id})",
-            "author": f"{member_name} - {member_username} ({member_id})",
-            "cmd": (
-                f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
-                if "options" in body["data"]
-                else body["data"]["name"]
-            ),
-            "error": msg,
-        }
+        if "0" in command_type:
+            embed_json = {
+                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "서버",
+                "server": f"{guild_name} ({guild_id})",
+                "channel": f"{channel_name} ({channel_id})",
+                "author": f"{member_name} - {member_username} ({member_id})",
+                "cmd": (
+                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    if "options" in body["data"]
+                    else body["data"]["name"]
+                ),
+                "error": msg,
+            }
+        else:
+            embed_json = {
+                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "유저",
+                "server": f"{guild_id}",
+                "channel": f"{channel_id}",
+                "author": f"{member_name} - {member_username} ({member_id})",
+                "cmd": (
+                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    if "options" in body["data"]
+                    else body["data"]["name"]
+                ),
+                "error": msg,
+            }
 
         title = "투다이스 어시스턴트 명령어 에러 로그"
         color = 15548997
