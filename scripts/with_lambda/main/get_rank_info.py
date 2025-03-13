@@ -27,7 +27,7 @@ def download_image(url, num, list_name):
 
 
 def get_rank_data(day, page=0):
-    data = data_manager.read_data("TA_DEV-Ranks", condition_dict={"date": day.strftime("%Y-%m-%d")})
+    data = data_manager.read_data("Ranks", condition_dict={"date": day.strftime("%Y-%m-%d")})
 
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
@@ -123,9 +123,9 @@ def get_rank_info(page, today):
         prev_date = today - datetime.timedelta(days=1)
         prev_date_str = prev_date.strftime("%Y-%m-%d")
 
-        prev_rank = data_manager.read_data(
-            "TA_DEV-Ranks", "id-date-index", {"id": user_id, "date": prev_date_str}
-        )[0]["rank"]
+        prev_rank = data_manager.read_data("Ranks", "id-date-index", {"id": user_id, "date": prev_date_str})[
+            0
+        ]["rank"]
 
         if prev_rank is None:
             data["Change"].append(None)

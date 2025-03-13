@@ -18,10 +18,13 @@ else:
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         region_name="ap-northeast-2",
     )
+
+db_name = os.getenv("DB_name")
 dynamodb = session.resource("dynamodb")
 
 
 def read_data(table_name, index=None, condition_dict=None):
+    table_name = db_name + "-" + table_name
     table = dynamodb.Table(table_name)
 
     # value가 범위인 경우 추가 (예: level)
@@ -52,6 +55,7 @@ def read_data(table_name, index=None, condition_dict=None):
 
 
 def scan_data(table_name, index=None, key=None, filter_dict=None):
+    table_name = db_name + "-" + table_name
     table = dynamodb.Table(table_name)
 
     filter_data = None
@@ -93,6 +97,7 @@ def scan_data(table_name, index=None, key=None, filter_dict=None):
 
 
 def write_data(table_name, item):
+    table_name = db_name + "-" + table_name
     table = dynamodb.Table(table_name)
 
     table.put_item(Item=item)

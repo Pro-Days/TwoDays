@@ -275,9 +275,7 @@ def get_character_data(name, slot, period, today):
 
         _id = misc.get_id(name)
 
-        db_data = dm.read_data(
-            "TA_DEV-DailyData", None, {"id": _id, "date-slot": [f"{start_date}#0", f"{today}#4"]}
-        )
+        db_data = dm.read_data("DailyData", None, {"id": _id, "date-slot": [f"{start_date}#0", f"{today}#4"]})
 
     data = {"date": [], "level": [], "job": []}
     if period != 1 and db_data:
@@ -309,7 +307,7 @@ def get_all_character_avg(period, today):
     start_date = start_date.strftime("%Y-%m-%d")
 
     db_data = dm.scan_data(
-        "TA_DEV-DailyData",
+        "DailyData",
         index="date-slot-level-index",
         filter_dict={"date-slot": [f"{start_date}#0", f"{today}#4"]},
     )

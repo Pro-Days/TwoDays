@@ -14,7 +14,13 @@ ADMIN_ID = os.getenv("DISCORD_ADMIN_ID")
 
 
 def lambda_handler(event, context):
-    print(f"start!\nevent: {event}\ncontext: {context}")
+    print(f"start!\nevent: {event}")
+
+    if context.function_name == "TA_DEV-lambda_main":
+        os.environ["DB_name"] = "TA_DEV"
+    elif context.function_name == "TwoDays-lambda_main":
+        os.environ["DB_name"] = "TwoDays"
+
     try:
         return command_handler(event)
 
