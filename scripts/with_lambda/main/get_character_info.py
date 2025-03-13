@@ -60,6 +60,7 @@ def get_character_info(name, slot, period, default, today):
         return f"{name}님의 {slot}번 캐릭터 정보가 없어요. 다시 확인해주세요.", None
 
     all_character_avg = get_all_character_avg(period, today)
+    similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
 
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
@@ -75,54 +76,47 @@ def get_character_info(name, slot, period, default, today):
     if display_avg:
         df_avg["date"] = pd.to_datetime(df_avg["date"])
 
+    df_sim = pd.DataFrame(similar_character_avg)
+    display_sim = len(df_sim) > 1 and not (
+        (df_sim["level"].max() < y_min - 0.1 * y_range) or (df_sim["level"].min() > y_max + 0.3 * y_range)
+    )
+    if display_sim:
+        df_sim["date"] = pd.to_datetime(df_sim["date"])
+
     plt.figure(figsize=(10, 4))
     smooth_coeff = 10
 
+    labels = {
+        "default": (f"{name}의 캐릭터 레벨" if default else f"{name}의 {slot}번 캐릭터 레벨"),
+    }
     if display_avg:
-        labels = [
-            (f"{name}의 캐릭터 레벨" if default else f"{name}의 {slot}번 캐릭터 레벨"),
-            "등록된 전체 캐릭터의 평균 레벨",
-        ]
-    else:
-        labels = [f"{name}의 캐릭터 레벨" if default else f"{name}의 {slot}번 캐릭터 레벨"]
+        labels["avg"] = "등록된 전체 캐릭터의 평균 레벨"
+    if display_sim:
+        labels["sim"] = "유사한 레벨의 캐릭터의 평균 레벨"
 
     if period == 1:
-        plt.plot("date", "level", data=df, color="C0", marker="o", label=labels[0])
+        plt.plot("date", "level", data=df, color="C0", marker="o", label=labels["default"])
         if display_avg:
-            plt.plot("date", "level", data=df_avg, color="C2", marker="o", label=labels[1])
+            plt.plot("date", "level", data=df_avg, color="C2", marker="o", label=labels["avg"])
+        if display_sim:
+            plt.plot("date", "level", data=df_sim, color="C2", marker="o", label=labels["sim"])
+
     else:
-
-        # x = np.arange(len(df["date"]))
-        # x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
-        # pchip = PchipInterpolator(x, df["level"])
-        # y_smooth = pchip(x_new)
-
         x = np.arange(len(df["date"]))
         y = df["level"].values
 
         x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
 
-        # 보간 실행
         y_smooth = pchip_interpolate(x, y, x_new)
 
-        plt.plot(df["date"], df["level"], color="C0", marker="o", label=labels[0], linestyle="")
+        plt.plot(df["date"], df["level"], color="C0", marker="o", label=labels["default"], linestyle="")
         plt.plot(
             df["date"][0] + pd.to_timedelta(x_new, unit="D"),
             y_smooth,
             color="C0",
-            # marker="o",  # marker="-",
         )
 
         if display_avg:
-            # x_avg = np.arange(len(df_avg["date"]))
-            # x_new_avg = np.linspace(
-            #     x_avg.min(),
-            #     x_avg.max(),
-            #     len(df_avg["date"]) * smooth_coeff - smooth_coeff + 1,
-            # )
-            # pchip_avg = PchipInterpolator(x_avg, df_avg["level"])
-            # y_smooth_avg = pchip_avg(x_new_avg)
-
             x_avg = np.arange(len(df_avg["date"]))
             y_avg = df_avg["level"].values
 
@@ -130,7 +124,6 @@ def get_character_info(name, slot, period, default, today):
                 x_avg.min(), x_avg.max(), len(df_avg["date"]) * smooth_coeff - smooth_coeff + 1
             )
 
-            # 보간 실행
             y_smooth_avg = pchip_interpolate(x_avg, y_avg, x_new_avg)
 
             plt.plot(
@@ -145,7 +138,30 @@ def get_character_info(name, slot, period, default, today):
                 df_avg["date"][0] + pd.to_timedelta(x_new_avg, unit="D"),
                 y_smooth_avg,
                 color="C2",
-                # marker="o",  # marker="-",
+            )
+
+        if display_sim:
+            x_sim = np.arange(len(df_sim["date"]))
+            y_sim = df_sim["level"].values
+
+            x_new_sim = np.linspace(
+                x_sim.min(), x_sim.max(), len(df_sim["date"]) * smooth_coeff - smooth_coeff + 1
+            )
+
+            y_smooth_sim = pchip_interpolate(x_sim, y_sim, x_new_sim)
+
+            plt.plot(
+                df_sim["date"],
+                df_sim["level"],
+                color="C2",
+                marker="o",
+                label=labels[1],
+                linestyle="",
+            )
+            plt.plot(
+                df_sim["date"][0] + pd.to_timedelta(x_new_sim, unit="D"),
+                y_smooth_sim,
+                color="C2",
             )
 
     if y_min == y_max:
@@ -332,6 +348,43 @@ def get_all_character_avg(period, today):
     return data
 
 
+def get_similar_character_avg(period, today, level):
+    data = {"date": [], "level": []}
+
+    start_date = today - datetime.timedelta(days=period - 1)
+
+    today = today.strftime("%Y-%m-%d")
+    start_date = start_date.strftime("%Y-%m-%d")
+
+    db_data = dm.scan_data(
+        "DailyData",
+        index="date-slot-level-index",
+        filter_dict={
+            "date-slot": [f"{start_date}#0", f"{today}#4"],
+            "level": [level - 10, level + 10],
+        },
+    )
+
+    if not db_data:
+        return None
+
+    dates = {}
+
+    for i in db_data:
+        date, _ = i["date-slot"].split("#")
+
+        if not date in dates.keys():
+            dates[date] = []
+
+        dates[date].append(int(i["level"]))
+
+    for date in sorted(dates.keys()):
+        data["date"].append(date)
+        data["level"].append(sum(dates[date]) / len(dates[date]))
+
+    return data
+
+
 def pchip_slopes(x, y):
     """
     (x, y)가 주어졌을 때, 각 x[i]에서의 접선 기울기 m[i]를
@@ -433,7 +486,7 @@ def pchip_interpolate(x, y, x_new):
 
 
 if __name__ == "__main__":
-    today = datetime.datetime.strptime("2025-02-11", "%Y-%m-%d").date()
+    today = datetime.datetime.strptime("2025-03-11", "%Y-%m-%d").date()
 
     print(get_character_info("prodays", 1, 10, False, today))
 
