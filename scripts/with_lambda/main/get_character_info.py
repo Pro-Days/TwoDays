@@ -97,10 +97,9 @@ def get_character_info(name, slot, period, default, today):
 
     if period == 1:
         plt.plot("date", "level", data=df, color="C0", marker="o", label=labels["default"])
+
         if display_avg:
             plt.plot("date", "level", data=df_avg, color="C2", marker="o", label=labels["avg"])
-        if display_sim:
-            plt.plot("date", "level", data=df_sim, color="C2", marker="o", label=labels["sim"])
 
     else:
         x = np.arange(len(df["date"]))
