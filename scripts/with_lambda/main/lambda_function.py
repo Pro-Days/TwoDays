@@ -14,7 +14,7 @@ ADMIN_ID = os.getenv("DISCORD_ADMIN_ID")
 
 
 def lambda_handler(event, context):
-    print(f"start!\nevent: {event}")
+    print(f"start!\nevent: {event}\ncontext: {context}")
     try:
         return command_handler(event)
 
