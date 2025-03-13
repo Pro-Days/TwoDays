@@ -391,9 +391,9 @@ def get_rank_info(page, today):
     # 이미지 저장
     os_name = platform.system()
     if os_name == "Linux":
-        image_path = misc.convert_path("\\tmp\\rank_info.png")
+        image_path = misc.convert_path("\\tmp\\image.png")
     else:
-        image_path = misc.convert_path("assets\\images\\rank_info.png")
+        image_path = misc.convert_path("assets\\images\\image.png")
 
     rank_info_image.save(image_path)
 

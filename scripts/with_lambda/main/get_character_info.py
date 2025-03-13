@@ -60,8 +60,6 @@ def get_character_info(name, slot, period, default, today):
 
     all_character_avg = get_all_character_avg(period, today)
     similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
-    print(all_character_avg)
-    print(similar_character_avg)
 
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
@@ -240,9 +238,9 @@ def get_character_info(name, slot, period, default, today):
 
     os_name = platform.system()
     if os_name == "Linux":
-        image_path = misc.convert_path("\\tmp\\character_info.png")
+        image_path = misc.convert_path("\\tmp\\image.png")
     else:
-        image_path = "character_info.png"
+        image_path = "image.png"
 
     plt.savefig(image_path, dpi=300, bbox_inches="tight")
     plt.close()
@@ -371,13 +369,21 @@ def get_similar_character_avg(period, today, level):
 
     for i in db_data:
         date, slot = i["date-slot"].split("#")
+        slot = int(slot)
 
-        if (
-            date == today
-            and (level - 10 <= int(i["level"]) <= level + 10)
-            and not (i["id"], int(slot)) in chars
-        ):
-            chars.append((i["id"], int(slot)))
+        todayR = misc.get_today()
+
+        if today == todayR.strftime("%Y-%m-%d"):
+            if (
+                date == (todayR - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                and (level - 10 <= i["level"] <= level + 10)
+                and not (i["id"], slot) in chars
+            ):
+                chars.append((i["id"], slot))
+
+        else:
+            if date == today and (level - 10 <= i["level"] <= level + 10) and not (i["id"], slot) in chars:
+                chars.append((i["id"], slot))
 
     dates = {}
     for i in db_data:
@@ -457,33 +463,14 @@ def pchip_interpolate(x, y, x_new):
             y_new[i] = y[-1]
             continue
         else:
-            # x 사이 구간을 찾아서 보간
-            # 이진 탐색을 써도 되고, 여기서는 간단히 linear search
-            # (대규모 데이터라면 np.searchsorted 등을 쓰는 것이 낫습니다)
             idx = np.searchsorted(x, xn) - 1
 
-            # 구간 [x[idx], x[idx+1]]
             x0, x1 = x[idx], x[idx + 1]
             y0, y1 = y[idx], y[idx + 1]
             m0, m1 = m[idx], m[idx + 1]
             h = x1 - x0
-            t = (xn - x0) / h  # 구간 내에서 0~1로 정규화
+            t = (xn - x0) / h
 
-            # Hermite basis를 이용한 보간
-            # 참고: PCHIP 형식의 cubic Hermite polynomial
-            # H_i(t) = y0
-            #         + m0*(t)
-            #         + [ 3*(y1-y0)/h^2 - (m1 + 2*m0)/h^1 ] * t^2
-            #         + [ -2*(y1-y0)/h^3 + (m1 + m0)/h^2 ] * t^3
-            # (아래는 좀 더 일반화한 형태)
-
-            # 여러가지 표기 중 하나를 예시로 들면:
-            # a = y0
-            # b = m0
-            # c = (3*(y1-y0)/h - 2*m0 - m1) / h
-            # d = (m0 + m1 - 2*(y1-y0)/h) / (h**2)
-
-            # 좀 더 단순화해서 적절히 계산
             a = y0
             b = m0
             c = (3 * (y1 - y0) / h - 2 * m0 - m1) / h
@@ -497,9 +484,9 @@ def pchip_interpolate(x, y, x_new):
 
 
 if __name__ == "__main__":
-    today = datetime.datetime.strptime("2025-03-11", "%Y-%m-%d").date()
+    today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
 
-    print(get_character_info("prodays", 1, 10, False, today))
+    print(get_character_info("prodays", 1, 7, False, today))
 
     # print(get_character_data("ProDays", 1, 7, day))
 
