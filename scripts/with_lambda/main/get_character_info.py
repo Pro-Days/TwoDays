@@ -25,7 +25,6 @@ prop = fm.FontProperties(fname=font_path)
 plt.rcParams["font.family"] = prop.get_name()
 
 matplotlib.use("Agg")
-os.environ["MPLCONFIGDIR"] = "/tmp/"
 
 
 def get_current_character_data(name):
@@ -131,7 +130,7 @@ def get_character_info(name, slot, period, default, today):
                 df_avg["level"],
                 color="C2",
                 marker="o",
-                label=labels[1],
+                label=labels["avg"],
                 linestyle="",
             )
             plt.plot(
@@ -155,7 +154,7 @@ def get_character_info(name, slot, period, default, today):
                 df_sim["level"],
                 color="C2",
                 marker="o",
-                label=labels[1],
+                label=labels["sim"],
                 linestyle="",
             )
             plt.plot(
