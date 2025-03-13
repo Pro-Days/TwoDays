@@ -5,3 +5,4 @@ assets/player_heads/
 .venv/
 .env
 *__pycache__
+scripts/temp
