@@ -382,7 +382,9 @@ def get_similar_character_avg(period, today, level):
                 chars.append((i["id"], slot))
 
         else:
-            if date == today and (level - 10 <= i["level"] <= level + 10) and not (i["id"], slot) in chars:
+            if (
+                date == today and (level - 1 <= i["level"] <= level + 1) and not (i["id"], slot) in chars
+            ):  # 레벨 범위 이후에 수정
                 chars.append((i["id"], slot))
 
     dates = {}
