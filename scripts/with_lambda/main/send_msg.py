@@ -62,7 +62,7 @@ def send_log(log_type, event, msg="", image=None):
     """
 
     body = json.loads(event["body"])
-    command_type = event["authorizing_integration_owners"].keys()  # 0: 서버, 1: 유저
+    command_type = body["authorizing_integration_owners"].keys()  # 0: 서버, 1: 유저
 
     guild_id = body["guild_id"]
     channel_id = body["channel"]["id"]
