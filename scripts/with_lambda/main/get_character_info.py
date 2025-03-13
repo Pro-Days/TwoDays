@@ -59,7 +59,11 @@ def get_character_info(name, slot, period, default, today):
         return f"{name}님의 {slot}번 캐릭터 정보가 없어요. 다시 확인해주세요.", None
 
     all_character_avg = get_all_character_avg(period, today)
-    similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
+
+    if today == misc.get_today():
+        similar_character_avg = get_similar_character_avg(period, today, data["level"][-2])
+    else:
+        similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
 
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
@@ -488,7 +492,7 @@ def pchip_interpolate(x, y, x_new):
 if __name__ == "__main__":
     today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
 
-    print(get_character_info("prodays", 1, 7, False, today))
+    print(get_character_info("prodays", 3, 7, False, today))
 
     # print(get_character_data("ProDays", 1, 7, day))
 

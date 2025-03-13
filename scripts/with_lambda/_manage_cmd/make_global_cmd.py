@@ -95,12 +95,16 @@ json_objects = [
                 "description": "캐릭터 슬롯 번호 (1~5)",
                 "type": 4,
                 "required": False,
+                "min_value": 1,
+                "max_value": 5,
             },
             {
                 "name": "기간",
                 "description": "캐릭터 정보를 조회할 기간 (1~365)",
                 "type": 4,
                 "required": False,
+                "min_value": 1,
+                "max_value": 365,
             },
             {
                 "name": "날짜",
@@ -133,6 +137,8 @@ json_objects = [
                 "description": "메인 캐릭터 (본캐) 슬롯 번호 (1~5)",
                 "type": 4,
                 "required": False,
+                "min_value": 1,
+                "max_value": 5,
             },
             {
                 "name": "나만보기",
