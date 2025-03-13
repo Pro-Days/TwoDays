@@ -18,6 +18,7 @@ else:
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
         region_name="ap-northeast-2",
     )
+print(os.environ["DB_name"])
 
 db_name = os.environ.get("DB_name")
 dynamodb = session.resource("dynamodb")

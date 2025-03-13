@@ -21,8 +21,6 @@ def lambda_handler(event, context):
     elif context.function_name == "TwoDays-lambda_main":
         os.environ["DB_name"] = "TwoDays"
 
-    print(os.environ["DB_name"])
-
     try:
         return command_handler(event)
 
