@@ -4,18 +4,6 @@ import requests
 
 url = f"https://discord.com/api/v10/applications/{os.getenv("DISCORD_APP_ID")}/commands"
 
-# SUB_COMMAND	    1
-# SUB_COMMAND_GROUP	2
-# STRING	        3
-# INTEGER	        4	    Any integer between -2^53 and 2^53
-# BOOLEAN	        5
-# USER	            6
-# CHANNEL	        7	    Includes all channel types + categories
-# ROLE	            8
-# MENTIONABLE	    9	    Includes users and roles
-# NUMBER	        10	    Any double between -2^53 and 2^53
-# ATTACHMENT	    11	    attachment object
-
 # json = {
 #     "name": "blep",
 #     "type": 1,
@@ -40,6 +28,18 @@ url = f"https://discord.com/api/v10/applications/{os.getenv("DISCORD_APP_ID")}/c
 #         },
 #     ],
 # }
+
+# SUB_COMMAND	    1
+# SUB_COMMAND_GROUP	2
+# STRING	        3
+# INTEGER	        4	    Any integer between -2^53 and 2^53
+# BOOLEAN	        5
+# USER	            6
+# CHANNEL	        7	    Includes all channel types + categories
+# ROLE	            8
+# MENTIONABLE	    9	    Includes users and roles
+# NUMBER	        10	    Any double between -2^53 and 2^53
+# ATTACHMENT	    11	    attachment object
 
 json_objects = [
     {
@@ -150,10 +150,40 @@ json_objects = [
     },
 ]
 
+# json_objects = {
+#     "name": "테스트",
+#     "description": "테스트",
+#     "integration_types": [0, 1],
+#     "options": [
+#         {
+#             "name": "서브1",
+#             "description": "서브1",
+#             "type": 1,
+#             "required": False,
+#             "options": [
+#                 {
+#                     "name": "서브1-1",
+#                     "description": "서브1-1",
+#                     "type": 3,
+#                     "required": False,
+#                 },
+#                 {
+#                     "name": "서브1-2",
+#                     "description": "서브1-2",
+#                     "type": 4,
+#                     "required": False,
+#                 },
+#             ],
+#         },
+#     ],
+# }
 
 # For authorization, you can use either your bot token
 headers = {"Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"}
 
-for obj in json_objects:
-    r = requests.post(url, headers=headers, json=obj)
-    print(r.json())
+# for obj in json_objects:
+#     r = requests.post(url, headers=headers, json=obj)
+#     print(r.json())
+
+r = requests.post(url, headers=headers, json=json_objects)
+print(r.json())

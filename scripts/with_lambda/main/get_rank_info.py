@@ -93,7 +93,7 @@ def get_current_rank_data(page=0) -> dict:
     return data[page * 10 - 10 : page * 10] if page != 0 else data
 
 
-def get_rank_info(page, today):
+def get_rank_info(page, period, today):
     data = {
         "Rank": range(page * 10 - 9, page * 10 + 1),
         "Name": [],

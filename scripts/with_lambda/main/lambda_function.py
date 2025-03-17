@@ -62,12 +62,16 @@ def command_handler(event):
 
         page = 1
         today = None
+        period = None
         for i in options:
             if i["name"] == "페이지":
                 page = i["value"]
 
             elif i["name"] == "날짜":
                 today = i["value"]
+
+            elif i["name"] == "기간":
+                period = i["value"]
 
         # if not (1 <= page <= 10):
         if not (1 <= page <= 3):  # 임시로 3까지만
@@ -79,7 +83,7 @@ def command_handler(event):
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
-        msg, image_path = gri.get_rank_info(page, today)
+        msg, image_path = gri.get_rank_info(page, period, today)
 
         return sm.send(event, msg, image=image_path)
 
