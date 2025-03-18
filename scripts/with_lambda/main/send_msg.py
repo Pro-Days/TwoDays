@@ -86,7 +86,7 @@ def send_log(log_type, event, msg="", image=None):
                 "channel": f"{channel_name} ({channel_id})",
                 "author": f"{member_name} - {member_username} ({member_id})",
                 "cmd": (
-                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    f"{body["data"]["name"]}\n{body['data']['options']}"
                     if "options" in body["data"]
                     else body["data"]["name"]
                 ),
@@ -100,7 +100,7 @@ def send_log(log_type, event, msg="", image=None):
                 "channel": f"{channel_id}",
                 "author": f"{member_name} - {member_username} ({member_id})",
                 "cmd": (
-                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    f"{body["data"]["name"]}\n{body['data']['options']}"
                     if "options" in body["data"]
                     else body["data"]["name"]
                 ),
@@ -135,7 +135,7 @@ def send_log(log_type, event, msg="", image=None):
                 "channel": f"{channel_name} ({channel_id})",
                 "author": f"{member_name} - {member_username} ({member_id})",
                 "cmd": (
-                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    f"{body["data"]["name"]}\n{body['data']['options']}"
                     if "options" in body["data"]
                     else body["data"]["name"]
                 ),
@@ -149,7 +149,7 @@ def send_log(log_type, event, msg="", image=None):
                 "channel": f"{channel_id}",
                 "author": f"{member_name} - {member_username} ({member_id})",
                 "cmd": (
-                    f"{body["data"]["name"]}\n{', '.join([f"{option['name']}: {option['value']}" for option in body['data']['options']])}"
+                    f"{body["data"]["name"]}\n{body['data']['options']}"
                     if "options" in body["data"]
                     else body["data"]["name"]
                 ),
