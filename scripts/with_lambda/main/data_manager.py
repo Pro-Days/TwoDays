@@ -105,5 +105,10 @@ def write_data(table_name, item):
 if __name__ == "__main__":
     # print(scan_data("TA_DEV-DailyData"))
     # print(read_data("TA_DEV-DailyData", None, {"id": 1, "date-slot": ["2025-01-01#0", "2025-01-01#4"]}))
+    # print(
+    #     read_data(
+    #         "Ranks", index="id-date-index", condition_dict={"id": 1, "date": ["2025-03-10", "2025-03-18"]}
+    #     )
+    # )
 
     pass

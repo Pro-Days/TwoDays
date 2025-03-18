@@ -5,11 +5,30 @@ import datetime
 import platform
 import requests
 import threading
+import numpy as np
+import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
+
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+import matplotlib.font_manager as fm
 
 import misc
 import data_manager
 import register_player
+
+plt.style.use("seaborn-v0_8-pastel")
+if platform.system() == "Linux":
+    font_path = "/opt/NanumSquareRoundEB.ttf"
+else:
+    font_path = misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf")
+fm.fontManager.addfont(font_path)
+prop = fm.FontProperties(fname=font_path)
+plt.rcParams["font.family"] = prop.get_name()
+
+matplotlib.use("Agg")
 
 
 def download_image(url, num, list_name):
@@ -393,7 +412,7 @@ def get_rank_info(page, period, today):
     if os_name == "Linux":
         image_path = misc.convert_path("\\tmp\\image.png")
     else:
-        image_path = misc.convert_path("assets\\images\\image.png")
+        image_path = "image.png"
 
     rank_info_image.save(image_path)
 
@@ -405,10 +424,156 @@ def get_rank_info(page, period, today):
     return msg, image_path
 
 
-if __name__ == "__main__":
-    today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
+def get_rank_history(name, period, today):
+    current_data = get_current_rank_data() if today == misc.get_today() else None
 
-    print(get_rank_info(1, 7, today))
+    _id = misc.get_id(name=name)
+
+    start_date = today - datetime.timedelta(days=period - 1)
+    today = today.strftime("%Y-%m-%d")
+    start_date = start_date.strftime("%Y-%m-%d")
+
+    data = data_manager.read_data(
+        "Ranks", index="id-date-index", condition_dict={"id": _id, "date": [start_date, today]}
+    )
+
+    for i, j in enumerate(data):
+        data[i]["rank"] = 101 - int(j["rank"])
+
+        del data[i]["level"]
+        del data[i]["job"]
+        del data[i]["id"]
+
+    if current_data is not None:
+        for i, j in enumerate(current_data):  # job level name
+            if j["name"].lower() == name.lower():
+                data.append(
+                    {
+                        "rank": 100 - i,
+                        "date": today,
+                    }
+                )
+                break
+
+    # 이미지 생성
+    df = pd.DataFrame(data)
+    df["date"] = pd.to_datetime(df["date"])
+
+    plt.figure(figsize=(10, 4))
+    smooth_coeff = 10
+
+    # labels = f"{name}의 캐릭터 레벨" if default else f"{name}의 {slot}번 캐릭터 레벨"
+    label = "랭킹"
+
+    if period == 1:
+        plt.plot("date", "rank", data=df, color="C0", marker="o", label=label)
+
+    else:
+        x = np.arange(len(df["date"]))
+        y = df["rank"].values
+
+        x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
+
+        y_smooth = misc.pchip_interpolate(x, y, x_new)
+
+        plt.plot(df["date"], df["rank"], color="C0", marker="o", label=label, linestyle="")
+        plt.plot(
+            df["date"][0] + pd.to_timedelta(x_new, unit="D"),
+            y_smooth,
+            color="C0",
+        )
+
+    plt.ylim(0, 101)
+
+    for i in range(len(df) - 1):
+        plt.fill_between(
+            df["date"][0]
+            + pd.to_timedelta(x_new[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1], unit="D"),
+            y_smooth[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1],
+            color="#A0DEFF",
+            alpha=1,
+        )
+        # df["date"][0] + pd.to_timedelta(x_new, unit="D"), y_smooth
+        # 0~4, 3~7, 6~10, 9~13, 12~16
+
+    ax = plt.gca()
+
+    # Set date format on x-axis
+    date_format = mdates.DateFormatter("%m월 %d일")
+    ax.xaxis.set_major_formatter(date_format)
+    if period != 1:
+        # 표시할 x축 날짜 직접 계산
+        n_ticks = min(8, len(df))  # 최대 tick 개수
+        tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
+        tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
+
+        # 실제 데이터 포인트의 날짜만 선택
+        ticks = [mdates.date2num(df["date"].iloc[i]) for i in tick_indices]
+        ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
+
+        # x축 범위를 데이터 범위로 제한 (여백 추가)
+        date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
+        plt.xlim(
+            df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),  # 2% 여백
+            df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
+        )
+
+        # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
+        for i in tick_indices:
+            plt.annotate(
+                f'{101 - df["rank"].iloc[i]}위',
+                (df["date"].iloc[i], df["rank"].iloc[i]),
+                textcoords="offset points",
+                xytext=(0, 10),
+                ha="center",
+            )
+    else:
+        tick = [
+            mdates.date2num(df["date"].iloc[0] - pd.Timedelta(days=1)),
+            mdates.date2num(df["date"].iloc[0]),
+            mdates.date2num(df["date"].iloc[0] + pd.Timedelta(days=1)),
+        ]
+        ax.xaxis.set_major_locator(ticker.FixedLocator(tick))
+        plt.xlim(
+            df["date"].iloc[0] - pd.Timedelta(days=1.03),
+            df["date"].iloc[0] + pd.Timedelta(days=1.03),
+        )
+        plt.annotate(
+            f'{101 - df["rank"].iloc[0]}위',
+            (df["date"].iloc[0], df["rank"].iloc[0]),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+        )
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    # ax.spines["bottom"].set_visible(False)
+
+    plt.yticks([])
+    plt.legend(loc="upper left")
+
+    os_name = platform.system()
+    if os_name == "Linux":
+        image_path = misc.convert_path("\\tmp\\image.png")
+    else:
+        image_path = "image.png"
+
+    plt.savefig(image_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    msg = f""
+
+    return msg, image_path
+
+
+if __name__ == "__main__":
+    # today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
+    today = misc.get_today()
+
+    # print(get_rank_info(1, 7, today))
+    print(get_rank_history("ProDays", 40, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))

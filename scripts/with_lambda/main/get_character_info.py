@@ -12,6 +12,7 @@ import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
 import matplotlib.font_manager as fm
 
+import misc
 import data_manager as dm
 import get_rank_info as gri
 
@@ -109,7 +110,7 @@ def get_character_info(name, slot, period, default, today):
 
         x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
 
-        y_smooth = pchip_interpolate(x, y, x_new)
+        y_smooth = misc.pchip_interpolate(x, y, x_new)
 
         plt.plot(df["date"], df["level"], color="C0", marker="o", label=labels["default"], linestyle="")
         plt.plot(
@@ -126,7 +127,7 @@ def get_character_info(name, slot, period, default, today):
                 x_avg.min(), x_avg.max(), len(df_avg["date"]) * smooth_coeff - smooth_coeff + 1
             )
 
-            y_smooth_avg = pchip_interpolate(x_avg, y_avg, x_new_avg)
+            y_smooth_avg = misc.pchip_interpolate(x_avg, y_avg, x_new_avg)
 
             plt.plot(
                 df_avg["date"],
@@ -150,7 +151,7 @@ def get_character_info(name, slot, period, default, today):
                 x_sim.min(), x_sim.max(), len(df_sim["date"]) * smooth_coeff - smooth_coeff + 1
             )
 
-            y_smooth_sim = pchip_interpolate(x_sim, y_sim, x_new_sim)
+            y_smooth_sim = misc.pchip_interpolate(x_sim, y_sim, x_new_sim)
 
             plt.plot(
                 df_sim["date"],
@@ -406,87 +407,6 @@ def get_similar_character_avg(period, today, level):
         data["level"].append(sum(dates[date]) / len(dates[date]))
 
     return data
-
-
-def pchip_slopes(x, y):
-    """
-    (x, y)가 주어졌을 때, 각 x[i]에서의 접선 기울기 m[i]를
-    Fritsch-Carlson 방법에 따라 계산하여 반환합니다.
-    """
-    n = len(x)
-    m = np.zeros(n)
-
-    # 1) h, delta 계산
-    h = np.diff(x)  # 길이 n-1
-    delta = np.diff(y) / h  # 길이 n-1
-
-    # 내부 점(1 ~ n-2)에 대한 기울기 계산
-    for i in range(1, n - 1):
-        if delta[i - 1] * delta[i] > 0:  # 부호가 같을 때만 보정
-            w1 = 2 * h[i] + h[i - 1]
-            w2 = h[i] + 2 * h[i - 1]
-            m[i] = (w1 + w2) / (w1 / delta[i - 1] + w2 / delta[i])
-        else:
-            # 만약 delta[i-1]과 delta[i] 부호가 다르거나
-            # 하나라도 0이면 모노토닉 유지 위해 기울기 0
-            m[i] = 0.0
-
-    # 양 끝점 기울기 (여기서는 간단히 1차 근사로 계산)
-    m[0] = delta[0]
-    m[-1] = delta[-1]
-
-    return m
-
-
-def pchip_interpolate(x, y, x_new):
-    """
-    x, y 데이터를 PCHIP 방식으로 보간하여,
-    새로 주어진 x_new에서의 보간값을 반환합니다.
-    """
-    # 길이 확인
-    if len(x) != len(y):
-        raise ValueError("x와 y의 길이가 달라요!")
-    if np.any(np.diff(x) <= 0):
-        raise ValueError("x는 오름차순으로 정렬되어 있어야 합니다.")
-
-    # 각 점에서의 기울기 계산
-    m = pchip_slopes(x, y)
-
-    # 보간결과를 담을 배열
-    y_new = np.zeros_like(x_new, dtype=float)
-
-    # 구간별로 x_new를 찾아가며 보간
-    # 각 x_new[i]에 대해 어느 구간에 속하는지를 찾아서
-    # 해당 구간의 3차 Hermite 다항식을 이용해 계산
-    for i, xn in enumerate(x_new):
-        # xn이 어느 구간에 속하는지 찾기
-        if xn <= x[0]:
-            # 범위 밖이면, 여기서는 그냥 가장 왼쪽 값으로 extrapolation
-            y_new[i] = y[0]
-            continue
-        elif xn >= x[-1]:
-            # 범위 밖이면, 여기서는 가장 오른쪽 값으로 extrapolation
-            y_new[i] = y[-1]
-            continue
-        else:
-            idx = np.searchsorted(x, xn) - 1
-
-            x0, x1 = x[idx], x[idx + 1]
-            y0, y1 = y[idx], y[idx + 1]
-            m0, m1 = m[idx], m[idx + 1]
-            h = x1 - x0
-            t = (xn - x0) / h
-
-            a = y0
-            b = m0
-            c = (3 * (y1 - y0) / h - 2 * m0 - m1) / h
-            d = (m0 + m1 - 2 * (y1 - y0) / h) / (h**2)
-
-            val = a + b * (t * h) + c * (t * h) ** 2 + d * (t * h) ** 3
-
-            y_new[i] = val
-
-    return y_new
 
 
 if __name__ == "__main__":
