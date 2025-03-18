@@ -44,6 +44,8 @@ def lambda_handler(event, context):
 
             body = json.loads(event["body"])
             options = body["data"]["options"] if "options" in body["data"] else []
+            print(body)
+            print(options)
 
             flag = 128
             for i in options:
