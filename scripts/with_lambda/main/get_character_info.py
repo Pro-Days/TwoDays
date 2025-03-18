@@ -98,74 +98,67 @@ def get_character_info(name, slot, period, default, today):
     if display_sim:
         labels["sim"] = "유사한 레벨의 캐릭터의 평균 레벨"
 
-    if period == 1:
-        plt.plot("date", "level", data=df, color="C0", marker="o", label=labels["default"])
+    x = np.arange(len(df["date"]))
+    y = df["level"].values
 
-        if display_avg:
-            plt.plot("date", "level", data=df_avg, color="C2", marker="o", label=labels["avg"])
+    x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
 
-    else:
-        x = np.arange(len(df["date"]))
-        y = df["level"].values
+    y_smooth = misc.pchip_interpolate(x, y, x_new)
 
-        x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
+    plt.plot(df["date"], df["level"], color="C0", marker="o", label=labels["default"], linestyle="")
+    plt.plot(
+        df["date"][0] + pd.to_timedelta(x_new, unit="D"),
+        y_smooth,
+        color="C0",
+    )
 
-        y_smooth = misc.pchip_interpolate(x, y, x_new)
+    if display_avg:
+        x_avg = np.arange(len(df_avg["date"]))
+        y_avg = df_avg["level"].values
 
-        plt.plot(df["date"], df["level"], color="C0", marker="o", label=labels["default"], linestyle="")
-        plt.plot(
-            df["date"][0] + pd.to_timedelta(x_new, unit="D"),
-            y_smooth,
-            color="C0",
+        x_new_avg = np.linspace(
+            x_avg.min(), x_avg.max(), len(df_avg["date"]) * smooth_coeff - smooth_coeff + 1
         )
 
-        if display_avg:
-            x_avg = np.arange(len(df_avg["date"]))
-            y_avg = df_avg["level"].values
+        y_smooth_avg = misc.pchip_interpolate(x_avg, y_avg, x_new_avg)
 
-            x_new_avg = np.linspace(
-                x_avg.min(), x_avg.max(), len(df_avg["date"]) * smooth_coeff - smooth_coeff + 1
-            )
+        plt.plot(
+            df_avg["date"],
+            df_avg["level"],
+            color="C2",
+            marker="o",
+            label=labels["avg"],
+            linestyle="",
+        )
+        plt.plot(
+            df_avg["date"][0] + pd.to_timedelta(x_new_avg, unit="D"),
+            y_smooth_avg,
+            color="C2",
+        )
 
-            y_smooth_avg = misc.pchip_interpolate(x_avg, y_avg, x_new_avg)
+    if display_sim:
+        x_sim = np.arange(len(df_sim["date"]))
+        y_sim = df_sim["level"].values
 
-            plt.plot(
-                df_avg["date"],
-                df_avg["level"],
-                color="C2",
-                marker="o",
-                label=labels["avg"],
-                linestyle="",
-            )
-            plt.plot(
-                df_avg["date"][0] + pd.to_timedelta(x_new_avg, unit="D"),
-                y_smooth_avg,
-                color="C2",
-            )
+        x_new_sim = np.linspace(
+            x_sim.min(), x_sim.max(), len(df_sim["date"]) * smooth_coeff - smooth_coeff + 1
+        )
 
-        if display_sim:
-            x_sim = np.arange(len(df_sim["date"]))
-            y_sim = df_sim["level"].values
+        y_smooth_sim = misc.pchip_interpolate(x_sim, y_sim, x_new_sim)
 
-            x_new_sim = np.linspace(
-                x_sim.min(), x_sim.max(), len(df_sim["date"]) * smooth_coeff - smooth_coeff + 1
-            )
-
-            y_smooth_sim = misc.pchip_interpolate(x_sim, y_sim, x_new_sim)
-
-            plt.plot(
-                df_sim["date"],
-                df_sim["level"],
-                color="C3",
-                marker="o",
-                label=labels["sim"],
-                linestyle="",
-            )
-            plt.plot(
-                df_sim["date"][0] + pd.to_timedelta(x_new_sim, unit="D"),
-                y_smooth_sim,
-                color="C3",
-            )
+        plt.plot(
+            df_sim["date"],
+            df_sim["level"],
+            color="C3",
+            marker="o",
+            label=labels["sim"],
+            linestyle="",
+        )
+        plt.plot(
+            df_sim["date"][0] + pd.to_timedelta(x_new_sim, unit="D"),
+            y_smooth_sim,
+            color="C3",
+        )
 
     if y_min == y_max:
         plt.ylim(y_max - 1, y_max + 1)
@@ -188,46 +181,27 @@ def get_character_info(name, slot, period, default, today):
     # Set date format on x-axis
     date_format = mdates.DateFormatter("%m월 %d일")
     ax.xaxis.set_major_formatter(date_format)
-    if period != 1:
-        # 표시할 x축 날짜 직접 계산
-        n_ticks = min(8, len(df))  # 최대 tick 개수
-        tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
-        tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
+    # 표시할 x축 날짜 직접 계산
+    n_ticks = min(8, len(df))  # 최대 tick 개수
+    tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
+    tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
 
-        # 실제 데이터 포인트의 날짜만 선택
-        ticks = [mdates.date2num(df["date"].iloc[i]) for i in tick_indices]
-        ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
+    # 실제 데이터 포인트의 날짜만 선택
+    ticks = [mdates.date2num(df["date"].iloc[i]) for i in tick_indices]
+    ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
 
-        # x축 범위를 데이터 범위로 제한 (여백 추가)
-        date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
-        plt.xlim(
-            df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),  # 2% 여백
-            df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
-        )
+    # x축 범위를 데이터 범위로 제한 (여백 추가)
+    date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
+    plt.xlim(
+        df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),  # 2% 여백
+        df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
+    )
 
-        # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
-        for i in tick_indices:
-            plt.annotate(
-                f'Lv.{df["level"].iloc[i]}',
-                (df["date"].iloc[i], df["level"].iloc[i]),
-                textcoords="offset points",
-                xytext=(0, 10),
-                ha="center",
-            )
-    else:
-        tick = [
-            mdates.date2num(df["date"].iloc[0] - pd.Timedelta(days=1)),
-            mdates.date2num(df["date"].iloc[0]),
-            mdates.date2num(df["date"].iloc[0] + pd.Timedelta(days=1)),
-        ]
-        ax.xaxis.set_major_locator(ticker.FixedLocator(tick))
-        plt.xlim(
-            df["date"].iloc[0] - pd.Timedelta(days=1.03),
-            df["date"].iloc[0] + pd.Timedelta(days=1.03),
-        )
+    # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
+    for i in tick_indices:
         plt.annotate(
-            f'Lv.{df["level"].iloc[0]}',
-            (df["date"].iloc[0], df["level"].iloc[0]),
+            f'Lv.{df["level"].iloc[i]}',
+            (df["date"].iloc[i], df["level"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
@@ -286,18 +260,17 @@ def get_character_data(name, slot, period, today):
     data = {'date': ['2025-01-01'], 'level': [Decimal('97')], 'job': [Decimal('1')]}
     """
 
-    if period != 1:
-        start_date = today - datetime.timedelta(days=period - 1)
+    start_date = today - datetime.timedelta(days=period - 1)
 
-        today = today.strftime("%Y-%m-%d")
-        start_date = start_date.strftime("%Y-%m-%d")
+    today = today.strftime("%Y-%m-%d")
+    start_date = start_date.strftime("%Y-%m-%d")
 
-        _id = misc.get_id(name)
+    _id = misc.get_id(name)
 
-        db_data = dm.read_data("DailyData", None, {"id": _id, "date-slot": [f"{start_date}#0", f"{today}#4"]})
+    db_data = dm.read_data("DailyData", None, {"id": _id, "date-slot": [f"{start_date}#0", f"{today}#4"]})
 
     data = {"date": [], "level": [], "job": []}
-    if period != 1 and db_data:
+    if db_data:
         for i in db_data:
             date, _slot = i["date-slot"].split("#")
             _slot = int(_slot) + 1

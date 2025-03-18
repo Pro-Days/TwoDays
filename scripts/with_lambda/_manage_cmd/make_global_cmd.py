@@ -58,10 +58,10 @@ json_objects = {
             },
             {
                 "name": "기간",
-                "description": "랭킹을 조회할 기간 (1~365)",
+                "description": "랭킹을 조회할 기간 (2~365)",
                 "type": 4,
                 "required": False,
-                "min_value": 1,
+                "min_value": 2,
                 "max_value": 365,
             },
             {
@@ -97,10 +97,10 @@ json_objects = {
                     },
                     {
                         "name": "기간",
-                        "description": "캐릭터 정보를 조회할 기간 (1~365)",
+                        "description": "캐릭터 정보를 조회할 기간 (2~365)",
                         "type": 4,
                         "required": False,
-                        "min_value": 1,
+                        "min_value": 2,
                         "max_value": 365,
                     },
                     {
@@ -138,10 +138,10 @@ json_objects = {
                     },
                     {
                         "name": "기간",
-                        "description": "캐릭터 정보를 조회할 기간 (1~365)",
+                        "description": "캐릭터 정보를 조회할 기간 (2~365)",
                         "type": 4,
                         "required": False,
-                        "min_value": 1,
+                        "min_value": 2,
                         "max_value": 365,
                     },
                     {
@@ -190,40 +190,12 @@ json_objects = {
     },
 }
 
-# json_objects = {
-#     "name": "테스트",
-#     "description": "테스트",
-#     "integration_types": [0, 1],
-#     "options": [
-#         {
-#             "name": "서브1",
-#             "description": "서브1",
-#             "type": 1,
-#             "required": False,
-#             "options": [
-#                 {
-#                     "name": "서브1-1",
-#                     "description": "서브1-1",
-#                     "type": 3,
-#                     "required": False,
-#                 },
-#                 {
-#                     "name": "서브1-2",
-#                     "description": "서브1-2",
-#                     "type": 4,
-#                     "required": False,
-#                 },
-#             ],
-#         },
-#     ],
-# }
-
 # For authorization, you can use either your bot token
 headers = {"Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"}
 
-# for obj in json_objects:
-#     r = requests.post(url, headers=headers, json=obj)
-#     print(r.json())
+for obj in json_objects.values():
+    r = requests.post(url, headers=headers, json=obj)
+    print(r.json())
 
-r = requests.post(url, headers=headers, json=json_objects["검색"])
-print(r.json())
+# r = requests.post(url, headers=headers, json=json_objects["검색"])
+# print(r.json())

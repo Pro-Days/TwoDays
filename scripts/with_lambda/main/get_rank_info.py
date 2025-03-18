@@ -466,23 +466,19 @@ def get_rank_history(name, period, today):
 
     label = f"{name}의 랭킹 히스토리"
 
-    if period == 1:
-        plt.plot("date", "rank", data=df, color="C0", marker="o", label=label)
+    x = np.arange(len(df["date"]))
+    y = df["rank"].values
 
-    else:
-        x = np.arange(len(df["date"]))
-        y = df["rank"].values
+    x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
 
-        x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
+    y_smooth = misc.pchip_interpolate(x, y, x_new)
 
-        y_smooth = misc.pchip_interpolate(x, y, x_new)
-
-        plt.plot(df["date"], df["rank"], color="C0", marker="o", label=label, linestyle="")
-        plt.plot(
-            df["date"][0] + pd.to_timedelta(x_new, unit="D"),
-            y_smooth,
-            color="C0",
-        )
+    plt.plot(df["date"], df["rank"], color="C0", marker="o", label=label, linestyle="")
+    plt.plot(
+        df["date"][0] + pd.to_timedelta(x_new, unit="D"),
+        y_smooth,
+        color="C0",
+    )
 
     plt.ylim(df["rank"].min() - 5, df["rank"].max() + 5)
 
@@ -502,46 +498,27 @@ def get_rank_history(name, period, today):
     # Set date format on x-axis
     date_format = mdates.DateFormatter("%m월 %d일")
     ax.xaxis.set_major_formatter(date_format)
-    if period != 1:
-        # 표시할 x축 날짜 직접 계산
-        n_ticks = min(8, len(df))  # 최대 tick 개수
-        tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
-        tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
+    # 표시할 x축 날짜 직접 계산
+    n_ticks = min(8, len(df))  # 최대 tick 개수
+    tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
+    tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
 
-        # 실제 데이터 포인트의 날짜만 선택
-        ticks = [mdates.date2num(df["date"].iloc[i]) for i in tick_indices]
-        ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
+    # 실제 데이터 포인트의 날짜만 선택
+    ticks = [mdates.date2num(df["date"].iloc[i]) for i in tick_indices]
+    ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
 
-        # x축 범위를 데이터 범위로 제한 (여백 추가)
-        date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
-        plt.xlim(
-            df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),  # 2% 여백
-            df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
-        )
+    # x축 범위를 데이터 범위로 제한 (여백 추가)
+    date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
+    plt.xlim(
+        df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),  # 2% 여백
+        df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
+    )
 
-        # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
-        for i in tick_indices:
-            plt.annotate(
-                f'{101 - df["rank"].iloc[i]}위',
-                (df["date"].iloc[i], df["rank"].iloc[i]),
-                textcoords="offset points",
-                xytext=(0, 10),
-                ha="center",
-            )
-    else:
-        tick = [
-            mdates.date2num(df["date"].iloc[0] - pd.Timedelta(days=1)),
-            mdates.date2num(df["date"].iloc[0]),
-            mdates.date2num(df["date"].iloc[0] + pd.Timedelta(days=1)),
-        ]
-        ax.xaxis.set_major_locator(ticker.FixedLocator(tick))
-        plt.xlim(
-            df["date"].iloc[0] - pd.Timedelta(days=1.03),
-            df["date"].iloc[0] + pd.Timedelta(days=1.03),
-        )
+    # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
+    for i in tick_indices:
         plt.annotate(
-            f'{101 - df["rank"].iloc[0]}위',
-            (df["date"].iloc[0], df["rank"].iloc[0]),
+            f'{101 - df["rank"].iloc[i]}위',
+            (df["date"].iloc[i], df["rank"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
