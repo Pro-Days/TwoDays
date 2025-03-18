@@ -462,8 +462,7 @@ def get_rank_history(name, period, today):
     plt.figure(figsize=(10, 4))
     smooth_coeff = 10
 
-    # labels = f"{name}의 캐릭터 레벨" if default else f"{name}의 {slot}번 캐릭터 레벨"
-    label = "랭킹"
+    label = f"{name}의 랭킹 히스토리"
 
     if period == 1:
         plt.plot("date", "rank", data=df, color="C0", marker="o", label=label)
@@ -483,7 +482,7 @@ def get_rank_history(name, period, today):
             color="C0",
         )
 
-    plt.ylim(0, 101)
+    plt.ylim(df["rank"].min() - 5, df["rank"].max() + 5)
 
     for i in range(len(df) - 1):
         plt.fill_between(
@@ -573,7 +572,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_rank_info(1, 7, today))
-    print(get_rank_history("ProDays", 40, today))
+    print(get_rank_history("krosh0127", 20, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))
