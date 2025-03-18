@@ -425,6 +425,8 @@ def get_rank_info(page, period, today):
 
 
 def get_rank_history(name, period, today):
+    name = misc.get_name(name)
+
     current_data = get_current_rank_data() if today == misc.get_today() else None
 
     _id = misc.get_id(name=name)
