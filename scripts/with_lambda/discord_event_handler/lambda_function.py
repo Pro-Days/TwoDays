@@ -47,10 +47,12 @@ def lambda_handler(event, context):
 
             flag = 128
             for i in options:
+                print(i)
                 if i["name"] == "나만보기" and i["value"]:
                     flag = 192
                     break
                 elif "options" in i:
+                    print(i["options"])
                     for j in i["options"]:
                         if j["name"] == "나만보기" and j["value"]:
                             flag = 192
