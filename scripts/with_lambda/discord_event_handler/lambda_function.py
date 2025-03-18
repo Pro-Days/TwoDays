@@ -49,6 +49,12 @@ def lambda_handler(event, context):
             for i in options:
                 if i["name"] == "나만보기" and i["value"]:
                     flag = 192
+                    break
+                elif "options" in i:
+                    for j in i["options"]:
+                        if j["name"] == "나만보기" and j["value"]:
+                            flag = 192
+                            break
 
             return {
                 "statusCode": 200,
