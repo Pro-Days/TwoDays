@@ -419,7 +419,7 @@ def get_rank_info(page, period, today):
     text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
     text_page = "을" if page == 1 else f" {page}페이지를"
 
-    msg = f"{text_day} 한월 RPG의 캐릭터 랭킹{text_page} 보여드릴게요."
+    msg = f"{text_day} 캐릭터 랭킹{text_page} 보여드릴게요."
 
     return msg, image_path
 
@@ -564,7 +564,7 @@ def get_rank_history(name, period, today):
     plt.savefig(image_path, dpi=300, bbox_inches="tight")
     plt.close()
 
-    msg = f""
+    msg = f"{period}일 동안의 {name}님의 랭킹 변화를 보여드릴게요."
 
     return msg, image_path
 
