@@ -73,10 +73,6 @@ def command_handler(event):
             elif i["name"] == "기간":
                 period = i["value"]
 
-        # if not (1 <= page <= 10):
-        if not (1 <= page <= 3):  # 임시로 3까지만
-            return sm.send(event, "페이지는 1부터 10까지만 가능합니다.")
-
         today = misc.get_today_from_input(today)
         if today == -1:
             return sm.send(event, "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)")
@@ -88,16 +84,6 @@ def command_handler(event):
         return sm.send(event, msg, image=image_path)
 
     elif cmd == "검색":
-        [
-            {
-                "name": "레벨",
-                "options": [
-                    {"name": "닉네임", "type": 3, "value": "pr"},
-                    {"name": "슬롯", "type": 4, "value": 2},
-                ],
-                "type": 1,
-            }
-        ]
 
         _type = options[0]["name"]
         options = options[0]["options"]
@@ -120,6 +106,10 @@ def command_handler(event):
                 elif i["name"] == "날짜":
                     today = i["value"]
 
+            if slot is None:
+                slot = misc.get_main_slot(name)
+            default = True if slot == 1 else False
+
         elif _type == "랭킹":
             period = 7
             today = None
@@ -141,16 +131,6 @@ def command_handler(event):
                 register_msg = f"등록되어있지 않은 플레이어네요. {name}님을 등록했어요.\n\n"
             else:
                 return sm.send(event, f"오류가 발생했어요. 등록을 먼저 해주세요.")
-
-        if slot is None:
-            slot = misc.get_main_slot(name)
-        default = True if slot == 1 else False
-
-        if not (slot in [1, 2, 3, 4, 5]):
-            return sm.send(event, "슬롯은 1부터 5까지만 가능합니다.")
-
-        if not (1 <= period <= 365):
-            return sm.send(event, "기간은 1부터 365까지만 가능합니다.")
 
         today = misc.get_today_from_input(today)
         if today == -1:
@@ -178,9 +158,6 @@ def command_handler(event):
 
             elif i["name"] == "슬롯":
                 slot = i["value"]
-
-        if not (slot in [1, 2, 3, 4, 5]):
-            return sm.send(event, "슬롯은 1부터 5까지만 가능합니다.")
 
         result = rp.register_player(name, slot)
 
