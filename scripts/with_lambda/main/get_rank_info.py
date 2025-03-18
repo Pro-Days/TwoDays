@@ -408,7 +408,7 @@ def get_rank_info(page, period, today):
 if __name__ == "__main__":
     today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
 
-    print(get_rank_info(1, today))
+    print(get_rank_info(1, 7, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))
