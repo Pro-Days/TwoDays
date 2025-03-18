@@ -1,6 +1,5 @@
 import os
 import json
-import datetime
 import traceback
 
 import misc
@@ -79,7 +78,10 @@ def command_handler(event):
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
-        msg, image_path = gri.get_rank_info(page, period, today)
+        if period is None:
+            msg, image_path = gri.get_rank_info(page, today)
+        else:
+            msg, image_path = gri.get_rank_history(page, period, today)
 
         return sm.send(event, msg, image=image_path)
 
@@ -141,7 +143,7 @@ def command_handler(event):
         if _type == "레벨":
             msg, image_path = gci.get_character_info(name, slot, period, default, today)
         elif _type == "랭킹":
-            msg, image_path = gri.get_rank_history(name, period, today)
+            msg, image_path = gci.get_charater_rank_history(name, period, today)
 
         if register_msg:
             msg = register_msg + msg
