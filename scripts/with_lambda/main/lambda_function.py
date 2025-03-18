@@ -88,28 +88,57 @@ def command_handler(event):
         return sm.send(event, msg, image=image_path)
 
     elif cmd == "검색":
+        [
+            {
+                "name": "레벨",
+                "options": [
+                    {"name": "닉네임", "type": 3, "value": "pr"},
+                    {"name": "슬롯", "type": 4, "value": 2},
+                ],
+                "type": 1,
+            }
+        ]
 
-        slot = None
-        period = 7
-        today = None
-        for i in options:
-            if i["name"] == "닉네임":
-                name = i["value"]
+        _type = options[0]["name"]
+        options = options[0]["options"]
 
-            elif i["name"] == "슬롯":
-                slot = i["value"]
+        if _type == "레벨":
+            slot = None
+            period = 7
+            today = None
 
-            elif i["name"] == "기간":
-                period = i["value"]
+            for i in options:
+                if i["name"] == "닉네임":
+                    name = i["value"]
 
-            elif i["name"] == "날짜":
-                today = i["value"]
+                elif i["name"] == "슬롯":
+                    slot = i["value"]
 
-        reg_msg = None
+                elif i["name"] == "기간":
+                    period = i["value"]
+
+                elif i["name"] == "날짜":
+                    today = i["value"]
+
+        elif _type == "랭킹":
+            period = 7
+            today = None
+
+            for i in options:
+                if i["name"] == "닉네임":
+                    name = i["value"]
+
+                elif i["name"] == "기간":
+                    period = i["value"]
+
+                elif i["name"] == "날짜":
+                    today = i["value"]
+
+        register_msg = None
         if rp.is_registered(name) is False:
             result = rp.register_player(name, 1)
             if result:
-                reg_msg = f"등록되어있지 않은 플레이어네요. {name}님을 등록했어요.\n\n"
+                register_msg = f"등록되어있지 않은 플레이어네요. {name}님을 등록했어요.\n\n"
             else:
                 return sm.send(event, f"오류가 발생했어요. 등록을 먼저 해주세요.")
 
@@ -129,10 +158,13 @@ def command_handler(event):
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
-        msg, image_path = gci.get_character_info(name, slot, period, default, today)
+        if _type == "레벨":
+            msg, image_path = gci.get_character_info(name, slot, period, default, today)
+        elif _type == "랭킹":
+            msg, image_path = gri.get_rank_history(name, period, today)
 
-        if reg_msg:
-            msg = reg_msg + msg
+        if register_msg:
+            msg = register_msg + msg
 
         return sm.send(event, msg, image=image_path)
 
