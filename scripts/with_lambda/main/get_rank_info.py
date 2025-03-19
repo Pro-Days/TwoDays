@@ -4,12 +4,30 @@ import datetime
 import platform
 import requests
 import threading
+import numpy as np
+import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+import matplotlib.font_manager as fm
 
 import misc
 import data_manager
 import register_player
+
+plt.style.use("seaborn-v0_8-pastel")
+if platform.system() == "Linux":
+    font_path = "/opt/NanumSquareRoundEB.ttf"
+else:
+    font_path = misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf")
+fm.fontManager.addfont(font_path)
+prop = fm.FontProperties(fname=font_path)
+plt.rcParams["font.family"] = prop.get_name()
+
+matplotlib.use("Agg")
 
 
 def download_image(url, num, list_name):
@@ -405,10 +423,85 @@ def get_rank_info(page, today):
     return msg, image_path
 
 
+def get_rank_history(page, period, today):
+    current_data = get_current_rank_data() if today == misc.get_today() else None
+
+    start_date = today - datetime.timedelta(days=period - 1)
+    today = today.strftime("%Y-%m-%d")
+    start_date = start_date.strftime("%Y-%m-%d")
+
+    data = data_manager.scan_data(
+        "Ranks", filter_dict={"date": [start_date, today], "rank": [page * 10 - 9, page * 10]}
+    )
+
+    for i, j in enumerate(data):
+        data[i]["rank"] = int(j["rank"])
+        data[i]["id"] = int(j["id"])
+
+        del data[i]["level"]
+        del data[i]["job"]
+
+    if current_data is not None:
+        for i, j in enumerate(current_data):  # job level name
+            if page * 10 - 10 <= i < page * 10:
+                data.append(
+                    {
+                        "date": today,
+                        "rank": i + 1,
+                        "id": misc.get_id(name=j["name"]),
+                    }
+                )
+
+    data = sorted(data, key=lambda x: x["date"])
+
+    # 이미지 생성
+    df = pd.DataFrame(data)
+    df["date"] = pd.to_datetime(df["date"])
+
+    plt.figure(figsize=(10, 4))
+    # Plot a line for each player id
+    for player_id, group in df.groupby("id"):
+        group = group.sort_values("date")
+        plt.plot(group["date"], group["rank"], marker="o", label=misc.get_name(id=player_id))
+
+    ax = plt.gca()
+    date_format = mdates.DateFormatter("%m월 %d일")
+    ax.xaxis.set_major_formatter(date_format)
+
+    # x축 범위를 데이터 범위로 제한 (여백 추가)
+    date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
+    plt.xlim(
+        df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),
+        df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
+    )
+    plt.ylim(df["rank"].max() + 1, max(df["rank"].min() - 5, 0))
+    plt.legend(loc="upper left", fontsize=8)
+    plt.yticks(np.arange(1, df["rank"].max() + 1, 1))
+
+    plt.grid(axis="y", linestyle="--", alpha=0.7)
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    # ax.spines["bottom"].set_visible(False)
+
+    os_name = platform.system()
+    if os_name == "Linux":
+        image_path = misc.convert_path("\\tmp\\image.png")
+    else:
+        image_path = "image.png"
+    plt.savefig(image_path, dpi=300, bbox_inches="tight")
+    plt.close()
+
+    msg = f"{period}일 동안의 랭킹 히스토리를 보여드릴게요."
+    return msg, image_path
+
+
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
     today = misc.get_today()
 
+    print(get_rank_history(1, 7, today))
     # print(get_rank_info(1, 7, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
