@@ -465,15 +465,15 @@ def get_rank_history(page, period, today):
 
     # Define a custom color palette for better distinction between lines
     colors = [
-        "#fb7072",
+        "#ff7072",
         "#a6cee3",
         "#b3de69",
         "#ff7f00",
         "#bebada",
         "#33a02c",
+        "#bc80bd",
         "#fdb462",
         "#80b1d3",
-        "#f65a8c",
         "#ffdd6f",
         "#777777",
         "#fb9a99",
@@ -481,7 +481,7 @@ def get_rank_history(page, period, today):
         "#fccde5",
         "#8df3c7",
         "#ffff23",
-        "#bc80bd",
+        "#f65a8c",
     ]
 
     # Get unique player IDs
@@ -534,7 +534,7 @@ def get_rank_history(page, period, today):
                     marker="o" if period <= 20 else ".",
                     label=misc.get_name(id=int(player_id)) if first_group else "",
                     color=colors[color_idx],
-                    linewidth=2 if period <= 20 else 1,
+                    linewidth=2,
                 )
                 first_group = False  # 첫 번째 그룹 이후에는 레이블을 표시하지 않음
 
@@ -571,7 +571,7 @@ def get_rank_history(page, period, today):
 
     plt.yticks(range(page * 10 - 9, page * 10 + 1))
 
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
+    plt.grid(axis="y", linestyle="--", alpha=0.5)
 
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -594,7 +594,7 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_rank_history(1, 50, today))
+    print(get_rank_history(1, 100, today))
     # print(get_rank_info(1, 7, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
