@@ -65,6 +65,8 @@ def get_character_info(name, slot, period, default, today):
     else:
         similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
 
+    period = len(data["date"])
+
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
 
@@ -104,7 +106,14 @@ def get_character_info(name, slot, period, default, today):
 
     y_smooth = misc.pchip_interpolate(x, y, x_new)
 
-    plt.plot(df["date"], df["level"], color="C0", marker="o", label=labels["default"], linestyle="")
+    plt.plot(
+        df["date"],
+        df["level"],
+        color="C0",
+        marker="o" if period <= 30 else ".",
+        label=labels["default"],
+        linestyle="",
+    )
     plt.plot(
         df["date"][0] + pd.to_timedelta(x_new, unit="D"),
         y_smooth,
@@ -125,7 +134,7 @@ def get_character_info(name, slot, period, default, today):
             df_avg["date"],
             df_avg["level"],
             color="C2",
-            marker="o",
+            marker="o" if period <= 30 else ".",
             label=labels["avg"],
             linestyle="",
         )
@@ -149,7 +158,7 @@ def get_character_info(name, slot, period, default, today):
             df_sim["date"],
             df_sim["level"],
             color="C3",
-            marker="o",
+            marker="o" if period <= 30 else ".",
             label=labels["sim"],
             linestyle="",
         )
@@ -269,6 +278,8 @@ def get_charater_rank_history(name, period, today):
         "Ranks", index="id-date-index", condition_dict={"id": _id, "date": [start_date, today]}
     )
 
+    period = len(set([i["date"] for i in data]))
+
     for i, j in enumerate(data):
         data[i]["rank"] = 101 - int(j["rank"])
 
@@ -303,7 +314,9 @@ def get_charater_rank_history(name, period, today):
 
     y_smooth = misc.pchip_interpolate(x, y, x_new)
 
-    plt.plot(df["date"], df["rank"], color="C0", marker="o", label=label, linestyle="")
+    plt.plot(
+        df["date"], df["rank"], color="C0", marker="o" if period <= 50 else ".", label=label, linestyle=""
+    )
     plt.plot(
         df["date"][0] + pd.to_timedelta(x_new, unit="D"),
         y_smooth,
@@ -506,8 +519,8 @@ def get_similar_character_avg(period, today, level):
 if __name__ == "__main__":
     today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
 
-    print(get_charater_rank_history("krosh0127", 20, today))
-    # print(get_character_info("prodays", 3, 7, False, today))
+    # print(get_charater_rank_history("krosh0127", 51, today))
+    # print(get_character_info("prodays", 3, 5, False, today))
 
     # print(get_character_data("ProDays", 1, 7, day))
 

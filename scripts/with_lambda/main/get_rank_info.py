@@ -1,4 +1,5 @@
 import os
+import math
 import random
 import datetime
 import platform
@@ -434,6 +435,8 @@ def get_rank_history(page, period, today):
         "Ranks", filter_dict={"date": [start_date, today], "rank": [page * 10 - 9, page * 10]}
     )
 
+    period = len(set([i["date"] for i in data]))
+
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
         data[i]["id"] = int(j["id"])
@@ -458,15 +461,95 @@ def get_rank_history(page, period, today):
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
 
-    plt.figure(figsize=(10, 4))
-    # Plot a line for each player id
-    for player_id, group in df.groupby("id"):
-        group = group.sort_values("date")
-        plt.plot(group["date"], group["rank"], marker="o", label=misc.get_name(id=player_id))
+    plt.figure(figsize=(10 * math.log10(period), 5))
+
+    # Define a custom color palette for better distinction between lines
+    colors = [
+        "#fb7072",
+        "#a6cee3",
+        "#b3de69",
+        "#ff7f00",
+        "#bebada",
+        "#33a02c",
+        "#fdb462",
+        "#80b1d3",
+        "#f65a8c",
+        "#ffdd6f",
+        "#777777",
+        "#fb9a99",
+        "#1f78b4",
+        "#fccde5",
+        "#8df3c7",
+        "#ffff23",
+        "#bc80bd",
+    ]
+
+    # Get unique player IDs
+    player_ids = df["id"].unique()
+
+    # Plot each player's data with a specific color
+    for i, player_id in enumerate(player_ids):
+        group = df[df["id"] == player_id]
+        color_idx = i % len(colors)  # Cycle through colors if more players than colors
+
+        # 데이터 프레임에서 날짜를 정렬하여 날짜 간격을 확인
+        sorted_group = group.sort_values(by="date")
+
+        # 연속된 데이터 포인트를 찾아서 그룹화하기
+        date_groups = []
+        current_group = []
+
+        # 날짜 순으로 처리
+        for idx, row in sorted_group.iterrows():
+            if not current_group:
+                # 첫 데이터 포인트 추가
+                current_group.append(row)
+            else:
+                # 연속된 데이터인지 확인
+                last_date = current_group[-1]["date"]
+                current_date = row["date"]
+                date_diff = (current_date - last_date).days
+
+                # 하루 간격이면 같은 그룹에 추가
+                if date_diff == 1:
+                    current_group.append(row)
+                else:
+                    # 간격이 1일보다 크면 새 그룹 시작
+                    if len(current_group) > 0:
+                        date_groups.append(current_group)
+                    current_group = [row]
+
+        # 마지막 그룹 추가
+        if current_group:
+            date_groups.append(current_group)
+
+        # 각 연속된 날짜 그룹마다 별도의 선으로 그리기
+        first_group = True
+        for group_data in date_groups:
+            if len(group_data) > 0:
+                group_df = pd.DataFrame(group_data)
+                plt.plot(
+                    group_df["date"],
+                    group_df["rank"],
+                    marker="o" if period <= 20 else ".",
+                    label=misc.get_name(id=int(player_id)) if first_group else "",
+                    color=colors[color_idx],
+                    linewidth=2 if period <= 20 else 1,
+                )
+                first_group = False  # 첫 번째 그룹 이후에는 레이블을 표시하지 않음
 
     ax = plt.gca()
     date_format = mdates.DateFormatter("%m월 %d일")
     ax.xaxis.set_major_formatter(date_format)
+
+    # 표시할 x축 날짜 직접 계산
+    n_ticks = min(8, len(df))  # 최대 tick 개수
+    tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
+    tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
+
+    # 실제 데이터 포인트의 날짜만 선택
+    ticks = [mdates.date2num(df["date"].iloc[i]) for i in tick_indices]
+    ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
 
     # x축 범위를 데이터 범위로 제한 (여백 추가)
     date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
@@ -474,9 +557,19 @@ def get_rank_history(page, period, today):
         df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),
         df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
     )
-    plt.ylim(df["rank"].max() + 1, max(df["rank"].min() - 5, 0))
-    plt.legend(loc="upper left", fontsize=8)
-    plt.yticks(np.arange(1, df["rank"].max() + 1, 1))
+    plt.ylim(page * 10 + 1, page * 10 - 10)
+
+    # 범례에서 중복 제거
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(
+        by_label.values(),
+        by_label.keys(),
+        loc="upper left",
+        fontsize=8,
+    )
+
+    plt.yticks(range(page * 10 - 9, page * 10 + 1))
 
     plt.grid(axis="y", linestyle="--", alpha=0.7)
 
@@ -493,15 +586,15 @@ def get_rank_history(page, period, today):
     plt.savefig(image_path, dpi=300, bbox_inches="tight")
     plt.close()
 
-    msg = f"{period}일 동안의 랭킹 히스토리를 보여드릴게요."
+    msg = f"{period}일 동안의 {"" if page == 1 else f"{page}페이지 "}랭킹 히스토리를 보여드릴게요."
     return msg, image_path
 
 
 if __name__ == "__main__":
-    # today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
-    today = misc.get_today()
+    today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
+    # today = misc.get_today()
 
-    print(get_rank_history(1, 7, today))
+    print(get_rank_history(1, 100, today))
     # print(get_rank_info(1, 7, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
