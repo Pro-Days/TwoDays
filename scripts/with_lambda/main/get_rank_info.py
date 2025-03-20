@@ -435,8 +435,6 @@ def get_rank_history(page, period, today):
         "Ranks", filter_dict={"date": [start_date, today], "rank": [page * 10 - 9, page * 10]}
     )
 
-    period = len(set([i["date"] for i in data]))
-
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
         data[i]["id"] = int(j["id"])
@@ -454,6 +452,8 @@ def get_rank_history(page, period, today):
                         "id": misc.get_id(name=j["name"]),
                     }
                 )
+
+    period = len(set([i["date"] for i in data]))
 
     data = sorted(data, key=lambda x: x["date"])
 
@@ -591,10 +591,10 @@ def get_rank_history(page, period, today):
 
 
 if __name__ == "__main__":
-    today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
-    # today = misc.get_today()
+    # today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
+    today = misc.get_today()
 
-    print(get_rank_history(1, 100, today))
+    print(get_rank_history(1, 50, today))
     # print(get_rank_info(1, 7, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
