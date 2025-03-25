@@ -29,11 +29,11 @@ matplotlib.use("Agg")
 
 def get_current_character_data(name):
     data = [
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
     ]
 
     today = misc.get_today()
@@ -44,7 +44,7 @@ def get_current_character_data(name):
     random.seed(delta_days + sum(ord(c) for c in name))
 
     for d in data:
-        d["level"] = str(int(d["level"]) + delta_days * 3 + random.randint(0, 3))
+        d["level"] = str(float(d["level"]) + delta_days * 3 + random.uniform(0, 3))
 
     return data
 
@@ -208,7 +208,7 @@ def get_character_info(name, slot, period, default, today):
     # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
     for i in tick_indices:
         plt.annotate(
-            f'Lv.{df["level"].iloc[i]}',
+            f'Lv.{int(df["level"].iloc[i])} {str(round(df["level"].iloc[i], 2)).split(".")[1]}%',
             (df["date"].iloc[i], df["level"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
@@ -241,7 +241,7 @@ def get_character_info(name, slot, period, default, today):
         for i, j in enumerate(ranks):
             if (
                 j["name"] == name
-                and int(j["level"]) == current_level
+                and j["level"] == str(round(current_level, 2))
                 and misc.convert_job(j["job"]) == df["job"].iat[-1]
             ):
                 rank = i + 1
@@ -249,7 +249,11 @@ def get_character_info(name, slot, period, default, today):
     else:
         ranks = gri.get_rank_data(today)
         for i, j in enumerate(ranks):
-            if j["name"] == name and j["level"] == current_level and j["job"] == df["job"].iat[-1]:
+            if (
+                j["name"] == name
+                and j["level"] == str(round(current_level, 2))
+                and j["job"] == df["job"].iat[-1]
+            ):
                 rank = j["rank"]
                 break
 
@@ -411,14 +415,14 @@ def get_character_data(name, slot, period, today):
 
             if _slot == slot:
                 data["date"].append(date)
-                data["level"].append(int(i["level"]))
+                data["level"].append(float(i["level"]))
                 data["job"].append(int(i["job"]))
 
     if today == misc.get_today().strftime("%Y-%m-%d"):
         today_data = get_current_character_data(name)
 
         data["date"].append(today)
-        data["level"].append(int(today_data[slot - 1]["level"]))
+        data["level"].append(float(today_data[slot - 1]["level"]))
         data["job"].append(misc.convert_job(today_data[slot - 1]["job"]))
 
     return data if len(data["date"]) != 0 else None, len(data["date"])
@@ -449,7 +453,7 @@ def get_all_character_avg(period, today):
         if not date in dates.keys():
             dates[date] = []
 
-        dates[date].append(int(i["level"]))
+        dates[date].append(float(i["level"]))
 
     for date in sorted(dates.keys()):
         data["date"].append(date)
@@ -507,7 +511,7 @@ def get_similar_character_avg(period, today, level):
             dates[date] = []
 
         if (i["id"], int(slot)) in chars:
-            dates[date].append(int(i["level"]))
+            dates[date].append(float(i["level"]))
 
     for date in sorted(dates.keys()):
         data["date"].append(date)
@@ -519,13 +523,7 @@ def get_similar_character_avg(period, today, level):
 if __name__ == "__main__":
     today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
 
-    # print(get_charater_rank_history("krosh0127", 51, today))
-    # print(get_character_info("prodays", 3, 5, False, today))
-
-    # print(get_character_data("ProDays", 1, 7, day))
-
-    # print(get_all_character_avg(4))
-
-    # print(get_current_character_data("ProDays"))
+    # get_charater_rank_history("krosh0127", 51, today)
+    # get_character_info("prodays", 3, 5, False, today)
 
     pass

@@ -6,11 +6,11 @@ import misc
 
 def get_current_character_data(name):
     data = [
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
-        {"job": "검호", "level": "200"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "200.0"},
     ]
 
     today = misc.get_today()
@@ -21,7 +21,7 @@ def get_current_character_data(name):
     random.seed(delta_days + sum(ord(c) for c in name))
 
     for d in data:
-        d["level"] = str(int(d["level"]) + delta_days * 3 + random.randint(0, 3))
+        d["level"] = str(float(d["level"]) + delta_days * 3 + random.uniform(0, 3))
 
     return data
 

@@ -52,7 +52,7 @@ def get_rank_data(day, page=0):
         data[i]["rank"] = int(j["rank"])
         data[i]["id"] = int(j["id"])
         data[i]["job"] = int(j["job"])
-        data[i]["level"] = int(j["level"])
+        data[i]["level"] = float(j["level"])
         data[i]["name"] = misc.get_name(id=j["id"])
 
     return data if page == 0 else data[page * 10 - 10 : page * 10]
@@ -65,36 +65,36 @@ def get_current_rank_data(page=0) -> dict:
     """
 
     data = [
-        {"level": "200", "job": "검호", "name": "ProDays"},
-        {"level": "199", "job": "검호", "name": "Aventurine_0"},
-        {"level": "198", "job": "매화", "name": "heekp"},
-        {"level": "197", "job": "매화", "name": "krosh0127"},
-        {"level": "196", "job": "살수", "name": "_IIN"},
-        {"level": "195", "job": "살수", "name": "YOUKONG"},
-        {"level": "194", "job": "검호", "name": "ino2423"},
-        {"level": "193", "job": "매화", "name": "Route88"},
-        {"level": "192", "job": "검호", "name": "ljinsoo"},
-        {"level": "191", "job": "살수", "name": "ggameee"},
-        {"level": "190", "job": "살수", "name": "Lemong_0"},
-        {"level": "189", "job": "매화", "name": "1yeons"},
-        {"level": "188", "job": "도제", "name": "sungchanmom"},
-        {"level": "187", "job": "술사", "name": "tmdwns0818"},
-        {"level": "186", "job": "도사", "name": "poro_rany"},
-        {"level": "185", "job": "도제", "name": "Master_Rakan_"},
-        {"level": "184", "job": "도제", "name": "Protect_Choco"},
-        {"level": "183", "job": "빙궁", "name": "LGJ20000"},
-        {"level": "182", "job": "도사", "name": "1mkr"},
-        {"level": "181", "job": "귀궁", "name": "Kozi0518"},
-        {"level": "180", "job": "술사", "name": "roadhyeon03"},
-        {"level": "179", "job": "술사", "name": "aaqq2005y"},
-        {"level": "178", "job": "술사", "name": "spemdnjs"},
-        {"level": "177", "job": "도제", "name": "Moncler02"},
-        {"level": "176", "job": "도사", "name": "Welcome_Pasta"},
-        {"level": "175", "job": "도사", "name": "world_3034"},
-        {"level": "174", "job": "빙궁", "name": "ArtBeat"},
-        {"level": "173", "job": "빙궁", "name": "TinySlayers"},
-        {"level": "172", "job": "귀궁", "name": "neoreow"},
-        {"level": "171", "job": "빙궁", "name": "d_capo"},
+        {"level": "200.0", "job": "검호", "name": "ProDays"},
+        {"level": "199.0", "job": "검호", "name": "Aventurine_0"},
+        {"level": "198.0", "job": "매화", "name": "heekp"},
+        {"level": "197.0", "job": "매화", "name": "krosh0127"},
+        {"level": "196.0", "job": "살수", "name": "_IIN"},
+        {"level": "195.0", "job": "살수", "name": "YOUKONG"},
+        {"level": "194.0", "job": "검호", "name": "ino2423"},
+        {"level": "193.0", "job": "매화", "name": "Route88"},
+        {"level": "192.0", "job": "검호", "name": "ljinsoo"},
+        {"level": "191.0", "job": "살수", "name": "ggameee"},
+        {"level": "190.0", "job": "살수", "name": "Lemong_0"},
+        {"level": "189.0", "job": "매화", "name": "1yeons"},
+        {"level": "188.0", "job": "도제", "name": "sungchanmom"},
+        {"level": "187.0", "job": "술사", "name": "tmdwns0818"},
+        {"level": "186.0", "job": "도사", "name": "poro_rany"},
+        {"level": "185.0", "job": "도제", "name": "Master_Rakan_"},
+        {"level": "184.0", "job": "도제", "name": "Protect_Choco"},
+        {"level": "183.0", "job": "빙궁", "name": "LGJ20000"},
+        {"level": "182.0", "job": "도사", "name": "1mkr"},
+        {"level": "181.0", "job": "귀궁", "name": "Kozi0518"},
+        {"level": "180.0", "job": "술사", "name": "roadhyeon03"},
+        {"level": "179.0", "job": "술사", "name": "aaqq2005y"},
+        {"level": "178.0", "job": "술사", "name": "spemdnjs"},
+        {"level": "177.0", "job": "도제", "name": "Moncler02"},
+        {"level": "176.0", "job": "도사", "name": "Welcome_Pasta"},
+        {"level": "175.0", "job": "도사", "name": "world_3034"},
+        {"level": "174.0", "job": "빙궁", "name": "ArtBeat"},
+        {"level": "173.0", "job": "빙궁", "name": "TinySlayers"},
+        {"level": "172.0", "job": "귀궁", "name": "neoreow"},
+        {"level": "171.0", "job": "빙궁", "name": "d_capo"},
     ]
 
     today = misc.get_today()
@@ -105,9 +105,9 @@ def get_current_rank_data(page=0) -> dict:
     random.seed(delta_days)
 
     for d in data:
-        d["level"] = str(int(d["level"]) + delta_days * 3 + random.randint(0, 3))
+        d["level"] = str(float(d["level"]) + delta_days * 3 + random.uniform(0, 3))
 
-    data = sorted(data, key=lambda x: int(x["level"]), reverse=True)
+    data = sorted(data, key=lambda x: float(x["level"]), reverse=True)
 
     return data[page * 10 - 10 : page * 10] if page != 0 else data
 
