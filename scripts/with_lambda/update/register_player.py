@@ -30,6 +30,8 @@ def register_player(name, slot):
                 "lower_name": name.lower(),
             },
         )
+
+        return 1
     else:  # 등록된 플레이어 (mainSlot만 변경 or 닉네임 변경)
         data_manager.write_data(
             "Users",
@@ -41,6 +43,8 @@ def register_player(name, slot):
                 "lower_name": name.lower(),
             },
         )
+
+        return 2
 
 
 def get_registered_players():

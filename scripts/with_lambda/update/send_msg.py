@@ -12,6 +12,7 @@ def send_log(log_type, event, msg):
     """
     log_type: 4 - 데이터 업데이트 로그
     log_type: 5 - 데이터 업데이트 에러 로그
+    log_type: 6 - 등록, 업데이트
     """
 
     now = datetime.datetime.now() + datetime.timedelta(hours=9)
@@ -45,6 +46,27 @@ def send_log(log_type, event, msg):
 
         title = "투다이스 어시스턴트 데이터 업데이트 에러 로그"
         color = 15548997
+
+        fields = []
+        for key, value in embed_json.items():
+            if value != None:
+                fields.append(
+                    {
+                        "name": key,
+                        "value": value,
+                        "inline": False,
+                    }
+                )
+
+    elif log_type == 6:
+        embed_json = {
+            "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "cmd": event["action"],
+            "error": msg,
+        }
+
+        title = "투다이스 어시스턴트 플레이어 등록 / 업데이트 로그"
+        color = 3447003
 
         fields = []
         for key, value in embed_json.items():

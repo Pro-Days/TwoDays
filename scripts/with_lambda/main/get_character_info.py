@@ -44,7 +44,7 @@ def get_current_character_data(name):
     random.seed(delta_days + sum(ord(c) for c in name))
 
     for d in data:
-        d["level"] = str(float(d["level"]) + delta_days * 3 + random.uniform(0, 3))
+        d["level"] = str(float(d["level"]) + random.random() * 0.5)
 
     return data
 

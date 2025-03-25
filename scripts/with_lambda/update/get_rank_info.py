@@ -54,7 +54,7 @@ def get_current_rank_data(page=0) -> dict:
     random.seed(delta_days)
 
     for d in data:
-        d["level"] = str(float(d["level"]) + delta_days * 3 + random.uniform(0, 3))
+        d["level"] = str(float(d["level"]) + random.random() * 0.5)
 
         # uuid = data_manager.read_data("TA_DEV-Users", "lower_name-index", {"lower_name": d["name"].lower()})[
         #     0

@@ -45,7 +45,12 @@ def update_1D(event):
                 name = j["name"]
 
                 if not rp.is_registered(name):
-                    rp.register_player(name, 1)
+                    result = rp.register_player(name, 1)
+
+                    if result == 1:
+                        sm.send_log(6, event, f"{name} 등록")
+                    elif result == 2:
+                        sm.send_log(6, event, f"{name} 업데이트")
 
                 item = {
                     "date": today.strftime("%Y-%m-%d"),
@@ -65,7 +70,12 @@ def update_1D(event):
                     name = j["name"]
 
                     if not rp.is_registered(name):
-                        rp.register_player(name, 1)
+                        result = rp.register_player(name, 1)
+
+                        if result == 1:
+                            sm.send_log(6, event, f"{name} 등록")
+                        elif result == 2:
+                            sm.send_log(6, event, f"{name} 업데이트")
 
                     item = {
                         "date": today.strftime("%Y-%m-%d"),
@@ -110,7 +120,12 @@ def update_player(event, name, id):
         today = misc.get_today() - datetime.timedelta(days=1)
 
         if not data:
-            rp.register_player(name, misc.get_main_slot(name))
+            result = rp.register_player(name, misc.get_main_slot(name))
+
+            if result == 1:
+                sm.send_log(6, event, f"{name} 등록")
+            elif result == 2:
+                sm.send_log(6, event, f"{name} 업데이트")
 
         for i, j in enumerate(data):
             item = {
@@ -130,7 +145,12 @@ def update_player(event, name, id):
             today = misc.get_today() - datetime.timedelta(days=1)
 
             if not data:
-                rp.register_player(name, misc.get_main_slot(name))
+                result = rp.register_player(name, misc.get_main_slot(name))
+
+                if result == 1:
+                    sm.send_log(6, event, f"{name} 등록")
+                elif result == 2:
+                    sm.send_log(6, event, f"{name} 업데이트")
 
             for i, j in enumerate(data):
                 item = {
