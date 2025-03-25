@@ -208,7 +208,7 @@ def get_character_info(name, slot, period, default, today):
     # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
     for i in tick_indices:
         plt.annotate(
-            f'Lv.{int(df["level"].iloc[i])} {str(round(df["level"].iloc[i], 2)).split(".")[1]}%',
+            f'Lv.{int(df["level"].iloc[i])} {df["level"].iloc[i] % 1}%',
             (df["date"].iloc[i], df["level"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
@@ -233,7 +233,11 @@ def get_character_info(name, slot, period, default, today):
     plt.close()
 
     current_level = df["level"].iat[-1]
-    level_change = df["level"].iat[-1] - df["level"].iat[0]
+    l0 = df["level"].iat[0]
+    l1 = df["level"].iat[-1]
+    level_change = l1 - l0
+
+    exp_change, next_lvup, max_lv_day = calc_exp_change(l0, l1, period)
 
     rank = None
     if today == misc.get_today():
@@ -265,6 +269,28 @@ def get_character_info(name, slot, period, default, today):
     msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level}이고, {text_changed}{text_rank}"
 
     return msg, image_path
+
+
+def calc_exp_change(l0, l1, period):
+    exps = misc.get_exp_data()
+
+    exp = 0
+    for i in range(int(l0), int(l1)):
+        exp += exps[i]
+    exp += int((l1 % 1) * exps[int(l1)])
+    exp -= int((l0 % 1) * exps[int(l0)])
+
+    exp_pd = exp / period
+
+    next_lvup = exps[int(l1)] * (1 - (l1 % 1)) / exp_pd
+    next_lvup = int(next_lvup) + 1 if next_lvup % 1 != 0 else int(next_lvup)
+
+    max_exp = sum([i for i in exps[int(l1) :]]) + exps[int(l1)] * (1 - (l1 % 1))
+
+    max_day = max_exp / exp_pd
+    max_day = int(max_day) + 1 if max_day % 1 != 0 else int(max_day)
+
+    return exp, next_lvup, max_day
 
 
 def get_charater_rank_history(name, period, today):

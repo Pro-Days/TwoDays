@@ -272,6 +272,11 @@ def pchip_interpolate(x, y, x_new):
     return y_new
 
 
+def get_exp_data():
+    data = [0] + [int(100 * 1.02**i) for i in range(0, 1000)]
+    return data
+
+
 if __name__ == "__main__":
     # print(get_guild_list())
     # print(get_max_id())
