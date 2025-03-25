@@ -52,7 +52,7 @@ def update_1D(event):
                     "rank": i + 1,
                     "id": misc.get_id(name=name),
                     "job": misc.convert_job(j["job"]),
-                    "level": int(j["level"]),
+                    "level": float(j["level"]),
                 }
 
                 dm.write_data("TA_DEV-Ranks", item)
@@ -72,7 +72,7 @@ def update_1D(event):
                         "rank": i + 1,
                         "id": misc.get_id(name=name),
                         "job": misc.convert_job(j["job"]),
-                        "level": int(j["level"]),
+                        "level": float(j["level"]),
                     }
 
                     dm.write_data("TA_DEV-Ranks", item)
@@ -92,7 +92,7 @@ def update_1D(event):
             t.start()
             threads.append(t)
 
-            # 2 players/sec: 600 players -> 5 min
+            # 2 players/sec: 600 players -> 5 min: 50 won/month
             time.sleep(0.5)
 
         for t in threads:
@@ -117,7 +117,7 @@ def update_player(event, name, id):
                 "id": id,
                 "date-slot": f"{today.strftime("%Y-%m-%d")}#{i}",
                 "job": misc.convert_job(j["job"]),
-                "level": int(j["level"]),
+                "level": float(j["level"]),
             }
 
             dm.write_data("TA_DEV-DailyData", item)
@@ -137,7 +137,7 @@ def update_player(event, name, id):
                     "id": id,
                     "date-slot": f"{today.strftime("%Y-%m-%d")}#{i}",
                     "job": misc.convert_job(j["job"]),
-                    "level": int(j["level"]),
+                    "level": float(j["level"]),
                 }
 
                 dm.write_data("TA_DEV-DailyData", item)

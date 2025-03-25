@@ -5,7 +5,6 @@ import datetime
 import platform
 import requests
 import threading
-import numpy as np
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 
