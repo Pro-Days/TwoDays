@@ -273,7 +273,7 @@ def pchip_interpolate(x, y, x_new):
 
 
 def get_exp_data():
-    data = [0] + [int(100 * 1.02**i) for i in range(0, 1000)]
+    data = [0] + [int(100 * 1.03**i) for i in range(0, 500)]
     return data
 
 
