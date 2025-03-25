@@ -55,7 +55,7 @@ def update_1D(event):
                     "level": float(j["level"]),
                 }
 
-                dm.write_data("TA_DEV-Ranks", item)
+                dm.write_data("Ranks", item)
             except:
                 failed_list.append(j)
 
@@ -75,7 +75,7 @@ def update_1D(event):
                         "level": float(j["level"]),
                     }
 
-                    dm.write_data("TA_DEV-Ranks", item)
+                    dm.write_data("Ranks", item)
                 except:
                     sm.send_log(5, event, f"랭킹 데이터 업데이트 실패: {j}" + traceback.format_exc())
 
@@ -120,7 +120,7 @@ def update_player(event, name, id):
                 "level": float(j["level"]),
             }
 
-            dm.write_data("TA_DEV-DailyData", item)
+            dm.write_data("DailyData", item)
     except:
         failed_list.append(name)
 
@@ -140,7 +140,7 @@ def update_player(event, name, id):
                     "level": float(j["level"]),
                 }
 
-                dm.write_data("TA_DEV-DailyData", item)
+                dm.write_data("DailyData", item)
         except:
             sm.send_log(5, event, f"{name} 데이터 업데이트 실패" + traceback.format_exc())
 
