@@ -4,6 +4,7 @@ import datetime
 import platform
 import numpy as np
 import pandas as pd
+from decimal import Decimal
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -44,7 +45,7 @@ def get_current_character_data(name):
     random.seed(delta_days + sum(ord(c) for c in name))
 
     for d in data:
-        d["level"] = str(float(d["level"]) + random.random() * 0.5)
+        d["level"] = str(Decimal(d["level"]) + Decimal(round(random.random() * 0.5, 2)))
 
     return data
 
