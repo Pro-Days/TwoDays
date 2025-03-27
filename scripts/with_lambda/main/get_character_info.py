@@ -30,22 +30,26 @@ matplotlib.use("Agg")
 
 def get_current_character_data(name):
     data = [
-        {"job": "검호", "level": "200.0"},
-        {"job": "검호", "level": "200.0"},
-        {"job": "검호", "level": "200.0"},
-        {"job": "검호", "level": "200.0"},
-        {"job": "검호", "level": "200.0"},
+        {"job": "검호", "level": "345.0"},
+        {"job": "검호", "level": "345.0"},
+        {"job": "검호", "level": "345.0"},
+        {"job": "검호", "level": "345.0"},
+        {"job": "검호", "level": "345.0"},
     ]
 
     today = misc.get_today()
     base_date = datetime.date(2025, 2, 1)
 
-    delta_days = (today - base_date).days + 1
+    delta_days = (today - base_date).days
 
-    random.seed(delta_days + sum(ord(c) for c in name))
+    for i, d in enumerate(data):
+        random.seed(sum(ord(c) for c in name) + i)
 
-    for d in data:
-        d["level"] = str(Decimal(d["level"]) + Decimal(round(random.random() * 0.5, 2)))
+        d["level"] = Decimal(d["level"])
+        l = d["level"]
+
+        for _ in range(delta_days):
+            d["level"] += Decimal(random.randint(0, 1000 - int(l))) / 1000
 
     return data
 

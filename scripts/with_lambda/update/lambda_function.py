@@ -1,10 +1,8 @@
-import os
 import json
 import time
 import datetime
 import threading
 import traceback
-from decimal import Decimal
 
 import misc
 import send_msg as sm
@@ -58,7 +56,7 @@ def update_1D(event):
                     "rank": i + 1,
                     "id": misc.get_id(name=name),
                     "job": misc.convert_job(j["job"]),
-                    "level": Decimal(j["level"]),
+                    "level": j["level"],
                 }
 
                 dm.write_data("Ranks", item)
@@ -83,7 +81,7 @@ def update_1D(event):
                         "rank": i + 1,
                         "id": misc.get_id(name=name),
                         "job": misc.convert_job(j["job"]),
-                        "level": Decimal(j["level"]),
+                        "level": j["level"],
                     }
 
                     dm.write_data("Ranks", item)
@@ -104,7 +102,7 @@ def update_1D(event):
             threads.append(t)
 
             # 2 players/sec: 600 players -> 5 min: 50 won/month
-            time.sleep(0.5)
+            # time.sleep(0.5)
 
         for t in threads:
             t.join()
@@ -133,7 +131,7 @@ def update_player(event, name, id):
                 "id": id,
                 "date-slot": f"{today.strftime("%Y-%m-%d")}#{i}",
                 "job": misc.convert_job(j["job"]),
-                "level": Decimal(j["level"]),
+                "level": j["level"],
             }
 
             dm.write_data("DailyData", item)
@@ -158,7 +156,7 @@ def update_player(event, name, id):
                     "id": id,
                     "date-slot": f"{today.strftime("%Y-%m-%d")}#{i}",
                     "job": misc.convert_job(j["job"]),
-                    "level": Decimal(j["level"]),
+                    "level": j["level"],
                 }
 
                 dm.write_data("DailyData", item)
@@ -167,5 +165,5 @@ def update_player(event, name, id):
 
 
 if __name__ == "__main__":
-    # print(lambda_handler({"action": "update_1D"}, None))
+    print(lambda_handler({"action": "update_1D"}, None))
     pass

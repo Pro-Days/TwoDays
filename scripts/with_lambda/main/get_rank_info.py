@@ -65,49 +65,53 @@ def get_current_rank_data(page=0) -> dict:
     """
 
     data = [
-        {"level": "200.0", "job": "검호", "name": "ProDays"},
-        {"level": "199.0", "job": "검호", "name": "Aventurine_0"},
-        {"level": "198.0", "job": "매화", "name": "heekp"},
-        {"level": "197.0", "job": "매화", "name": "krosh0127"},
-        {"level": "196.0", "job": "살수", "name": "_IIN"},
-        {"level": "195.0", "job": "살수", "name": "YOUKONG"},
-        {"level": "194.0", "job": "검호", "name": "ino2423"},
-        {"level": "193.0", "job": "매화", "name": "Route88"},
-        {"level": "192.0", "job": "검호", "name": "ljinsoo"},
-        {"level": "191.0", "job": "살수", "name": "ggameee"},
-        {"level": "190.0", "job": "살수", "name": "Lemong_0"},
-        {"level": "189.0", "job": "매화", "name": "1yeons"},
-        {"level": "188.0", "job": "도제", "name": "sungchanmom"},
-        {"level": "187.0", "job": "술사", "name": "tmdwns0818"},
-        {"level": "186.0", "job": "도사", "name": "poro_rany"},
-        {"level": "185.0", "job": "도제", "name": "Master_Rakan_"},
-        {"level": "184.0", "job": "도제", "name": "Protect_Choco"},
-        {"level": "183.0", "job": "빙궁", "name": "LGJ20000"},
-        {"level": "182.0", "job": "도사", "name": "1mkr"},
-        {"level": "181.0", "job": "귀궁", "name": "Kozi0518"},
-        {"level": "180.0", "job": "술사", "name": "roadhyeon03"},
-        {"level": "179.0", "job": "술사", "name": "aaqq2005y"},
-        {"level": "178.0", "job": "술사", "name": "spemdnjs"},
-        {"level": "177.0", "job": "도제", "name": "Moncler02"},
-        {"level": "176.0", "job": "도사", "name": "Welcome_Pasta"},
-        {"level": "175.0", "job": "도사", "name": "world_3034"},
-        {"level": "174.0", "job": "빙궁", "name": "ArtBeat"},
-        {"level": "173.0", "job": "빙궁", "name": "TinySlayers"},
-        {"level": "172.0", "job": "귀궁", "name": "neoreow"},
-        {"level": "171.0", "job": "빙궁", "name": "d_capo"},
+        {"level": "345.0", "job": "검호", "name": "ProDays"},
+        {"level": "345.0", "job": "검호", "name": "Aventurine_0"},
+        {"level": "345.0", "job": "매화", "name": "heekp"},
+        {"level": "345.0", "job": "매화", "name": "krosh0127"},
+        {"level": "345.0", "job": "살수", "name": "_IIN"},
+        {"level": "345.0", "job": "살수", "name": "YOUKONG"},
+        {"level": "345.0", "job": "검호", "name": "ino2423"},
+        {"level": "345.0", "job": "매화", "name": "Route88"},
+        {"level": "345.0", "job": "검호", "name": "ljinsoo"},
+        {"level": "345.0", "job": "살수", "name": "ggameee"},
+        {"level": "345.0", "job": "살수", "name": "Lemong_0"},
+        {"level": "345.0", "job": "매화", "name": "1yeons"},
+        {"level": "345.0", "job": "도제", "name": "sungchanmom"},
+        {"level": "345.0", "job": "술사", "name": "tmdwns0818"},
+        {"level": "345.0", "job": "도사", "name": "poro_rany"},
+        {"level": "345.0", "job": "도제", "name": "Master_Rakan_"},
+        {"level": "345.0", "job": "도제", "name": "Protect_Choco"},
+        {"level": "345.0", "job": "빙궁", "name": "LGJ20000"},
+        {"level": "345.0", "job": "도사", "name": "1mkr"},
+        {"level": "345.0", "job": "귀궁", "name": "Kozi0518"},
+        {"level": "345.0", "job": "술사", "name": "roadhyeon03"},
+        {"level": "345.0", "job": "술사", "name": "aaqq2005y"},
+        {"level": "345.0", "job": "술사", "name": "spemdnjs"},
+        {"level": "345.0", "job": "도제", "name": "Moncler02"},
+        {"level": "345.0", "job": "도사", "name": "Welcome_Pasta"},
+        {"level": "345.0", "job": "도사", "name": "world_3034"},
+        {"level": "345.0", "job": "빙궁", "name": "ArtBeat"},
+        {"level": "345.0", "job": "빙궁", "name": "TinySlayers"},
+        {"level": "345.0", "job": "귀궁", "name": "neoreow"},
+        {"level": "345.0", "job": "빙궁", "name": "d_capo"},
     ]
 
     today = misc.get_today()
     base_date = datetime.date(2025, 2, 1)
 
-    delta_days = (today - base_date).days + 1
-
-    random.seed(delta_days)
+    delta_days = (today - base_date).days
 
     for d in data:
-        d["level"] = str(Decimal(d["level"]) + random.random() * 0.5)
+        random.seed(sum(ord(c) for c in d["name"]))
 
-    data = sorted(data, key=lambda x: Decimal(x["level"]), reverse=True)
+        d["level"] = Decimal(d["level"])
+        l = d["level"]
+
+        for _ in range(delta_days):
+            d["level"] += Decimal(random.randint(0, 1000 - int(l))) / 1000
+
+    data = sorted(data, key=lambda x: x["level"], reverse=True)
 
     return data[page * 10 - 10 : page * 10] if page != 0 else data
 
@@ -592,11 +596,11 @@ def get_rank_history(page, period, today):
 
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
-    today = misc.get_today()
+    # today = misc.get_today()
 
     # print(get_rank_history(1, 100, today))
-    print(get_rank_info(1, today))
-    # print(get_current_rank_data())
+    # print(get_rank_info(1, today))
+    print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))
     pass
