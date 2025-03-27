@@ -14,10 +14,12 @@ def get_current_character_data(name):
         {"job": "검호", "level": "345.0"},
     ]
 
-    today = misc.get_today()
+    today = misc.get_today() - datetime.timedelta(days=1)
     base_date = datetime.date(2025, 2, 1)
 
     delta_days = (today - base_date).days
+
+    name = misc.get_name(name=name)
 
     for i, d in enumerate(data):
         random.seed(sum(ord(c) for c in name) + i)
@@ -26,7 +28,7 @@ def get_current_character_data(name):
         l = d["level"]
 
         for _ in range(delta_days):
-            d["level"] += Decimal(random.randint(0, 1000 - int(l))) / 1000
+            d["level"] += Decimal(random.randint(0, 10000)) / 10000
 
     return data
 

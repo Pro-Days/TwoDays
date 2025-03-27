@@ -114,9 +114,10 @@ def update_1D(event):
 
 def update_player(event, name, id):
     failed_list = []
+    today = misc.get_today() - datetime.timedelta(days=1)
+
     try:
         data = gci.get_current_character_data(name)
-        today = misc.get_today() - datetime.timedelta(days=1)
 
         if not data:
             result = rp.register_player(name, misc.get_main_slot(name))
@@ -141,7 +142,6 @@ def update_player(event, name, id):
     if failed_list:
         try:
             data = gci.get_current_character_data(name)
-            today = misc.get_today() - datetime.timedelta(days=1)
 
             if not data:
                 result = rp.register_player(name, misc.get_main_slot(name))

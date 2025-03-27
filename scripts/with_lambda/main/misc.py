@@ -226,9 +226,12 @@ def pchip_interpolate(x, y, x_new):
     x, y 데이터를 PCHIP 방식으로 보간하여,
     새로 주어진 x_new에서의 보간값을 반환합니다.
     """
+    # y를 float으로 변환
+    y = np.array(y, dtype=float)
+
     # 길이 확인
     if len(x) != len(y):
-        raise ValueError("x와 y의 길이가 달라요!")
+        raise ValueError("x와 y의 길이가 다름!")
     if np.any(np.diff(x) <= 0):
         raise ValueError("x는 오름차순으로 정렬되어 있어야 합니다.")
 

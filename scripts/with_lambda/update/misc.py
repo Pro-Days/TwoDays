@@ -48,6 +48,15 @@ def get_id(name="", uuid=""):
     return int(data[0]["id"]) if data else None
 
 
+def get_name(name="", id=""):
+    if name:
+        data = data_manager.read_data("Users", "lower_name-index", {"lower_name": name.lower()})
+    elif id:
+        data = data_manager.read_data("Users", condition_dict={"id": id})
+
+    return data[0]["name"] if data else None
+
+
 def get_max_id():
     data = data_manager.scan_data("Users", key="id")
 

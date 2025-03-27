@@ -42,6 +42,8 @@ def get_current_character_data(name):
 
     delta_days = (today - base_date).days
 
+    name = misc.get_name(name=name)
+
     for i, d in enumerate(data):
         random.seed(sum(ord(c) for c in name) + i)
 
@@ -49,13 +51,13 @@ def get_current_character_data(name):
         l = d["level"]
 
         for _ in range(delta_days):
-            d["level"] += Decimal(random.randint(0, 1000 - int(l))) / 1000
+            d["level"] += Decimal(random.randint(0, 10000)) / 10000
 
     return data
 
 
 def get_character_info(name, slot, period, default, today):
-    data, period = get_character_data(name, slot, period, today)
+    data = get_character_data(name, slot, period, today)
     name = misc.get_name(name)
 
     if data == None:
@@ -81,14 +83,14 @@ def get_character_info(name, slot, period, default, today):
 
     df_avg = pd.DataFrame(all_character_avg)
     display_avg = len(df_avg) > 1 and not (
-        (df_avg["level"].max() < y_min - 0.1 * y_range) or (df_avg["level"].min() > y_max + 0.3 * y_range)
+        (df_avg["level"].max() < y_min - y_range / 10) or (df_avg["level"].min() > y_max + y_range / 3)
     )
     if display_avg:
         df_avg["date"] = pd.to_datetime(df_avg["date"])
 
     df_sim = pd.DataFrame(similar_character_avg)
     display_sim = len(df_sim) > 1 and not (
-        (df_sim["level"].max() < y_min - 0.1 * y_range) or (df_sim["level"].min() > y_max + 0.3 * y_range)
+        (df_sim["level"].max() < y_min - y_range / 10) or (df_sim["level"].min() > y_max + y_range / 3)
     )
     if display_sim:
         df_sim["date"] = pd.to_datetime(df_sim["date"])
@@ -176,7 +178,7 @@ def get_character_info(name, slot, period, default, today):
     if y_min == y_max:
         plt.ylim(y_max - 1, y_max + 1)
     else:
-        plt.ylim(y_min - 0.1 * y_range, y_max + 0.3 * y_range)
+        plt.ylim(y_min - y_range / 10, y_max + y_range / 3)
 
     for i in range(len(df) - 1):
         plt.fill_between(
@@ -195,7 +197,7 @@ def get_character_info(name, slot, period, default, today):
     date_format = mdates.DateFormatter("%m월 %d일")
     ax.xaxis.set_major_formatter(date_format)
     # 표시할 x축 날짜 직접 계산
-    n_ticks = min(8, len(df))  # 최대 tick 개수
+    n_ticks = min(5, len(df))  # 최대 tick 개수
     tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
     tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
 
@@ -213,11 +215,12 @@ def get_character_info(name, slot, period, default, today):
     # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
     for i in tick_indices:
         plt.annotate(
-            f'Lv.{int(df["level"].iloc[i])} {df["level"].iloc[i] % 1}%',
+            f'Lv.{int(df["level"].iloc[i])}  {(df["level"].iloc[i] % 1) * 100:.2f}%',
             (df["date"].iloc[i], df["level"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
+            fontsize=8,
         )
 
     ax.spines["top"].set_visible(False)
@@ -238,8 +241,8 @@ def get_character_info(name, slot, period, default, today):
     plt.close()
 
     current_level = df["level"].iat[-1]
-    l0 = df["level"].iat[0]
-    l1 = df["level"].iat[-1]
+    l0 = float(df["level"].iat[0])
+    l1 = float(df["level"].iat[-1])
     level_change = l1 - l0
 
     exp_change, next_lvup, max_lv_day = calc_exp_change(l0, l1, period)
@@ -456,7 +459,7 @@ def get_character_data(name, slot, period, today):
         data["level"].append(today_data[slot - 1]["level"])
         data["job"].append(misc.convert_job(today_data[slot - 1]["job"]))
 
-    return data if len(data["date"]) != 0 else None, len(data["date"])
+    return data if len(data["date"]) != 0 else None
 
 
 def get_all_character_avg(period, today):
@@ -513,6 +516,7 @@ def get_similar_character_avg(period, today, level):
         return None
 
     chars = []
+    level_range = 1
 
     for i in db_data:
         date, slot = i["date-slot"].split("#")
@@ -523,14 +527,16 @@ def get_similar_character_avg(period, today, level):
         if today == todayR.strftime("%Y-%m-%d"):
             if (
                 date == (todayR - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-                and (level - 1 <= i["level"] <= level + 1)
+                and (-level_range <= i["level"] - level <= level_range)
                 and not (i["id"], slot) in chars
             ):
                 chars.append((i["id"], slot))
 
         else:
             if (
-                date == today and (level - 1 <= i["level"] <= level + 1) and not (i["id"], slot) in chars
+                date == today
+                and (-level_range <= i["level"] - level <= level_range)
+                and not (i["id"], slot) in chars
             ):  # 레벨 범위 이후에 수정
                 chars.append((i["id"], slot))
 
@@ -552,9 +558,12 @@ def get_similar_character_avg(period, today, level):
 
 
 if __name__ == "__main__":
-    today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
+    # today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
+    today = misc.get_today()
 
-    # get_charater_rank_history("krosh0127", 51, today)
-    # get_character_info("prodays", 3, 5, False, today)
+    # get_charater_rank_history("prodays", 10, today)
+    get_character_info("prodays", 1, 8, False, today)
+    # print(get_current_character_data("ProDays"))
+    # print(get_character_data("ProDays", 1, 5, today))
 
     pass

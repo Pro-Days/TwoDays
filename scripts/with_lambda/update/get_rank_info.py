@@ -44,7 +44,7 @@ def get_current_rank_data(page=0) -> dict:
         {"level": "345.0", "job": "빙궁", "name": "d_capo"},
     ]
 
-    today = misc.get_today()
+    today = misc.get_today() - datetime.timedelta(days=1)
     base_date = datetime.date(2025, 2, 1)
 
     delta_days = (today - base_date).days
@@ -56,7 +56,7 @@ def get_current_rank_data(page=0) -> dict:
         l = d["level"]
 
         for _ in range(delta_days):
-            d["level"] += Decimal(random.randint(0, 1000 - int(l))) / 1000
+            d["level"] += Decimal(random.randint(0, 10000)) / 10000
 
     data = sorted(data, key=lambda x: x["level"], reverse=True)
 

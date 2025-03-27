@@ -109,7 +109,7 @@ def get_current_rank_data(page=0) -> dict:
         l = d["level"]
 
         for _ in range(delta_days):
-            d["level"] += Decimal(random.randint(0, 1000 - int(l))) / 1000
+            d["level"] += Decimal(random.randint(0, 10000)) / 10000
 
     data = sorted(data, key=lambda x: x["level"], reverse=True)
 
@@ -465,27 +465,21 @@ def get_rank_history(page, period, today):
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
 
-    plt.figure(figsize=(10 * math.log10(period), 5))
+    plt.figure(figsize=(10 * math.log10(period), 6))
 
     # Define a custom color palette for better distinction between lines
     colors = [
-        "#ff7072",
-        "#a6cee3",
-        "#b3de69",
-        "#ff7f00",
-        "#bebada",
+        "#ff2222",
         "#33a02c",
-        "#bc80bd",
-        "#fdb462",
-        "#80b1d3",
-        "#ffdd6f",
-        "#777777",
-        "#fb9a99",
         "#1f78b4",
-        "#fccde5",
-        "#8df3c7",
-        "#ffff23",
+        "#444444",
+        "#ff7f00",
+        "#fb9a99",
+        "#bc80bd",
+        "#888888",
         "#f65a8c",
+        "#fdd462",
+        "#80b1d3",
     ]
 
     # Get unique player IDs
@@ -569,7 +563,7 @@ def get_rank_history(page, period, today):
     plt.legend(
         by_label.values(),
         by_label.keys(),
-        loc="upper left",
+        bbox_to_anchor=(1 + 0.05 / period**0.5, 0.94),
         fontsize=8,
     )
 
@@ -596,11 +590,11 @@ def get_rank_history(page, period, today):
 
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-02-12", "%Y-%m-%d").date()
-    # today = misc.get_today()
+    today = misc.get_today()
 
-    # print(get_rank_history(1, 100, today))
+    print(get_rank_history(1, 21, today))
     # print(get_rank_info(1, today))
-    print(get_current_rank_data())
+    # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))
     pass
