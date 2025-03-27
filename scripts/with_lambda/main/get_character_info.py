@@ -442,14 +442,14 @@ def get_character_data(name, slot, period, today):
 
             if _slot == slot:
                 data["date"].append(date)
-                data["level"].append(float(i["level"]))
+                data["level"].append(i["level"])
                 data["job"].append(int(i["job"]))
 
     if today == misc.get_today().strftime("%Y-%m-%d"):
         today_data = get_current_character_data(name)
 
         data["date"].append(today)
-        data["level"].append(float(today_data[slot - 1]["level"]))
+        data["level"].append(today_data[slot - 1]["level"])
         data["job"].append(misc.convert_job(today_data[slot - 1]["job"]))
 
     return data if len(data["date"]) != 0 else None, len(data["date"])
@@ -480,7 +480,7 @@ def get_all_character_avg(period, today):
         if not date in dates.keys():
             dates[date] = []
 
-        dates[date].append(float(i["level"]))
+        dates[date].append(i["level"])
 
     for date in sorted(dates.keys()):
         data["date"].append(date)
@@ -538,7 +538,7 @@ def get_similar_character_avg(period, today, level):
             dates[date] = []
 
         if (i["id"], int(slot)) in chars:
-            dates[date].append(float(i["level"]))
+            dates[date].append(i["level"])
 
     for date in sorted(dates.keys()):
         data["date"].append(date)

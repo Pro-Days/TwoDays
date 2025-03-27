@@ -1,5 +1,6 @@
 import random
 import datetime
+from decimal import Decimal
 
 import misc
 
@@ -21,7 +22,7 @@ def get_current_character_data(name):
     random.seed(delta_days + sum(ord(c) for c in name))
 
     for d in data:
-        d["level"] = str(float(d["level"]) + random.random() * 0.5)
+        d["level"] = str(Decimal(d["level"]) + random.random() * 0.5)
 
     return data
 

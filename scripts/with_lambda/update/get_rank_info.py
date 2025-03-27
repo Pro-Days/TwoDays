@@ -2,6 +2,7 @@ import time
 import random
 import datetime
 import requests
+from decimal import Decimal
 
 import misc
 import data_manager
@@ -54,7 +55,7 @@ def get_current_rank_data(page=0) -> dict:
     random.seed(delta_days)
 
     for d in data:
-        d["level"] = str(float(d["level"]) + random.random() * 0.5)
+        d["level"] = str(Decimal(d["level"]) + random.random() * 0.5)
 
         # uuid = data_manager.read_data("TA_DEV-Users", "lower_name-index", {"lower_name": d["name"].lower()})[
         #     0
@@ -74,7 +75,7 @@ def get_current_rank_data(page=0) -> dict:
 
         # d["name"] = response["name"]
 
-    data = sorted(data, key=lambda x: float(x["level"]), reverse=True)
+    data = sorted(data, key=lambda x: Decimal(x["level"]), reverse=True)
 
     return data[page * 10 - 9 : page * 10 + 1] if page != 0 else data
 

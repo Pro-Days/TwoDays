@@ -83,7 +83,7 @@ def update_1D(event):
                         "rank": i + 1,
                         "id": misc.get_id(name=name),
                         "job": misc.convert_job(j["job"]),
-                        "level": float(j["level"]),
+                        "level": Decimal(j["level"]),
                     }
 
                     dm.write_data("Ranks", item)
@@ -133,7 +133,7 @@ def update_player(event, name, id):
                 "id": id,
                 "date-slot": f"{today.strftime("%Y-%m-%d")}#{i}",
                 "job": misc.convert_job(j["job"]),
-                "level": float(j["level"]),
+                "level": Decimal(j["level"]),
             }
 
             dm.write_data("DailyData", item)
@@ -158,7 +158,7 @@ def update_player(event, name, id):
                     "id": id,
                     "date-slot": f"{today.strftime("%Y-%m-%d")}#{i}",
                     "job": misc.convert_job(j["job"]),
-                    "level": float(j["level"]),
+                    "level": Decimal(j["level"]),
                 }
 
                 dm.write_data("DailyData", item)

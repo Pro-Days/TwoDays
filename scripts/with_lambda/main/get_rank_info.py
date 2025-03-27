@@ -6,6 +6,7 @@ import platform
 import requests
 import threading
 import pandas as pd
+from decimal import Decimal
 from PIL import Image, ImageDraw, ImageFont
 
 import matplotlib
@@ -51,7 +52,7 @@ def get_rank_data(day, page=0):
         data[i]["rank"] = int(j["rank"])
         data[i]["id"] = int(j["id"])
         data[i]["job"] = int(j["job"])
-        data[i]["level"] = float(j["level"])
+        data[i]["level"] = j["level"]
         data[i]["name"] = misc.get_name(id=j["id"])
 
     return data if page == 0 else data[page * 10 - 10 : page * 10]
@@ -104,9 +105,9 @@ def get_current_rank_data(page=0) -> dict:
     random.seed(delta_days)
 
     for d in data:
-        d["level"] = str(float(d["level"]) + random.random() * 0.5)
+        d["level"] = str(Decimal(d["level"]) + random.random() * 0.5)
 
-    data = sorted(data, key=lambda x: float(x["level"]), reverse=True)
+    data = sorted(data, key=lambda x: Decimal(x["level"]), reverse=True)
 
     return data[page * 10 - 10 : page * 10] if page != 0 else data
 
