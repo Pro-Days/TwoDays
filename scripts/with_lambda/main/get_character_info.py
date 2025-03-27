@@ -312,8 +312,6 @@ def get_charater_rank_history(name, period, today):
         "Ranks", index="id-date-index", condition_dict={"id": _id, "date": [start_date, today]}
     )
 
-    period = len(set([i["date"] for i in data]))
-
     for i, j in enumerate(data):
         data[i]["rank"] = 101 - int(j["rank"])
 
@@ -331,6 +329,8 @@ def get_charater_rank_history(name, period, today):
                     }
                 )
                 break
+
+    period = len(set([i["date"] for i in data]))
 
     # 이미지 생성
     df = pd.DataFrame(data)
