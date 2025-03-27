@@ -15,7 +15,7 @@ def send_log(log_type, event, msg):
     log_type: 6 - 등록, 업데이트
     """
 
-    now = datetime.datetime.now() + datetime.timedelta(hours=9)
+    now = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)
 
     if log_type == 4:
         embed_json = {

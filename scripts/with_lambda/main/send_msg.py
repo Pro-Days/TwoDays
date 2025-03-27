@@ -74,7 +74,7 @@ def send_log(log_type, event, msg="", image=None):
         guild_name = misc.get_guild_name(guild_id)
         channel_name = body["channel"]["name"]
 
-    now = datetime.datetime.now() + datetime.timedelta(hours=9)
+    now = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)
 
     if (log_type == 1) or (log_type == 2):
 
