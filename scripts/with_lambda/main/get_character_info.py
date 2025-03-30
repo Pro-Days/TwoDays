@@ -306,7 +306,7 @@ def get_character_info(name, slot, period, default, today):
     text_changed = f"{period}일간 {level_change:.2f}레벨 상승하셨어요!\n" if period != 1 else ""
     text_rank = f"레벨 랭킹은 {rank}위에요." if rank is not None else "레벨 랭킹에는 아직 등록되지 않았어요."
     # exp_change, next_lvup, max_lv_day
-    text_exp = f"\n일일 평균 획득 경험치는 {exp_change:.2f}이고, {next_lvup}일 후에 레벨업을 할 것 같아요."
+    text_exp = f"\n일일 평균 획득 경험치는 {exp_change}이고, {next_lvup}일 후에 레벨업을 할 것 같아요."
 
     msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_rank}{text_exp}"
 

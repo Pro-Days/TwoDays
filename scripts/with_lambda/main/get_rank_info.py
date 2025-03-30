@@ -82,9 +82,6 @@ def get_current_rank_data(page=0) -> dict:
             continue
         data.append(playerdata[0])
 
-        if player["id"] == 1:
-            print(playerdata[0])
-
     rankdata = []
 
     for d in data:
@@ -113,7 +110,6 @@ def get_current_rank_data(page=0) -> dict:
         )
 
     rankdata = sorted(rankdata, key=lambda x: x["level"], reverse=True)
-    print(rankdata[6])
 
     return rankdata[page * 10 - 10 : page * 10] if page != 0 else rankdata
 
@@ -275,7 +271,10 @@ def get_rank_info(page, today):
         x_offset += header_widths[1]
 
         draw.text(
-            (x_offset + 140 - len(row["Level"]) * 12, text_y_offset), row["Level"], fill="black", font=font
+            (x_offset + 140 - len(row["Level"]) * 12, text_y_offset),
+            f"{row['Level']:.1f}",
+            fill="black",
+            font=font,
         )
         x_offset += header_widths[2]
 
