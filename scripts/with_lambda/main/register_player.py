@@ -12,7 +12,7 @@ def register_player(name, slot):
     profile = misc.get_profile_from_mc(name=name)
 
     if profile is None:
-        return False
+        return -1
 
     uuid = profile["id"]
     name = profile["name"]
