@@ -282,7 +282,6 @@ def get_character_info(name, slot, period, default, today):
     level_change = l1 - l0
 
     exp_change, next_lvup, max_lv_day = calc_exp_change(float(l0), float(l1), period)
-    print(exp_change, next_lvup, max_lv_day)
 
     rank = None
     if today == misc.get_today():
@@ -306,8 +305,10 @@ def get_character_info(name, slot, period, default, today):
     text_slot = f"{slot}번 캐릭터 " if not default else ""
     text_changed = f"{period}일간 {level_change:.2f}레벨 상승하셨어요!\n" if period != 1 else ""
     text_rank = f"레벨 랭킹은 {rank}위에요." if rank is not None else "레벨 랭킹에는 아직 등록되지 않았어요."
+    # exp_change, next_lvup, max_lv_day
+    text_exp = f"\n일일 평균 획득 경험치는 {exp_change:.2f}이고, {next_lvup}일 후에 레벨업을 할 것 같아요."
 
-    msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_rank}"
+    msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_rank}{text_exp}"
 
     return msg, image_path
 
@@ -321,15 +322,13 @@ def calc_exp_change(l0, l1, period):
     exp += int((l1 % 1) * exps[int(l1)])
     exp -= int((l0 % 1) * exps[int(l0)])
 
-    exp_pd = exp / period
+    exp_mean = exp / period
 
-    next_lvup = exps[int(l1)] * (1 - (l1 % 1)) / exp_pd
-    next_lvup = int(next_lvup) + 1 if next_lvup % 1 != 0 else int(next_lvup)
+    next_lvup = int(exps[int(l1)] * (1 - (l1 % 1)) / exp_mean) + 1
 
     max_exp = sum([i for i in exps[int(l1) :]]) + exps[int(l1)] * (1 - (l1 % 1))
 
-    max_day = max_exp / exp_pd
-    max_day = int(max_day) + 1 if max_day % 1 != 0 else int(max_day)
+    max_day = int(max_exp / exp_mean) + 1
 
     return exp, next_lvup, max_day
 
