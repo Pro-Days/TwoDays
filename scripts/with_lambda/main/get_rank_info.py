@@ -229,7 +229,7 @@ def get_rank_info(page, today):
         row = {
             "Rank": str(data["Rank"][i]),
             "Name": data["Name"][i],
-            "Level": str(data["Level"][i]),
+            "Level": f"{data['Level'][i]:.2f}",
             "Job": data["Job"][i] if isinstance(data["Job"][i], str) else misc.convert_job(data["Job"][i]),
             "Change": data["Change"][i],
         }
@@ -272,7 +272,7 @@ def get_rank_info(page, today):
 
         draw.text(
             (x_offset + 140 - len(row["Level"]) * 12, text_y_offset),
-            f"{row['Level']:.1f}",
+            row["Level"],
             fill="black",
             font=font,
         )
