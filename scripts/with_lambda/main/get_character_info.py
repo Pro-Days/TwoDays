@@ -66,6 +66,37 @@ def get_character_info(name, slot, period, default, today):
         return f"{name}님의 {slot}번 캐릭터 정보가 없어요. 다시 확인해주세요.", None
 
     period = len(data["date"])
+
+    if period == 1:
+
+        rank = None
+        if today == misc.get_today():
+            ranks = gri.get_current_rank_data()
+            for i, j in enumerate(ranks):
+                if (
+                    j["name"] == name
+                    and int(j["level"]) == int(current_level)
+                    and misc.convert_job(j["job"]) == df["job"].iat[-1]
+                ):
+                    rank = i + 1
+                    break
+        else:
+            ranks = gri.get_rank_data(today)
+            for i, j in enumerate(ranks):
+                if (
+                    j["name"] == name
+                    and int(j["level"]) == int(current_level)
+                    and j["job"] == df["job"].iat[-1]
+                ):
+                    rank = j["rank"]
+                    break
+
+        text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
+        text_rank = (
+            f"\n레벨 랭킹은 {rank}위에요." if rank is not None else "레벨 랭킹에는 아직 등록되지 않았어요."
+        )
+        return f"{text_day} {name}님의 레벨은 372.21이에요." + text_rank, None
+
     all_character_avg = get_all_character_avg(period, today)
 
     if today == misc.get_today():
@@ -254,7 +285,7 @@ def get_character_info(name, slot, period, default, today):
         for i, j in enumerate(ranks):
             if (
                 j["name"] == name
-                and j["level"] == current_level
+                and int(j["level"]) == int(current_level)
                 and misc.convert_job(j["job"]) == df["job"].iat[-1]
             ):
                 rank = i + 1
@@ -262,7 +293,7 @@ def get_character_info(name, slot, period, default, today):
     else:
         ranks = gri.get_rank_data(today)
         for i, j in enumerate(ranks):
-            if j["name"] == name and j["level"] == current_level and j["job"] == df["job"].iat[-1]:
+            if j["name"] == name and int(j["level"]) == int(current_level) and j["job"] == df["job"].iat[-1]:
                 rank = j["rank"]
                 break
 
@@ -306,12 +337,16 @@ def get_charater_rank_history(name, period, today):
     _id = misc.get_id(name=name)
 
     start_date = today - datetime.timedelta(days=period - 1)
+    today_text = today.strftime("%Y년 %m월 %d일")
     today = today.strftime("%Y-%m-%d")
     start_date = start_date.strftime("%Y-%m-%d")
 
     data = dm.read_data(
         "Ranks", index="id-date-index", condition_dict={"id": _id, "date": [start_date, today]}
     )
+
+    if data is None:
+        data = []
 
     for i, j in enumerate(data):
         data[i]["rank"] = 101 - int(j["rank"])
@@ -332,6 +367,14 @@ def get_charater_rank_history(name, period, today):
                 break
 
     period = len(set([i["date"] for i in data]))
+
+    if period == 0:
+        return f"{name}님의 랭킹 정보가 없어요.", None
+
+    elif period == 1:
+        text_day = "지금" if today == misc.get_today().strftime("%Y-%m-%d") else today_text
+        text_rank = f"{name}님의 랭킹은 {101 - data[0]['rank']}위에요."
+        return f"{text_day} {text_rank}", None
 
     # 이미지 생성
     df = pd.DataFrame(data)
@@ -558,8 +601,8 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # get_charater_rank_history("prodays", 10, today)
-    print(get_character_info("prodays", 1, 5, False, today))
+    print(get_charater_rank_history("CozyDuckiejambos", 5, today))
+    # print(get_character_info("CozyDuckiejambos", 1, 7, False, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 
