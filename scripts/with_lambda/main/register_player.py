@@ -64,5 +64,5 @@ def is_registered(name):
 
 if __name__ == "__main__":
     # register_player("asdf123", 1)
-    # print(get_registered_players())
+    print(get_registered_players())
     pass

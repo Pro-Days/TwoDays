@@ -30,13 +30,31 @@ def update_1D(event):
     """
     플레이어, 랭킹 업데이트
     """
+    days_before = event.get("days_before", 0)
 
-    # 랭킹 업데이트
-    today = misc.get_today() - datetime.timedelta(days=1)
+    today = misc.get_today(days_before) - datetime.timedelta(days=1)
 
+    # # 플레이어 업데이트
+    # try:
+    #     players = rp.get_registered_players()
+
+    #     threads = []
+    #     for player in players:
+    #         t = threading.Thread(target=update_player, args=(event, player["name"], player["id"]))
+    #         t.start()
+    #         threads.append(t)
+
+    #         # 2 players/sec: 600 players -> 5 min: 50 won/month
+    #         # time.sleep(0.5)
+
+    #     for t in threads:
+    #         t.join()
+    # except:
+    #     sm.send_log(5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc())
+
+    # 랭커 등록, 업데이트
     try:
-        # 랭커 등록, 업데이트
-        rankdata = gri.get_current_rank_data()
+        rankdata = gri.get_current_rank_data(event)
 
         failed_list = []
         for i, j in enumerate(rankdata):
@@ -91,33 +109,17 @@ def update_1D(event):
     except:
         sm.send_log(5, event, "랭킹 데이터 업데이트 실패" + traceback.format_exc())
 
-    # 플레이어 업데이트
-    try:
-        players = rp.get_registered_players()
-
-        threads = []
-        for player in players:
-            t = threading.Thread(target=update_player, args=(event, player["name"], player["id"]))
-            t.start()
-            threads.append(t)
-
-            # 2 players/sec: 600 players -> 5 min: 50 won/month
-            # time.sleep(0.5)
-
-        for t in threads:
-            t.join()
-    except:
-        sm.send_log(5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc())
-
     sm.send_log(4, event, "데이터 업데이트 완료")
 
 
 def update_player(event, name, id):
+    days_before = event.get("days_before", 0)
+
     failed_list = []
-    today = misc.get_today() - datetime.timedelta(days=1)
+    today = misc.get_today(days_before) - datetime.timedelta(days=1)
 
     try:
-        data = gci.get_current_character_data(name)
+        data = gci.get_current_character_data(event, name)
 
         if not data:
             result = rp.register_player(name, misc.get_main_slot(name))
@@ -141,7 +143,7 @@ def update_player(event, name, id):
 
     if failed_list:
         try:
-            data = gci.get_current_character_data(name)
+            data = gci.get_current_character_data(event, name)
 
             if not data:
                 result = rp.register_player(name, misc.get_main_slot(name))

@@ -30,28 +30,32 @@ matplotlib.use("Agg")
 
 def get_current_character_data(name):
     data = [
-        {"job": "검호", "level": "345.0"},
-        {"job": "검호", "level": "345.0"},
-        {"job": "검호", "level": "345.0"},
-        {"job": "검호", "level": "345.0"},
-        {"job": "검호", "level": "345.0"},
+        {"job": "검호", "level": "1.0"},
+        {"job": "검호", "level": "1.0"},
+        {"job": "검호", "level": "1.0"},
+        {"job": "검호", "level": "1.0"},
+        {"job": "검호", "level": "1.0"},
     ]
 
     today = misc.get_today()
-    base_date = datetime.date(2025, 2, 1)
+    base_date = datetime.date(2025, 1, 1)
 
     delta_days = (today - base_date).days
 
     name = misc.get_name(name=name)
 
     for i, d in enumerate(data):
-        random.seed(sum(ord(c) for c in name) + i)
+        random.seed(sum(ord(c) for c in name.lower()) + i + 1)
+        coef = random.uniform(0.3, 0.7)
 
         d["level"] = Decimal(d["level"])
-        l = d["level"]
 
         for _ in range(delta_days):
-            d["level"] += Decimal(random.randint(0, 10000)) / 10000
+            d["level"] += Decimal(
+                round(
+                    40 / (d["level"] ** Decimal(0.5)) / (i + 2) * Decimal(coef + random.uniform(-0.3, 0.3)), 4
+                )
+            )
 
     return data
 
@@ -278,6 +282,7 @@ def get_character_info(name, slot, period, default, today):
     level_change = l1 - l0
 
     exp_change, next_lvup, max_lv_day = calc_exp_change(float(l0), float(l1), period)
+    print(exp_change, next_lvup, max_lv_day)
 
     rank = None
     if today == misc.get_today():
@@ -598,11 +603,11 @@ def get_similar_character_avg(period, today, level):
 
 
 if __name__ == "__main__":
-    # today = datetime.datetime.strptime("2025-03-13", "%Y-%m-%d").date()
+    # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_charater_rank_history("CozyDuckiejambos", 5, today))
-    # print(get_character_info("CozyDuckiejambos", 1, 7, False, today))
+    # print(get_charater_rank_history("CozyDuckiejambos", 5, today))
+    print(get_character_info("prodays", 1, 10, False, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 

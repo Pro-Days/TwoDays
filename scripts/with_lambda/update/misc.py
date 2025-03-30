@@ -2,6 +2,7 @@ import requests
 import datetime
 
 import data_manager
+import lambda_function
 
 
 def get_profile_from_mc(name="", uuid="", names=None):
@@ -93,8 +94,12 @@ def convert_job(job):
     return job_dict[str(job)]
 
 
-def get_today():
-    kst_now = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)
+def get_today(days_before=0):
+    kst_now = (
+        datetime.datetime.now(datetime.UTC)
+        + datetime.timedelta(hours=9)
+        - datetime.timedelta(days=days_before)
+    )
     today_kst = kst_now.date()
 
     return today_kst
@@ -106,5 +111,9 @@ if __name__ == "__main__":
     # print(get_profile_from_mc(name="aasdwdddddwdwdwd"))
     # print(get_main_slot("prodays"))
     # print(get_today())
+
+    for i in range(87, -1, -1):
+        print(i, lambda_function.lambda_handler({"action": "update_1D", "days_before": i}, None))
+    # print(lambda_function.lambda_handler({"action": "update_1D", "days_before": 83}, None))
 
     pass
