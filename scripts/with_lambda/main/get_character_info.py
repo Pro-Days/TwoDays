@@ -68,7 +68,9 @@ def get_character_info(name, slot, period, default, today):
     all_character_avg = get_all_character_avg(period, today)
 
     if today == misc.get_today():
-        similar_character_avg = get_similar_character_avg(period, today, data["level"][-2])
+        similar_character_avg = (
+            get_similar_character_avg(period, today, data["level"][-2]) if period > 1 else None
+        )
     else:
         similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
 
