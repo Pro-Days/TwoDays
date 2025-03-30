@@ -1,7 +1,7 @@
 import os
 import json
+import time
 import requests
-import datetime
 
 import misc
 
@@ -74,13 +74,13 @@ def send_log(log_type, event, msg="", image=None):
         guild_name = misc.get_guild_name(guild_id)
         channel_name = body["channel"]["name"]
 
-    now = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)
+    now = int(time.time())
 
     if (log_type == 1) or (log_type == 2):
 
         if "0" in command_type:
             embed_json = {
-                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "time": f"<t:{now}:f>",
                 "type": "서버",
                 "server": f"{guild_name} ({guild_id})",
                 "channel": f"{channel_name} ({channel_id})",
@@ -94,7 +94,7 @@ def send_log(log_type, event, msg="", image=None):
             }
         else:
             embed_json = {
-                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "time": f"<t:{now}:f>",
                 "type": "유저",
                 "server": f"{guild_id}",
                 "channel": f"{channel_id}",
@@ -129,7 +129,7 @@ def send_log(log_type, event, msg="", image=None):
     elif log_type == 3:
         if "0" in command_type:
             embed_json = {
-                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "time": f"<t:{now}:f>",
                 "type": "서버",
                 "server": f"{guild_name} ({guild_id})",
                 "channel": f"{channel_name} ({channel_id})",
@@ -143,7 +143,7 @@ def send_log(log_type, event, msg="", image=None):
             }
         else:
             embed_json = {
-                "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "time": f"<t:{now}:f>",
                 "type": "유저",
                 "server": f"{guild_id}",
                 "channel": f"{channel_id}",
