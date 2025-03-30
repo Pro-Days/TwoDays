@@ -561,7 +561,7 @@ def get_similar_character_avg(period, today, level):
         return None
 
     chars = []
-    level_range = 1
+    level_range = 5
 
     for i in db_data:
         date, slot = i["date-slot"].split("#")
@@ -607,7 +607,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_charater_rank_history("CozyDuckiejambos", 5, today))
-    print(get_character_info("prodays", 1, 10, False, today))
+    print(get_character_info("prodays", 1, 20, False, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 
