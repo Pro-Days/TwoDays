@@ -65,6 +65,7 @@ def get_character_info(name, slot, period, default, today):
             return f"{name}님의 캐릭터 정보가 없어요. 다시 확인해주세요.", None
         return f"{name}님의 {slot}번 캐릭터 정보가 없어요. 다시 확인해주세요.", None
 
+    period = len(data["date"])
     all_character_avg = get_all_character_avg(period, today)
 
     if today == misc.get_today():
@@ -73,8 +74,6 @@ def get_character_info(name, slot, period, default, today):
         )
     else:
         similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
-
-    period = len(data["date"])
 
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
