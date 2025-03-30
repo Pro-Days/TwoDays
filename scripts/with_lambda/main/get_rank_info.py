@@ -229,7 +229,7 @@ def get_rank_info(page, today):
         row = {
             "Rank": str(data["Rank"][i]),
             "Name": data["Name"][i],
-            "Level": f"{data['Level'][i]:.2f}",
+            "Level": f"{data['Level'][i]:.1f}",
             "Job": data["Job"][i] if isinstance(data["Job"][i], str) else misc.convert_job(data["Job"][i]),
             "Change": data["Change"][i],
         }
