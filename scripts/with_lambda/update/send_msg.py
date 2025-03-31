@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import requests
 import datetime
 
@@ -15,7 +16,7 @@ def send_log(log_type, event, msg):
     log_type: 6 - 등록, 업데이트
     """
 
-    now = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)
+    now = f"<t:{int(time.time())}:f>"
 
     if log_type == 4:
         embed_json = {
@@ -39,7 +40,7 @@ def send_log(log_type, event, msg):
 
     elif log_type == 5:
         embed_json = {
-            "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "time": now,
             "cmd": event["action"],
             "error": msg,
         }
@@ -60,7 +61,7 @@ def send_log(log_type, event, msg):
 
     elif log_type == 6:
         embed_json = {
-            "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "time": now,
             "cmd": event["action"],
             "error": msg,
         }
