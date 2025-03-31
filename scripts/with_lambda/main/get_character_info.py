@@ -595,8 +595,9 @@ def get_similar_character_avg(period, today, level):
             dates[date].append(i["level"])
 
     for date in sorted(dates.keys()):
-        data["date"].append(date)
-        data["level"].append(sum(dates[date]) / len(dates[date]))
+        if not dates[date]:
+            data["date"].append(date)
+            data["level"].append(sum(dates[date]) / len(dates[date]))
 
     return data
 
@@ -606,7 +607,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_charater_rank_history("CozyDuckiejambos", 5, today))
-    print(get_character_info("prodays", 1, 20, False, today))
+    print(get_character_info("prodays", 1, 7, False, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 
