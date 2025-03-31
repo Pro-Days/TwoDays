@@ -40,9 +40,12 @@ def update_1D(event):
 
         threads = []
         for player in players:
-            t = threading.Thread(target=update_player, args=(event, player["name"], player["id"]))
-            t.start()
-            threads.append(t)
+            update_player(event, player["name"], player["id"])
+
+            ## 쓰레드로 업데이트
+            # t = threading.Thread(target=update_player, args=(event, player["name"], player["id"]))
+            # t.start()
+            # threads.append(t)
 
             # 2 players/sec: 600 players -> 5 min: 50 won/month
             # time.sleep(0.5)

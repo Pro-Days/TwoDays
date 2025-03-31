@@ -607,7 +607,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_charater_rank_history("CozyDuckiejambos", 5, today))
-    print(get_character_info("prodays", 1, 7, False, today))
+    print(get_character_info("CozyDuckiejambos", 5, 100, False, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 

@@ -112,7 +112,10 @@ if __name__ == "__main__":
     # print(get_main_slot("prodays"))
     # print(get_today())
 
-    for i in range(87, -1, -1):
+    base_day = datetime.datetime(2025, 1, 1).date()
+    today = get_today(0)
+    d = (today - base_day).days - 1
+    for i in range(d, -1, -1):
         print(i, lambda_function.lambda_handler({"action": "update_1D", "days_before": i}, None))
     # print(lambda_function.lambda_handler({"action": "update_1D", "days_before": 83}, None))
 
