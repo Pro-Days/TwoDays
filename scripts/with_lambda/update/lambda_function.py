@@ -34,23 +34,23 @@ def update_1D(event):
 
     today = misc.get_today(days_before) - datetime.timedelta(days=1)
 
-    # # 플레이어 업데이트
-    # try:
-    #     players = rp.get_registered_players()
+    # 플레이어 업데이트
+    try:
+        players = rp.get_registered_players()
 
-    #     threads = []
-    #     for player in players:
-    #         t = threading.Thread(target=update_player, args=(event, player["name"], player["id"]))
-    #         t.start()
-    #         threads.append(t)
+        threads = []
+        for player in players:
+            t = threading.Thread(target=update_player, args=(event, player["name"], player["id"]))
+            t.start()
+            threads.append(t)
 
-    #         # 2 players/sec: 600 players -> 5 min: 50 won/month
-    #         # time.sleep(0.5)
+            # 2 players/sec: 600 players -> 5 min: 50 won/month
+            # time.sleep(0.5)
 
-    #     for t in threads:
-    #         t.join()
-    # except:
-    #     sm.send_log(5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc())
+        for t in threads:
+            t.join()
+    except:
+        sm.send_log(5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc())
 
     # 랭커 등록, 업데이트
     try:

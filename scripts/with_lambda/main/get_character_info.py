@@ -595,7 +595,7 @@ def get_similar_character_avg(period, today, level):
             dates[date].append(i["level"])
 
     for date in sorted(dates.keys()):
-        if not dates[date]:
+        if dates[date]:
             data["date"].append(date)
             data["level"].append(sum(dates[date]) / len(dates[date]))
 
