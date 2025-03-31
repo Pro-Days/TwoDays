@@ -108,11 +108,11 @@ def send_log(log_type, event, msg="", image=None):
             }
 
         if log_type == 1:
-            title = "투다이스 어시스턴트 명령어 로그"
+            title = "투데이즈 명령어 로그"
             color = 3447003
 
         elif log_type == 2:
-            title = "투다이스 어시스턴트 관리자 명령어 로그"
+            title = "투데이즈 관리자 명령어 로그"
             color = 10181046
 
         fields = []
@@ -156,7 +156,7 @@ def send_log(log_type, event, msg="", image=None):
                 "error": msg,
             }
 
-        title = "투다이스 어시스턴트 명령어 에러 로그"
+        title = "투데이즈 명령어 에러 로그"
         color = 15548997
 
         fields = []

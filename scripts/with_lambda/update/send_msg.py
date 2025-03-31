@@ -24,7 +24,7 @@ def send_log(log_type, event, msg):
             "cmd": event["action"],
         }
 
-        title = "투다이스 어시스턴트 데이터 업데이트 로그"
+        title = "투데이즈 데이터 업데이트 로그"
         color = 3447003
 
         fields = []
@@ -45,7 +45,7 @@ def send_log(log_type, event, msg):
             "error": msg,
         }
 
-        title = "투다이스 어시스턴트 데이터 업데이트 에러 로그"
+        title = "투데이즈 데이터 업데이트 에러 로그"
         color = 15548997
 
         fields = []
@@ -66,7 +66,7 @@ def send_log(log_type, event, msg):
             "error": msg,
         }
 
-        title = "투다이스 어시스턴트 플레이어 등록 / 업데이트 로그"
+        title = "투데이즈 플레이어 등록 / 업데이트 로그"
         color = 3447003
 
         fields = []
