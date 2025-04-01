@@ -20,7 +20,7 @@ def send_log(log_type, event, msg):
 
     if log_type == 4:
         embed_json = {
-            "time": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "time": now,
             "cmd": event["action"],
         }
 
