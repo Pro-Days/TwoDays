@@ -90,41 +90,22 @@ def command_handler(event):
         _type = options[0]["name"]
         options = options[0]["options"]
 
-        if _type == "레벨":
-            slot = None
-            period = 7
-            today = None
+        slot = None
+        period = 7
+        today = None
 
-            for i in options:
-                if i["name"] == "닉네임":
-                    name = i["value"]
+        for i in options:
+            if i["name"] == "닉네임":
+                name = i["value"]
 
-                elif i["name"] == "슬롯":
-                    slot = i["value"]
+            elif i["name"] == "슬롯":
+                slot = i["value"]
 
-                elif i["name"] == "기간":
-                    period = i["value"]
+            elif i["name"] == "기간":
+                period = i["value"]
 
-                elif i["name"] == "날짜":
-                    today = i["value"]
-
-            if slot is None:
-                slot = misc.get_main_slot(name)
-            default = True if slot == 1 else False
-
-        elif _type == "랭킹":
-            period = 7
-            today = None
-
-            for i in options:
-                if i["name"] == "닉네임":
-                    name = i["value"]
-
-                elif i["name"] == "기간":
-                    period = i["value"]
-
-                elif i["name"] == "날짜":
-                    today = i["value"]
+            elif i["name"] == "날짜":
+                today = i["value"]
 
         register_msg = None
         if rp.is_registered(name) is False:
@@ -142,7 +123,7 @@ def command_handler(event):
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
         if _type == "레벨":
-            msg, image_path = gci.get_character_info(name, slot, period, default, today)
+            msg, image_path = gci.get_character_info(name, slot, period, today)
         elif _type == "랭킹":
             msg, image_path = gci.get_charater_rank_history(name, period, today)
 

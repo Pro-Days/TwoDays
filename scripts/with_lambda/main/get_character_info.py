@@ -60,9 +60,14 @@ def get_current_character_data(name):
     return data
 
 
-def get_character_info(name, slot, period, default, today):
+def get_character_info(name, slot, period, today):
     data = get_character_data(name, slot, period, today)
     name = misc.get_name(name)
+
+    if slot is None:
+        slot = misc.get_main_slot(name)
+
+    default = slot == 1
 
     if data == None:
         if default:
