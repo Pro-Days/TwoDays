@@ -61,11 +61,11 @@ def get_current_character_data(name):
 
 
 def get_character_info(name, slot, period, today):
-    data = get_character_data(name, slot, period, today)
-    name = misc.get_name(name)
-
     if slot is None:
         slot = misc.get_main_slot(name)
+
+    data = get_character_data(name, slot, period, today)
+    name = misc.get_name(name)
 
     default = slot == 1
 
@@ -618,8 +618,8 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_charater_rank_history("prodays", 5, today))
-    # print(get_character_info("prodays", 1, 5, today))
+    # print(get_charater_rank_history("prodays", 5, today))
+    print(get_character_info("prodays", None, 7, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 
