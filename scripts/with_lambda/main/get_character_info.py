@@ -359,11 +359,17 @@ def get_charater_rank_history(name, period, today):
         data = []
 
     for i, j in enumerate(data):
-        data[i]["rank"] = 101 - int(j["rank"])
-
         del data[i]["level"]
         del data[i]["job"]
         del data[i]["id"]
+
+        for i1, j1 in enumerate(data.copy()):
+            if j["date"] == j1["date"] and j["rank"] > j1["rank"]:
+                del data[i]
+                break
+
+    for i, j in enumerate(data):
+        data[i]["rank"] = 101 - int(j["rank"])
 
     if current_data is not None:
         for i, j in enumerate(current_data):  # job level name
@@ -612,8 +618,8 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # print(get_charater_rank_history("CozyDuckiejambos", 5, today))
-    print(get_character_info("prodays", 1, 1, today))
+    print(get_charater_rank_history("prodays", 5, today))
+    # print(get_character_info("prodays", 1, 5, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 
