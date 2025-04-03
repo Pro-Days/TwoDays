@@ -76,35 +76,36 @@ def get_character_info(name, slot, period, today):
 
     period = len(data["date"])
 
-    if period == 1:
+    # if period == 1:
+    #     current_level = data["level"][0]
 
-        rank = None
-        if today == misc.get_today():
-            ranks = gri.get_current_rank_data()
-            for i, j in enumerate(ranks):
-                if (
-                    j["name"] == name
-                    and int(j["level"]) == int(current_level)
-                    and misc.convert_job(j["job"]) == df["job"].iat[-1]
-                ):
-                    rank = i + 1
-                    break
-        else:
-            ranks = gri.get_rank_data(today)
-            for i, j in enumerate(ranks):
-                if (
-                    j["name"] == name
-                    and int(j["level"]) == int(current_level)
-                    and j["job"] == df["job"].iat[-1]
-                ):
-                    rank = j["rank"]
-                    break
+    #     rank = None
+    #     if today == misc.get_today():
+    #         ranks = gri.get_current_rank_data()
+    #         for i, j in enumerate(ranks):
+    #             if (
+    #                 j["name"] == name
+    #                 and -0.1 < j["level"] - current_level < 0.1
+    #                 and misc.convert_job(j["job"]) == data["job"][0]
+    #             ):
+    #                 rank = i + 1
+    #                 break
+    #     else:
+    #         ranks = gri.get_rank_data(today)
+    #         for i, j in enumerate(ranks):
+    #             if (
+    #                 j["name"] == name
+    #                 and -0.1 < j["level"] - current_level < 0.1
+    #                 and j["job"] == data["job"][0]
+    #             ):
+    #                 rank = j["rank"]
+    #                 break
 
-        text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
-        text_rank = (
-            f"\n레벨 랭킹은 {rank}위에요." if rank is not None else "레벨 랭킹에는 아직 등록되지 않았어요."
-        )
-        return f"{text_day} {name}님의 레벨은 372.21이에요." + text_rank, None
+    #     text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
+    #     text_rank = (
+    #         f"\n레벨 랭킹은 {rank}위에요." if rank is not None else "레벨 랭킹에는 아직 등록되지 않았어요."
+    #     )
+    #     return f"{text_day} {name}님의 레벨은 {current_level}이에요." + text_rank, None
 
     all_character_avg = get_all_character_avg(period, today)
 
@@ -612,7 +613,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_charater_rank_history("CozyDuckiejambos", 5, today))
-    print(get_character_info("CozyDuckiejambos", 5, 100, False, today))
+    print(get_character_info("prodays", 1, 1, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("ProDays", 1, 5, today))
 

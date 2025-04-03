@@ -593,8 +593,8 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # print(get_rank_history(1, 5, today))
-    print(get_rank_info(1, today))
+    print(get_rank_history(1, 5, today))
+    # print(get_rank_info(1, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))
