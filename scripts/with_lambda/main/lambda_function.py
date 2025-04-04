@@ -1,8 +1,7 @@
 import os
 import json
-
-from rich.console import Console
 import traceback
+from rich.traceback import Traceback as rich_traceback
 
 import misc
 import send_msg as sm
@@ -12,7 +11,6 @@ import get_character_info as gci
 
 
 ADMIN_ID = os.getenv("DISCORD_ADMIN_ID")
-console = Console()
 
 
 def lambda_handler(event, context):
@@ -22,7 +20,7 @@ def lambda_handler(event, context):
         return command_handler(event)
 
     except:
-        console.print_exception(show_locals=True)
+        print(rich_traceback())
         sm.send(event, "오류가 발생했습니다.", log_type=3, error=traceback.format_exc())
         return {"statusCode": 400, "body": json.dumps(traceback.format_exc())}
 
