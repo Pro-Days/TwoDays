@@ -316,6 +316,9 @@ def get_character_info(name, slot, period, today):
 
     msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_rank}{text_exp}"
 
+    raise ValueError()
+    return 0
+
     return msg, image_path
 
 
@@ -619,7 +622,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_charater_rank_history("prodays", 5, today))
-    print(get_character_info("steve", None, 7, today))
+    print(get_character_info("prodays", None, 7, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("steve", 1, 7, today))
 
