@@ -20,7 +20,7 @@ def lambda_handler(event, context):
         return command_handler(event)
 
     except:
-        console.print_exception(show_locals=True, width=200)
+        console.print_exception(show_locals=True)
         sm.send(event, "오류가 발생했습니다.", log_type=3, error=traceback.format_exc())
         return {"statusCode": 400, "body": json.dumps(traceback.format_exc())}
 
