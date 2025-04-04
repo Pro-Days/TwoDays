@@ -4,6 +4,7 @@ import datetime
 import platform
 import numpy as np
 import pandas as pd
+from rich import traceback
 from decimal import Decimal
 
 import matplotlib
@@ -26,6 +27,8 @@ prop = fm.FontProperties(fname=font_path)
 plt.rcParams["font.family"] = prop.get_name()
 
 matplotlib.use("Agg")
+
+traceback.install(show_locals=True)  # rich traceback
 
 
 def get_current_character_data(name):

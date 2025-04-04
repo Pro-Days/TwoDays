@@ -1,6 +1,7 @@
 import os
 import json
-from rich import traceback as r_traceback
+
+# from rich import traceback as r_traceback
 import traceback
 
 import misc
@@ -11,7 +12,7 @@ import get_character_info as gci
 
 
 ADMIN_ID = os.getenv("DISCORD_ADMIN_ID")
-r_traceback.install(show_locals=True)  # rich traceback
+# r_traceback.install(show_locals=True)  # rich traceback
 
 
 def lambda_handler(event, context):
