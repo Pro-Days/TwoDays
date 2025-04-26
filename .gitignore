@@ -7,3 +7,4 @@ assets/player_heads/
 *__pycache__
 scripts/temp
 image.png
+test/*

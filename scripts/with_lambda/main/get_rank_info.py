@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.ticker as ticker
 import matplotlib.font_manager as fm
+import matplotlib.patheffects as path_effects  # Added import for path effects
 
 import misc
 import data_manager
@@ -466,30 +467,55 @@ def get_rank_history(page, period, today):
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
 
-    plt.figure(figsize=(10 * math.log10(period), 6))
+    # plt.figure(figsize=(10 * math.log10(period), 6))
+    plt.figure(figsize=(period * 0.5 if period >= 15 else period * 0.3 + 3, 6))
 
     # Define a custom color palette for better distinction between lines
     colors = [
-        "#ff2222",
-        "#33a02c",
-        "#1f78b4",
-        "#444444",
-        "#ff7f00",
-        "#bc80bd",
-        "#888888",
-        "#f65a8c",
-        "#fdd462",
-        "#80b1d3",
         "#fb9a99",
+        "#80b1d3",
+        "#fdd462",
+        "#f65a8c",
+        "#a5de94",
+        "#bc80bd",
+        "#ff7f00",
+        "#1f78b4",
+        "#33a02c",
+        "#ff2222",
+        "#436e6f",
+        "#c56477",
+        "#ac7f0f",
     ]
 
     # Get unique player IDs
     player_ids = df["id"].unique()
 
-    # Plot each player's data with a specific color
-    for i, player_id in enumerate(player_ids):
+    # 가장 최근 날짜의 데이터 찾기
+    latest_date = df["date"].max()
+
+    # 각 플레이어의 최근 순위 찾기 (높은 순위를 나중에 그려 위에 표시되도록)
+    player_latest_ranks = {}
+    for player_id in player_ids:
+        player_data = df[df["id"] == player_id]
+        # 해당 ID의 가장 최근 날짜 데이터 찾기
+        player_latest = player_data[player_data["date"] == player_data["date"].max()]
+        if not player_latest.empty:
+            player_latest_ranks[player_id] = player_latest["rank"].iloc[0]
+        else:
+            player_latest_ranks[player_id] = 999  # 데이터가 없는 경우 낮은 우선순위
+
+    # 최근 순위 기준으로 오름차순 정렬 (낮은 순위 먼저, 높은 순위 나중에 그려서 위에 표시)
+    sorted_player_ids = sorted(player_ids, key=lambda pid: player_latest_ranks[pid], reverse=True)
+
+    # 텍스트 라벨의 위치를 추적하기 위한 딕셔너리
+    # key: (date, rank) 좌표, value: 해당 좌표에 이미 텍스트가 있는지 여부
+    text_positions = {}
+
+    # Plot each player's data with a specific color, 최근 순위가 높은 플레이어가 가장 나중에 그려져 위에 표시됨
+    for i, player_id in enumerate(sorted_player_ids):
         group = df[df["id"] == player_id]
         color_idx = i % len(colors)  # Cycle through colors if more players than colors
+        player_name = misc.get_name(id=int(player_id))  # 플레이어 이름 가져오기
 
         # 데이터 프레임에서 날짜를 정렬하여 날짜 간격을 확인
         sorted_group = group.sort_values(by="date")
@@ -523,55 +549,132 @@ def get_rank_history(page, period, today):
             date_groups.append(current_group)
 
         # 각 연속된 날짜 그룹마다 별도의 선으로 그리기
-        first_group = True
-        for group_data in date_groups:
+        for group_idx, group_data in enumerate(date_groups):
             if len(group_data) > 0:
                 group_df = pd.DataFrame(group_data)
+
+                # 단일 데이터 포인트인지 확인 (선이 아니라 점)
+                is_single_point = len(group_df) == 1
+                zorder = 100 - player_latest_ranks[player_id]
+
+                if not is_single_point:
+                    # 선 그리기 (마커 없이)
+                    (line,) = plt.plot(
+                        group_df["date"],
+                        group_df["rank"],
+                        marker="",  # 선에는 마커 표시 안함
+                        color=colors[color_idx],
+                        linewidth=4,
+                        zorder=zorder,  # 순위가 높을수록(숫자가 작을수록) zorder 값이 커짐
+                    )
+
+                    # 그림자 효과 추가 (선 아래에 그림자)
+                    line.set_path_effects(
+                        [
+                            path_effects.SimpleLineShadow(),
+                            path_effects.Normal(),
+                        ]
+                    )
+
+                # 마지막 데이터 포인트에만 마커 표시
                 plt.plot(
-                    group_df["date"],
-                    group_df["rank"],
-                    marker="o" if period <= 20 else ".",
-                    label=misc.get_name(id=int(player_id)) if first_group else "",
+                    [group_df["date"].iloc[-1]],  # 마지막 데이터 포인트의 날짜
+                    [group_df["rank"].iloc[-1]],  # 마지막 데이터 포인트의 순위
+                    marker="o",
+                    markersize=10,
                     color=colors[color_idx],
-                    linewidth=2,
+                    linestyle="",  # 선은 표시 안함
+                    zorder=zorder + 1,  # 선보다 위에 표시
                 )
-                first_group = False  # 첫 번째 그룹 이후에는 레이블을 표시하지 않음
+
+                # 각 그룹(선 또는 단일 점)의 마지막 데이터 포인트 정보
+                last_date = group_df["date"].iloc[-1]
+                last_rank = group_df["rank"].iloc[-1]
+
+                # 날짜와 순위를 이용해 위치 키를 생성
+                position_key = (mdates.date2num(last_date), last_rank)
+
+                # 가장 최근 날짜 데이터의 경우 우측에 표시 (겹침 없음, 항상 오른쪽에)
+                if last_date == latest_date:
+                    plt.text(
+                        last_date + pd.Timedelta(days=0.5),  # 마지막 날짜보다 조금 오른쪽
+                        last_rank,
+                        player_name,
+                        color="black",
+                        fontweight="bold",
+                        fontsize=10,
+                        va="center",
+                        zorder=1000,  # 마커보다 위에 표시
+                    )
+                else:
+                    # 최근 데이터가 아닌 모든 그룹(끊어진 선이나 단일 점)의 마지막 포인트 텍스트 위치 조정
+                    # 근처에 다른 텍스트가 있는지 확인
+                    nearby_occupied = False
+
+                    # 순위 기준으로 근처 (±0.5 이내) 텍스트 위치 확인
+                    for existing_date, existing_rank in text_positions.keys():
+                        # 날짜가 가까운 포인트 중
+                        date_diff = abs(mdates.date2num(last_date) - existing_date)
+                        if date_diff < 2.0:  # 날짜가 가까운 경우 (2일 이내)
+                            # 순위도 가까운 경우
+                            if abs(last_rank - existing_rank) < 0.7:
+                                nearby_occupied = True
+                                break
+
+                    if nearby_occupied:
+                        # 다른 텍스트가 이미 있다면, 포인트 아래에 텍스트 표시
+                        plt.text(
+                            last_date,  # 마지막 데이터 위치
+                            last_rank + 0.5,  # 데이터 포인트보다 약간 아래에
+                            player_name,
+                            color="black",
+                            fontweight="bold",
+                            fontsize=10,
+                            ha="center",
+                            zorder=1000,  # 마커보다 위에 표시
+                        )
+                    else:
+                        # 주변에 다른 텍스트가 없다면, 포인트 위에 텍스트 표시 (기존 방식)
+                        plt.text(
+                            last_date,  # 마지막 데이터 위치
+                            last_rank - 0.3,  # 데이터 포인트보다 약간 위에
+                            player_name,
+                            color="black",
+                            fontweight="bold",
+                            fontsize=10,
+                            ha="center",
+                            zorder=1000,  # 마커보다 위에 표시
+                        )
+
+                    # 이 위치에 텍스트를 배치했음을 기록
+                    text_positions[position_key] = True
 
     ax = plt.gca()
     date_format = mdates.DateFormatter("%m월 %d일")
     ax.xaxis.set_major_formatter(date_format)
 
     # 표시할 x축 날짜 직접 계산
-    n_ticks = min(8, len(df))  # 최대 tick 개수
-    tick_interval = max(1, (len(df) - 1) // (n_ticks - 1))  # 간격 계산
-    tick_indices = range(len(df) - 1, -1, -tick_interval)  # 마지막 데이터부터 역순으로
+    tick_indices = range(len(df["date"].unique()) - 1, -1, -3)  # 역순으로
 
     # 실제 데이터 포인트의 날짜만 선택
-    ticks = [mdates.date2num(df["date"].iloc[i]) for i in tick_indices]
+    ticks = [mdates.date2num(df["date"].unique()[i]) for i in tick_indices]
     ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
 
     # x축 범위를 데이터 범위로 제한 (여백 추가)
-    date_range = (df["date"].iloc[-1] - df["date"].iloc[0]).days
     plt.xlim(
-        df["date"].iloc[0] - pd.Timedelta(days=date_range * 0.02),
-        df["date"].iloc[-1] + pd.Timedelta(days=date_range * 0.02),
+        df["date"].iloc[0] - pd.Timedelta(days=1),
+        df["date"].iloc[-1] + pd.Timedelta(days=0.5),  # 우측 여백 늘림 (닉네임 표시 공간)
     )
     plt.ylim(page * 10 + 1, page * 10 - 10)
 
-    # 범례에서 중복 제거
-    handles, labels = plt.gca().get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    plt.legend(
-        by_label.values(),
-        by_label.keys(),
-        bbox_to_anchor=(1 + 0.05 / period**0.5, 0.94),
-        fontsize=8,
-    )
+    # 범례 제거 (닉네임을 직접 선 위에 표시하므로 범례가 필요 없음)
 
     plt.yticks(range(page * 10 - 9, page * 10 + 1))
 
-    plt.grid(axis="y", linestyle="--", alpha=0.5)
+    # 회색 격자선 추가
+    plt.grid(axis="both", linestyle="--", alpha=0.5)
 
+    # 테두리 제거
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
@@ -579,21 +682,21 @@ def get_rank_history(page, period, today):
 
     os_name = platform.system()
     if os_name == "Linux":
-        image_path = misc.convert_path("\\tmp\\image.png")
+        image_path = "/tmp/image.png"
     else:
         image_path = "image.png"
     plt.savefig(image_path, dpi=300, bbox_inches="tight")
     plt.close()
 
-    msg = f"{period}일 동안의 {"" if page == 1 else f"{page}페이지 "}랭킹 히스토리를 보여드릴게요."
+    msg = f"{period}일 동안의 {'' if page == 1 else f'{page}페이지 '}랭킹 히스토리를 보여드릴게요."
     return msg, image_path
 
 
 if __name__ == "__main__":
-    # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
+    # today = datetime.datetime.strptime("2025-02-15", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_rank_history(1, 5, today))
+    print(get_rank_history(1, 50, today))
     # print(get_rank_info(1, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
