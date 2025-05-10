@@ -119,7 +119,7 @@ def get_current_rank_data(page=0) -> dict:
             }
         )
 
-    rankdata = sorted(rankdata, key=lambda x: x["level"], reverse=True)
+    rankdata = sorted(rankdata, key=lambda x: x["level"], reverse=True)[:100]
 
     return rankdata[page * 10 - 10 : page * 10] if page != 0 else rankdata
 

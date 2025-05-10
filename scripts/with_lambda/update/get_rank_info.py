@@ -44,7 +44,7 @@ def get_current_rank_data(event) -> dict:
             }
         )
 
-    rankdata = sorted(rankdata, key=lambda x: x["level"], reverse=True)
+    rankdata = sorted(rankdata, key=lambda x: x["level"], reverse=True)[:100]
 
     return rankdata
 
