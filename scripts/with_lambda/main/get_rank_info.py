@@ -85,7 +85,10 @@ def get_current_rank_data(page=0) -> dict:
         )
         if playerdata is None:
             continue
-        data.append(playerdata[0])
+        # data.append(playerdata[int(player["mainSlot"]) - 1])
+
+        for i in range(5):
+            data.append(playerdata[i])
 
     rankdata = []
 

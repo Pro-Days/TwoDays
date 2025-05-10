@@ -50,5 +50,5 @@ def get_current_rank_data(event) -> dict:
 
 
 if __name__ == "__main__":
-    # print(get_current_rank_data(10))
+    print(get_current_rank_data({}))
     pass
