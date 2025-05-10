@@ -57,13 +57,15 @@ def get_registered_players():
 
 
 def is_registered(name):
-    items = data_manager.read_data("Users", "lower_name-index", {"lower_name": name.lower()})
+    items = data_manager.read_data(
+        "Users", "lower_name-index", {"lower_name": name.lower()}
+    )
 
     return items is not None
 
 
 if __name__ == "__main__":
-    register_player("1mkr", 1)
+    # register_player("1mkr", 1)
     # print(get_registered_players())
     # print(is_registered("prodays"))
     pass

@@ -22,11 +22,16 @@ def get_current_rank_data(event) -> dict:
 
     for player in players:
         playerdata = data_manager.read_data(
-            "DailyData", None, {"id": player["id"], "date-slot": [f"{today_str}#0", f"{today_str}#4"]}
+            "DailyData",
+            None,
+            {"id": player["id"], "date-slot": [f"{today_str}#0", f"{today_str}#4"]},
         )
         if playerdata is None:
             continue
-        data.append(playerdata[int(player["mainSlot"]) - 1])
+        # data.append(playerdata[int(player["mainSlot"]) - 1])
+
+        for i in range(5):
+            data.append(playerdata[i])
 
     rankdata = []
 

@@ -47,7 +47,9 @@ def download_image(url, num, list_name):
 
 
 def get_rank_data(day, page=0):
-    data = data_manager.read_data("Ranks", condition_dict={"date": day.strftime("%Y-%m-%d")})
+    data = data_manager.read_data(
+        "Ranks", condition_dict={"date": day.strftime("%Y-%m-%d")}
+    )
 
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
@@ -77,7 +79,9 @@ def get_current_rank_data(page=0) -> dict:
     for player in players:
 
         playerdata = data_manager.read_data(
-            "DailyData", None, {"id": player["id"], "date-slot": [f"{today_str}#0", f"{today_str}#4"]}
+            "DailyData",
+            None,
+            {"id": player["id"], "date-slot": [f"{today_str}#0", f"{today_str}#4"]},
         )
         if playerdata is None:
             continue
@@ -97,7 +101,9 @@ def get_current_rank_data(page=0) -> dict:
 
         level += Decimal(
             round(
-                20 / (level ** Decimal(0.5)) * Decimal(coef + random.uniform(-0.3, 0.3)),
+                20
+                / (level ** Decimal(0.5))
+                * Decimal(coef + random.uniform(-0.3, 0.3)),
                 4,
             )
         )
@@ -145,9 +151,9 @@ def get_rank_info(page, today):
         prev_date = today - datetime.timedelta(days=1)
         prev_date_str = prev_date.strftime("%Y-%m-%d")
 
-        prev_rank = data_manager.read_data("Ranks", "id-date-index", {"id": user_id, "date": prev_date_str})[
-            0
-        ]["rank"]
+        prev_rank = data_manager.read_data(
+            "Ranks", "id-date-index", {"id": user_id, "date": prev_date_str}
+        )[0]["rank"]
 
         if prev_rank is None:
             data["Change"].append(None)
@@ -208,7 +214,9 @@ def get_rank_info(page, today):
     if os_name == "Linux":
         font = ImageFont.truetype("/opt/NanumSquareRoundEB.ttf", 40)
     else:
-        font = ImageFont.truetype(misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf"), 40)
+        font = ImageFont.truetype(
+            misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf"), 40
+        )
 
     x_offset = -10
     for i, text in enumerate(header_text):
@@ -231,7 +239,11 @@ def get_rank_info(page, today):
             "Rank": str(data["Rank"][i]),
             "Name": data["Name"][i],
             "Level": f"{data['Level'][i]:.1f}",
-            "Job": data["Job"][i] if isinstance(data["Job"][i], str) else misc.convert_job(data["Job"][i]),
+            "Job": (
+                data["Job"][i]
+                if isinstance(data["Job"][i], str)
+                else misc.convert_job(data["Job"][i])
+            ),
             "Change": data["Change"][i],
         }
 
@@ -359,11 +371,17 @@ def get_rank_info(page, today):
         draw.line(
             [
                 (
-                    header_widths[0] + header_widths[1] + header_widths[2] + header_widths[3],
+                    header_widths[0]
+                    + header_widths[1]
+                    + header_widths[2]
+                    + header_widths[3],
                     y_offset,
                 ),
                 (
-                    header_widths[0] + header_widths[1] + header_widths[2] + header_widths[3],
+                    header_widths[0]
+                    + header_widths[1]
+                    + header_widths[2]
+                    + header_widths[3],
                     y_offset + row_height,
                 ),
             ],
@@ -438,7 +456,8 @@ def get_rank_history(page, period, today):
     start_date = start_date.strftime("%Y-%m-%d")
 
     data = data_manager.scan_data(
-        "Ranks", filter_dict={"date": [start_date, today], "rank": [page * 10 - 9, page * 10]}
+        "Ranks",
+        filter_dict={"date": [start_date, today], "rank": [page * 10 - 9, page * 10]},
     )
 
     for i, j in enumerate(data):
@@ -505,7 +524,9 @@ def get_rank_history(page, period, today):
             player_latest_ranks[player_id] = 999  # 데이터가 없는 경우 낮은 우선순위
 
     # 최근 순위 기준으로 오름차순 정렬 (낮은 순위 먼저, 높은 순위 나중에 그려서 위에 표시)
-    sorted_player_ids = sorted(player_ids, key=lambda pid: player_latest_ranks[pid], reverse=True)
+    sorted_player_ids = sorted(
+        player_ids, key=lambda pid: player_latest_ranks[pid], reverse=True
+    )
 
     # 텍스트 라벨의 위치를 추적하기 위한 딕셔너리
     # key: (date, rank) 좌표, value: 해당 좌표에 이미 텍스트가 있는지 여부
@@ -597,7 +618,8 @@ def get_rank_history(page, period, today):
                 # 가장 최근 날짜 데이터의 경우 우측에 표시 (겹침 없음, 항상 오른쪽에)
                 if last_date == latest_date:
                     plt.text(
-                        last_date + pd.Timedelta(days=0.5),  # 마지막 날짜보다 조금 오른쪽
+                        last_date
+                        + pd.Timedelta(days=0.5),  # 마지막 날짜보다 조금 오른쪽
                         last_rank,
                         player_name,
                         color="black",
@@ -625,7 +647,7 @@ def get_rank_history(page, period, today):
                         # 다른 텍스트가 이미 있다면, 포인트 아래에 텍스트 표시
                         plt.text(
                             last_date,  # 마지막 데이터 위치
-                            last_rank + 0.5,  # 데이터 포인트보다 약간 아래에
+                            last_rank + 0.4,  # 데이터 포인트보다 약간 아래에
                             player_name,
                             color="black",
                             fontweight="bold",
@@ -637,7 +659,7 @@ def get_rank_history(page, period, today):
                         # 주변에 다른 텍스트가 없다면, 포인트 위에 텍스트 표시 (기존 방식)
                         plt.text(
                             last_date,  # 마지막 데이터 위치
-                            last_rank - 0.3,  # 데이터 포인트보다 약간 위에
+                            last_rank - 0.2,  # 데이터 포인트보다 약간 위에
                             player_name,
                             color="black",
                             fontweight="bold",
@@ -663,7 +685,8 @@ def get_rank_history(page, period, today):
     # x축 범위를 데이터 범위로 제한 (여백 추가)
     plt.xlim(
         df["date"].iloc[0] - pd.Timedelta(days=1),
-        df["date"].iloc[-1] + pd.Timedelta(days=0.5),  # 우측 여백 늘림 (닉네임 표시 공간)
+        df["date"].iloc[-1]
+        + pd.Timedelta(days=0.5),  # 우측 여백 늘림 (닉네임 표시 공간)
     )
     plt.ylim(page * 10 + 1, page * 10 - 10)
 

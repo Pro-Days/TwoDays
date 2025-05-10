@@ -19,7 +19,10 @@ def lambda_handler(event, context):
         if event["action"] == "update_1D":
             update_1D(event)
 
-            return {"statusCode": 200, "body": json.dumps({"message": "업데이트 완료"}, ensure_ascii=False)}
+            return {
+                "statusCode": 200,
+                "body": json.dumps({"message": "업데이트 완료"}, ensure_ascii=False),
+            }
 
     except:
         sm.send_log(5, event, traceback.format_exc())
@@ -60,11 +63,13 @@ def update_1D(event):
         rankdata = gri.get_current_rank_data(event)
 
         failed_list = []
+        registered_names = rp.get_registered_players()
+        registered_names = [player["name"] for player in registered_names]
         for i, j in enumerate(rankdata):
             try:
                 name = j["name"]
 
-                if not rp.is_registered(name):
+                if name not in registered_names:
                     result = rp.register_player(name, 1)
 
                     if result == 1:
@@ -89,7 +94,7 @@ def update_1D(event):
                 try:
                     name = j["name"]
 
-                    if not rp.is_registered(name):
+                    if name not in registered_names:
                         result = rp.register_player(name, 1)
 
                         if result == 1:
@@ -107,7 +112,11 @@ def update_1D(event):
 
                     dm.write_data("Ranks", item)
                 except:
-                    sm.send_log(5, event, f"랭킹 데이터 업데이트 실패: {j}" + traceback.format_exc())
+                    sm.send_log(
+                        5,
+                        event,
+                        f"랭킹 데이터 업데이트 실패: {j}" + traceback.format_exc(),
+                    )
 
     except:
         sm.send_log(5, event, "랭킹 데이터 업데이트 실패" + traceback.format_exc())
@@ -166,7 +175,9 @@ def update_player(event, name, id):
 
                 dm.write_data("DailyData", item)
         except:
-            sm.send_log(5, event, f"{name} 데이터 업데이트 실패" + traceback.format_exc())
+            sm.send_log(
+                5, event, f"{name} 데이터 업데이트 실패" + traceback.format_exc()
+            )
 
 
 if __name__ == "__main__":
