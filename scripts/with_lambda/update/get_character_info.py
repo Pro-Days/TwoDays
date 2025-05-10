@@ -23,6 +23,9 @@ def get_current_character_data(event, name):
 
     name = misc.get_name(name=name)
 
+    if name is None:
+        return None
+
     for i, d in enumerate(data):
         random.seed(sum(ord(c) for c in name.lower()) + i + 1)
         coef = random.uniform(0.3, 0.7)
@@ -32,7 +35,11 @@ def get_current_character_data(event, name):
         for _ in range(delta_days):
             d["level"] += Decimal(
                 round(
-                    40 / (d["level"] ** Decimal(0.5)) / (i + 2) * Decimal(coef + random.uniform(-0.3, 0.3)), 4
+                    40
+                    / (d["level"] ** Decimal(0.5))
+                    / (i + 2)
+                    * Decimal(coef + random.uniform(-0.3, 0.3)),
+                    4,
                 )
             )
 
@@ -40,5 +47,5 @@ def get_current_character_data(event, name):
 
 
 if __name__ == "__main__":
-    # print(get_current_character_data("ProDays"))
+    print(get_current_character_data({}, "12u3h1u23"))
     pass

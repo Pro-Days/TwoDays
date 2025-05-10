@@ -53,7 +53,11 @@ def get_current_character_data(name):
         for _ in range(delta_days):
             d["level"] += Decimal(
                 round(
-                    40 / (d["level"] ** Decimal(0.5)) / (i + 2) * Decimal(coef + random.uniform(-0.3, 0.3)), 4
+                    40
+                    / (d["level"] ** Decimal(0.5))
+                    / (i + 2)
+                    * Decimal(coef + random.uniform(-0.3, 0.3)),
+                    4,
                 )
             )
 
@@ -101,9 +105,13 @@ def get_character_info(name, slot, period, today):
                     rank = j["rank"]
                     break
 
-        text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
+        text_day = (
+            "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
+        )
         text_rank = (
-            f"\n레벨 랭킹은 {rank}위에요." if rank is not None else "레벨 랭킹에는 아직 등록되지 않았어요."
+            f"\n레벨 랭킹은 {rank}위에요."
+            if rank is not None
+            else "레벨 랭킹에는 아직 등록되지 않았어요."
         )
         return f"{text_day} {name}님의 레벨은 {current_level}이에요." + text_rank, None
 
@@ -111,10 +119,14 @@ def get_character_info(name, slot, period, today):
 
     if today == misc.get_today():
         similar_character_avg = (
-            get_similar_character_avg(period, today, data["level"][-2]) if period > 1 else None
+            get_similar_character_avg(period, today, data["level"][-2])
+            if period > 1
+            else None
         )
     else:
-        similar_character_avg = get_similar_character_avg(period, today, data["level"][-1])
+        similar_character_avg = get_similar_character_avg(
+            period, today, data["level"][-1]
+        )
 
     df = pd.DataFrame(data)
     df["date"] = pd.to_datetime(df["date"])
@@ -125,14 +137,16 @@ def get_character_info(name, slot, period, today):
 
     df_avg = pd.DataFrame(all_character_avg)
     display_avg = len(df_avg) > 1 and not (
-        (df_avg["level"].max() < y_min - y_range / 10) or (df_avg["level"].min() > y_max + y_range / 3)
+        (df_avg["level"].max() < y_min - y_range / 10)
+        or (df_avg["level"].min() > y_max + y_range / 3)
     )
     if display_avg:
         df_avg["date"] = pd.to_datetime(df_avg["date"])
 
     df_sim = pd.DataFrame(similar_character_avg)
     display_sim = len(df_sim) > 1 and not (
-        (df_sim["level"].max() < y_min - y_range / 10) or (df_sim["level"].min() > y_max + y_range / 3)
+        (df_sim["level"].max() < y_min - y_range / 10)
+        or (df_sim["level"].min() > y_max + y_range / 3)
     )
     if display_sim:
         df_sim["date"] = pd.to_datetime(df_sim["date"])
@@ -141,7 +155,9 @@ def get_character_info(name, slot, period, today):
     smooth_coeff = 10
 
     labels = {
-        "default": (f"{name}의 캐릭터 레벨" if default else f"{name}의 {slot}번 캐릭터 레벨"),
+        "default": (
+            f"{name}의 캐릭터 레벨" if default else f"{name}의 {slot}번 캐릭터 레벨"
+        ),
     }
     if display_avg:
         labels["avg"] = "등록된 전체 캐릭터의 평균 레벨"
@@ -151,7 +167,9 @@ def get_character_info(name, slot, period, today):
     x = np.arange(len(df["date"]))
     y = df["level"].values
 
-    x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
+    x_new = np.linspace(
+        x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1
+    )
 
     y_smooth = misc.pchip_interpolate(x, y, x_new)
 
@@ -174,7 +192,9 @@ def get_character_info(name, slot, period, today):
         y_avg = df_avg["level"].values
 
         x_new_avg = np.linspace(
-            x_avg.min(), x_avg.max(), len(df_avg["date"]) * smooth_coeff - smooth_coeff + 1
+            x_avg.min(),
+            x_avg.max(),
+            len(df_avg["date"]) * smooth_coeff - smooth_coeff + 1,
         )
 
         y_smooth_avg = misc.pchip_interpolate(x_avg, y_avg, x_new_avg)
@@ -198,7 +218,9 @@ def get_character_info(name, slot, period, today):
         y_sim = df_sim["level"].values
 
         x_new_sim = np.linspace(
-            x_sim.min(), x_sim.max(), len(df_sim["date"]) * smooth_coeff - smooth_coeff + 1
+            x_sim.min(),
+            x_sim.max(),
+            len(df_sim["date"]) * smooth_coeff - smooth_coeff + 1,
         )
 
         y_smooth_sim = misc.pchip_interpolate(x_sim, y_sim, x_new_sim)
@@ -225,7 +247,9 @@ def get_character_info(name, slot, period, today):
     for i in range(len(df) - 1):
         plt.fill_between(
             df["date"][0]
-            + pd.to_timedelta(x_new[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1], unit="D"),
+            + pd.to_timedelta(
+                x_new[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1], unit="D"
+            ),
             y_smooth[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1],
             color="#A0DEFF",
             alpha=1,
@@ -303,14 +327,24 @@ def get_character_info(name, slot, period, today):
     else:
         ranks = gri.get_rank_data(today)
         for i, j in enumerate(ranks):
-            if j["name"] == name and int(j["level"]) == int(current_level) and j["job"] == df["job"].iat[-1]:
+            if (
+                j["name"] == name
+                and int(j["level"]) == int(current_level)
+                and j["job"] == df["job"].iat[-1]
+            ):
                 rank = j["rank"]
                 break
 
     text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
     text_slot = f"{slot}번 캐릭터 " if not default else ""
-    text_changed = f"{period}일간 {level_change:.2f}레벨 상승하셨어요!\n" if period != 1 else ""
-    text_rank = f"레벨 랭킹은 {rank}위에요." if rank is not None else "레벨 랭킹에는 아직 등록되지 않았어요."
+    text_changed = (
+        f"{period}일간 {level_change:.2f}레벨 상승하셨어요!\n" if period != 1 else ""
+    )
+    text_rank = (
+        f"레벨 랭킹은 {rank}위에요."
+        if rank is not None
+        else "레벨 랭킹에는 아직 등록되지 않았어요."
+    )
     # exp_change, next_lvup, max_lv_day
     text_exp = f"\n일일 평균 획득 경험치는 {exp_change}이고, {next_lvup}일 후에 레벨업을 할 것 같아요."
 
@@ -352,7 +386,9 @@ def get_charater_rank_history(name, period, today):
     start_date = start_date.strftime("%Y-%m-%d")
 
     data = dm.read_data(
-        "Ranks", index="id-date-index", condition_dict={"id": _id, "date": [start_date, today]}
+        "Ranks",
+        index="id-date-index",
+        condition_dict={"id": _id, "date": [start_date, today]},
     )
 
     if data is None:
@@ -388,7 +424,9 @@ def get_charater_rank_history(name, period, today):
         return f"{name}님의 랭킹 정보가 없어요.", None
 
     elif period == 1:  # 등록 직후 데이터가 없을 때
-        text_day = "지금" if today == misc.get_today().strftime("%Y-%m-%d") else today_text
+        text_day = (
+            "지금" if today == misc.get_today().strftime("%Y-%m-%d") else today_text
+        )
         text_rank = f"{name}님의 랭킹은 {101 - data[0]['rank']}위에요."
         return f"{text_day} {text_rank}", None
 
@@ -404,12 +442,19 @@ def get_charater_rank_history(name, period, today):
     x = np.arange(len(df["date"]))
     y = df["rank"].values
 
-    x_new = np.linspace(x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1)
+    x_new = np.linspace(
+        x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1
+    )
 
     y_smooth = misc.pchip_interpolate(x, y, x_new)
 
     plt.plot(
-        df["date"], df["rank"], color="C0", marker="o" if period <= 50 else ".", label=label, linestyle=""
+        df["date"],
+        df["rank"],
+        color="C0",
+        marker="o" if period <= 50 else ".",
+        label=label,
+        linestyle="",
     )
     plt.plot(
         df["date"][0] + pd.to_timedelta(x_new, unit="D"),
@@ -422,7 +467,9 @@ def get_charater_rank_history(name, period, today):
     for i in range(len(df) - 1):
         plt.fill_between(
             df["date"][0]
-            + pd.to_timedelta(x_new[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1], unit="D"),
+            + pd.to_timedelta(
+                x_new[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1], unit="D"
+            ),
             y_smooth[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1],
             color="#A0DEFF",
             alpha=1,
@@ -495,7 +542,9 @@ def get_character_data(name, slot, period, today):
 
     _id = misc.get_id(name)
 
-    db_data = dm.read_data("DailyData", None, {"id": _id, "date-slot": [f"{start_date}#0", f"{today}#4"]})
+    db_data = dm.read_data(
+        "DailyData", None, {"id": _id, "date-slot": [f"{start_date}#0", f"{today}#4"]}
+    )
 
     data = {"date": [], "level": [], "job": []}
     if db_data:
