@@ -125,10 +125,8 @@ def get_character_info(name, slot, period, today):
     all_character_avg = get_all_character_avg(period, today)
 
     if today == misc.get_today():
-        similar_character_avg = (
-            get_similar_character_avg(period, today, data["level"][-2])
-            if period > 1
-            else None
+        similar_character_avg = get_similar_character_avg(
+            period, today, data["level"][-2]
         )
     else:
         similar_character_avg = get_similar_character_avg(
@@ -331,7 +329,7 @@ def get_character_info(name, slot, period, today):
     l1 = df["level"].iat[-1]
     level_change = l1 - l0
 
-    exp_change, next_lvup, max_lv_day = calc_exp_change(float(l0), float(l1), period)
+    exp_avg, next_lvup, max_lv_day = calc_exp_change(float(l0), float(l1), period)
 
     rank = None
     if today == misc.get_today():
@@ -361,12 +359,10 @@ def get_character_info(name, slot, period, today):
 
     text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
     text_slot = f"{slot}번 캐릭터 " if not default else ""
-    text_changed = (
-        f"{period}일간 {level_change:.2f}레벨 상승하셨어요!" if period != 1 else ""
-    )
+    text_changed = f"{period}일간 총 {level_change:.2f}레벨, 매일 평균 {level_change / period:.2%} 상승하셨어요!"
     text_rank = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
     # exp_change, next_lvup, max_lv_day
-    text_exp = f"\n일일 평균 획득 경험치는 {exp_change}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요."
+    text_exp = f"\n일일 평균 획득 경험치는 {int(exp_avg)}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요."
 
     msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_exp}{text_rank}"
 
