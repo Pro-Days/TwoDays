@@ -69,6 +69,7 @@ def is_registered(name):
 
 
 if __name__ == "__main__":
-    print(register_player("asdf123", 1))
+    # print(register_player("asdf123", 1))
     # print(get_registered_players())
+    # print(is_registered("prodays123"))
     pass

@@ -58,15 +58,14 @@ json_objects = {
             },
             {
                 "name": "기간",
-                "description": "랭킹을 조회할 기간 (2~365)",
+                "description": "랭킹을 조회할 기간 (2~)",
                 "type": 4,
                 "required": False,
                 "min_value": 2,
-                "max_value": 365,
             },
             {
                 "name": "날짜",
-                "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",  # choices 추가
+                "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, -1, ...)",
                 "type": 3,
                 "required": False,
             },
@@ -97,15 +96,14 @@ json_objects = {
                     },
                     {
                         "name": "기간",
-                        "description": "캐릭터 정보를 조회할 기간 (2~365)",
+                        "description": "캐릭터 정보를 조회할 기간 (2~)",
                         "type": 4,
                         "required": False,
                         "min_value": 2,
-                        "max_value": 365,
                     },
                     {
                         "name": "날짜",
-                        "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",
+                        "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, -1, ...)",
                         "type": 3,
                         "required": False,
                     },
@@ -138,15 +136,14 @@ json_objects = {
                     },
                     {
                         "name": "기간",
-                        "description": "캐릭터 정보를 조회할 기간 (2~365)",
+                        "description": "캐릭터 정보를 조회할 기간 (2~)",
                         "type": 4,
                         "required": False,
                         "min_value": 2,
-                        "max_value": 365,
                     },
                     {
                         "name": "날짜",
-                        "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",
+                        "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, -1, ...)",
                         "type": 3,
                         "required": False,
                     },

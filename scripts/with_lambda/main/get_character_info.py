@@ -366,7 +366,7 @@ def get_character_info(name, slot, period, today):
     )
     text_rank = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
     # exp_change, next_lvup, max_lv_day
-    text_exp = f"\n일일 평균 획득 경험치는 {exp_change}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요.\n만렙까지는 약 {max_lv_day}일 남았어요."
+    text_exp = f"\n일일 평균 획득 경험치는 {exp_change}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요."
 
     msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_exp}{text_rank}"
 
@@ -390,7 +390,7 @@ def calc_exp_change(l0, l1, period):
 
     max_day = int(max_exp / exp_mean) + 1
 
-    return exp, next_lvup, max_day
+    return exp_mean, next_lvup, max_day
 
 
 def get_charater_rank_history(name, period, today):
