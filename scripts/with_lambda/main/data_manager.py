@@ -10,8 +10,8 @@ if os_name == "Linux":
         region_name="ap-northeast-2",
     )
 else:
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY", None)
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", None)
 
     session = boto3.Session(
         aws_access_key_id=AWS_ACCESS_KEY_ID,

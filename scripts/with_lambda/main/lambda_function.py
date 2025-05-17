@@ -69,12 +69,12 @@ def command_handler(event):
     # 일반 커맨드
     if cmd == "랭킹":
 
-        page = 1
+        range_str = "1..10"
         today = None
         period = None
         for i in options:
-            if i["name"] == "페이지":
-                page = i["value"]
+            if i["name"] == "랭킹 범위":
+                range_str = i["value"]
 
             elif i["name"] == "날짜":
                 today = i["value"]
@@ -91,10 +91,19 @@ def command_handler(event):
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
+        range_str = range_str.split("..")
+        _range = list(map(int, range_str))
+        if len(_range) != 2:
+            return sm.send(event, "랭킹 범위는 '시작..끝' 형식으로 입력해주세요.")
+        elif _range[0] < 1 or _range[1] > 100:
+            return sm.send(event, "랭킹 범위는 1~100 사이의 숫자로 입력해주세요.")
+        elif _range[0] >= _range[1]:
+            return sm.send(event, "랭킹 범위는 시작이 끝보다 작아야 합니다.")
+
         if period is None:
-            msg, image_path = gri.get_rank_info(page, today)
+            msg, image_path = gri.get_rank_info(_range, today)
         else:
-            msg, image_path = gri.get_rank_history(page, period, today)
+            msg, image_path = gri.get_rank_history(_range, period, today)
 
         if not msg:
             raise Exception("cannot get rank info")
@@ -189,7 +198,8 @@ def command_handler(event):
 
 
 if __name__ == "__main__":
-    lambda_handler({"action": "update_1D"}, None)
+    for i in range(135, -1, -1):
+        lambda_handler({"action": "update_1D", "days_before": i}, None)
     event = {
         "body": """
         {"authorizing_integration_owners":
@@ -203,17 +213,15 @@ if __name__ == "__main__":
                 "name":"채팅"
             },
         "data":{
-            "name":"검색",
+            "name":"랭킹",
             "options":[
                 {
-                    "name":"레벨",
-                    "options":[
-                        {
-                            "name":"닉네임",
-                            "type":3,
-                            "value":"prodays"
-                        }
-                    ]
+                    "name":"랭킹 범위",
+                    "value":"80..90"
+                },
+                {
+                    "name":"기간",
+                    "value":5
                 }
             ]
         },

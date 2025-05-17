@@ -1,4 +1,5 @@
 import misc
+import math
 import random
 import datetime
 import platform
@@ -54,10 +55,10 @@ def get_current_character_data(name, days_before=0):
         for _ in range(delta_days):
             d["level"] += Decimal(
                 round(
-                    40
-                    / (d["level"] ** Decimal(0.5))
-                    / (i + 2)
-                    * Decimal(coef + random.uniform(-0.3, 0.3)),
+                    Decimal(2.5)
+                    * Decimal(coef + random.uniform(-0.3, 0.8))
+                    * Decimal(math.cos((float(d["level"]) / 205) * math.pi / 2))
+                    / Decimal((i + 1) ** 0.5),
                     4,
                 )
             )
@@ -688,8 +689,8 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_charater_rank_history("prodays", 5, today))
-    print(get_character_info("prodays", None, 1, today))
-    # print(get_current_character_data("ProDays"))
+    # print(get_character_info("prodays", None, 1, today))
+    print(get_current_character_data("prodays", 0))
     # print(get_character_data("steve", 1, 7, today))
 
     pass

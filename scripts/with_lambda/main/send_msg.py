@@ -40,7 +40,7 @@ def send(event, msg, image=None, log_type=1, error=None):
         }
 
     else:
-        url = f"https://discord.com/api/v10/webhooks/{os.getenv("DISCORD_APP_ID")}/{interaction_token}/messages/@original"
+        url = f"https://discord.com/api/v10/webhooks/{os.getenv("DISCORD_APP_ID", None)}/{interaction_token}/messages/@original"
 
         headers = {"Content-Type": "application/json"}
 

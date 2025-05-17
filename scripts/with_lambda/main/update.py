@@ -18,7 +18,7 @@ def update_1D(event):
     """
     days_before = event.get("days_before", 0)
 
-    today = misc.get_today(days_before) - datetime.timedelta(days=1)
+    today = misc.get_today(days_before + 1)
 
     # 플레이어 업데이트
     try:
@@ -43,7 +43,7 @@ def update_1D(event):
 
     # 랭커 등록, 업데이트
     try:
-        rankdata = gri.get_current_rank_data(page=0, days_before=days_before + 1)
+        rankdata = gri.get_current_rank_data(None, days_before=days_before + 1)
 
         failed_list = []
         registered_names = rp.get_registered_players()
@@ -66,6 +66,7 @@ def update_1D(event):
                     "id": misc.get_id(name=name),
                     "job": misc.convert_job(j["job"]),
                     "level": j["level"],
+                    "slot": j["slot"],
                 }
 
                 dm.write_data("Ranks", item)
@@ -91,6 +92,7 @@ def update_1D(event):
                         "id": misc.get_id(name=name),
                         "job": misc.convert_job(j["job"]),
                         "level": j["level"],
+                        "slot": j["slot"],
                     }
 
                     dm.write_data("Ranks", item)
@@ -111,7 +113,7 @@ def update_player(event, name, id):
     days_before = event.get("days_before", 0)
 
     failed_list = []
-    today = misc.get_today(days_before) - datetime.timedelta(days=1)
+    today = misc.get_today(days_before + 1)
 
     try:
         data = gci.get_current_character_data(name, days_before + 1)  # 어제
