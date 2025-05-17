@@ -46,10 +46,13 @@ def download_image(url, num, list_name):
     list_name[num] = head_path
 
 
-def get_rank_data(day, page=0):
+def get_rank_data(day, page=0):  # page -> 범위로 변경
     data = data_manager.read_data(
         "Ranks", condition_dict={"date": day.strftime("%Y-%m-%d")}
     )
+
+    if data is None:
+        return None
 
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
@@ -61,23 +64,25 @@ def get_rank_data(day, page=0):
     return data if page == 0 else data[page * 10 - 10 : page * 10]
 
 
-def get_current_rank_data(page=0) -> dict:
+def get_current_rank_data(page=0, days_before=0) -> list:
     """
+    todo: page -> 범위로 변경
+
     현재 전체 캐릭터 랭킹 데이터 반환
     {"name": "ProDays", "job": "검호", "level": "100"}
     """
 
-    today = misc.get_today() - datetime.timedelta(days=1)
+    today = misc.get_today(days_before) - datetime.timedelta(days=1)
     today_str = today.strftime("%Y-%m-%d")
     base_date = datetime.date(2025, 1, 1)
 
     delta_days = (today - base_date).days
 
     players = register_player.get_registered_players()
+
     data = []
 
     for player in players:
-
         playerdata = data_manager.read_data(
             "DailyData",
             None,
@@ -94,6 +99,10 @@ def get_current_rank_data(page=0) -> dict:
 
     for d in data:
         name = misc.get_name(id=d["id"])
+
+        if name is None:
+            continue
+
         random.seed(sum(ord(c) for c in name.lower()) + 1)
         coef = random.uniform(0.3, 0.7)
 
@@ -124,7 +133,7 @@ def get_current_rank_data(page=0) -> dict:
     return rankdata[page * 10 - 10 : page * 10] if page != 0 else rankdata
 
 
-def get_rank_info(page, today):
+def get_rank_info(page: int, today: datetime.date) -> tuple:
     data = {
         "Rank": range(page * 10 - 9, page * 10 + 1),
         "Name": [],
@@ -138,6 +147,9 @@ def get_rank_info(page, today):
     else:
         current_data = get_rank_data(today, page)
 
+    if current_data is None:
+        return None, None
+
     # 실시간 랭킹 데이터를 가져와서 data에 추가
     for i in range(10):
         name = current_data[i]["name"]  # 닉네임 변경 반영한 최신 닉네임
@@ -148,7 +160,7 @@ def get_rank_info(page, today):
         user_id = misc.get_id(name=name)
 
         if user_id is None:  # 1. 등록x -> 등록 2. 닉네임 변경 -> 등록
-            register_player.register_player(name)
+            register_player.register_player(name, 1)
             user_id = misc.get_id(name=name)
 
         prev_date = today - datetime.timedelta(days=1)
@@ -156,12 +168,17 @@ def get_rank_info(page, today):
 
         prev_rank = data_manager.read_data(
             "Ranks", "id-date-index", {"id": user_id, "date": prev_date_str}
-        )[0]["rank"]
+        )
 
         if prev_rank is None:
             data["Change"].append(None)
         else:
-            data["Change"].append(prev_rank - (i + page * 10 - 9))
+            prev_rank = sorted(prev_rank, key=lambda x: x["rank"])
+
+            for j in prev_rank:
+                if j["level"] <= current_data[i]["level"]:
+                    data["Change"].append(j["rank"] - (i + page * 10 - 9))
+                    break
 
     avatar_images = [""] * 10
 
@@ -222,19 +239,9 @@ def get_rank_info(page, today):
         )
 
     x_offset = -10
+    x_list = [34, 110, 90, 66, 68]
     for i, text in enumerate(header_text):
-        if i == 0:
-            x = x_offset + 34
-        elif i == 1:
-            x = x_offset + 110
-        elif i == 2:
-            x = x_offset + 90
-        elif i == 3:
-            x = x_offset + 66
-        elif i == 4:
-            x = x_offset + 68
-
-        draw.text((x + 24, 30), text, fill="black", font=font)
+        draw.text((x_offset + x_list[i] + 24, 30), text, fill="black", font=font)
         x_offset += header_widths[i]
 
     for i in range(len(data["Rank"])):
@@ -451,17 +458,20 @@ def get_rank_info(page, today):
     return msg, image_path
 
 
-def get_rank_history(page, period, today):
-    current_data = get_current_rank_data() if today == misc.get_today() else None
+def get_rank_history(page: int, period: int, day: datetime.date) -> tuple:
+    current_data = get_current_rank_data() if day == misc.get_today() else None
 
-    start_date = today - datetime.timedelta(days=period - 1)
-    today = today.strftime("%Y-%m-%d")
+    start_date = day - datetime.timedelta(days=period - 1)
+    today = day.strftime("%Y-%m-%d")
     start_date = start_date.strftime("%Y-%m-%d")
 
     data = data_manager.scan_data(
         "Ranks",
         filter_dict={"date": [start_date, today], "rank": [page * 10 - 9, page * 10]},
     )
+
+    if data is None:
+        return None, None
 
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
@@ -540,6 +550,9 @@ def get_rank_history(page, period, today):
         group = df[df["id"] == player_id]
         color_idx = i % len(colors)  # Cycle through colors if more players than colors
         player_name = misc.get_name(id=int(player_id))  # 플레이어 이름 가져오기
+
+        if player_name is None:
+            continue
 
         # 데이터 프레임에서 날짜를 정렬하여 날짜 간격을 확인
         sorted_group = group.sort_values(by="date")
@@ -682,7 +695,7 @@ def get_rank_history(page, period, today):
     tick_indices = range(len(df["date"].unique()) - 1, -1, -3)  # 역순으로
 
     # 실제 데이터 포인트의 날짜만 선택
-    ticks = [mdates.date2num(df["date"].unique()[i]) for i in tick_indices]
+    ticks = [float(mdates.date2num(df["date"].unique()[i])) for i in tick_indices]
     ax.xaxis.set_major_locator(ticker.FixedLocator(ticks))
 
     # x축 범위를 데이터 범위로 제한 (여백 추가)
@@ -719,11 +732,11 @@ def get_rank_history(page, period, today):
 
 
 if __name__ == "__main__":
-    # today = datetime.datetime.strptime("2025-02-15", "%Y-%m-%d").date()
-    today = misc.get_today()
+    today = datetime.datetime.strptime("2025-05-16", "%Y-%m-%d").date()
+    # today = misc.get_today()
 
-    print(get_rank_history(1, 50, today))
-    # print(get_rank_info(1, today))
+    # print(get_rank_history(1, 50, today))
+    print(get_rank_info(1, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))

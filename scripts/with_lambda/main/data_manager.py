@@ -19,13 +19,13 @@ else:
         region_name="ap-northeast-2",
     )
 
-db_name = os.environ.get("DB_NAME")
+db_name = os.environ.get("DB_NAME", "")
 dynamodb = session.resource("dynamodb")
 
 
 def read_data(table_name, index=None, condition_dict=None):
     table_name = db_name + "-" + table_name
-    table = dynamodb.Table(table_name)
+    table = dynamodb.Table(table_name)  # type: ignore
 
     condition = None
     if condition_dict:
@@ -55,7 +55,7 @@ def read_data(table_name, index=None, condition_dict=None):
 
 def scan_data(table_name, index=None, key=None, filter_dict=None):
     table_name = db_name + "-" + table_name
-    table = dynamodb.Table(table_name)
+    table = dynamodb.Table(table_name)  # type: ignore
 
     filter_data = None
     if filter_dict:
@@ -97,7 +97,7 @@ def scan_data(table_name, index=None, key=None, filter_dict=None):
 
 def write_data(table_name, item):
     table_name = db_name + "-" + table_name
-    table = dynamodb.Table(table_name)
+    table = dynamodb.Table(table_name)  # type: ignore
 
     table.put_item(Item=item)
 

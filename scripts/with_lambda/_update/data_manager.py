@@ -27,7 +27,6 @@ def read_data(table_name, index=None, condition_dict=None):
     table_name = db_name + "-" + table_name
     table = dynamodb.Table(table_name)
 
-    # value가 범위인 경우 추가 (예: level)
     condition = None
     if condition_dict:
         for key, value in condition_dict.items():

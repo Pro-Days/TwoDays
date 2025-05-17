@@ -47,5 +47,5 @@ def get_current_character_data(event, name):
 
 
 if __name__ == "__main__":
-    print(get_current_character_data({}, "12u3h1u23"))
+    print(get_current_character_data("12u3h1u23", {}))
     pass

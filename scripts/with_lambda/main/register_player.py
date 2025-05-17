@@ -14,8 +14,8 @@ def register_player(name, slot):
     if profile is None:
         return -1
 
-    uuid = profile["id"]
-    name = profile["name"]
+    uuid = profile[name]["id"]
+    name = profile[name]["name"]
 
     item = data_manager.read_data("Users", "uuid-index", {"uuid": uuid})
 
@@ -32,6 +32,7 @@ def register_player(name, slot):
         )
 
         return 1
+
     else:  # 등록된 플레이어 (mainSlot만 변경 or 닉네임 변경)
         data_manager.write_data(
             "Users",
@@ -50,6 +51,9 @@ def register_player(name, slot):
 def get_registered_players():
     items = data_manager.scan_data("Users")
 
+    if items is None:
+        return list()
+
     for item in items:
         del item["lower_name"]
 
@@ -57,7 +61,9 @@ def get_registered_players():
 
 
 def is_registered(name):
-    items = data_manager.read_data("Users", "lower_name-index", {"lower_name": name.lower()})
+    items = data_manager.read_data(
+        "Users", "lower_name-index", {"lower_name": name.lower()}
+    )
 
     return items is not None
 

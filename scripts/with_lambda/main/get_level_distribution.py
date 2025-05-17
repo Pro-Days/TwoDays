@@ -24,13 +24,14 @@ matplotlib.use("Agg")
 def get_level_distribution(today):
     today_text = today.strftime("%Y-%m-%d")
 
-    datas = [
-        data_manager.scan_data("DailyData", filter_dict={"date-slot": f"{today_text}#{i}"}) for i in range(5)
-    ]
-
     data = []
     for i in range(5):
-        data.extend(datas[i])
+        temp_data = data_manager.scan_data(
+            "DailyData", filter_dict={"date-slot": f"{today_text}#{i}"}
+        )
+
+        if temp_data:
+            data.extend(temp_data)
 
     for i in range(len(data)):
         data[i] = float(data[i]["level"])
@@ -40,7 +41,9 @@ def get_level_distribution(today):
     # 히스토그램 그리기
     plt.figure(figsize=(10, 6))
     bins = 120  # Fixed number of bins
-    n, bins, patches = plt.hist(data, bins=bins, range=(0, 300), alpha=1.0, color="skyblue")
+    n, bins, patches = plt.hist(
+        data, bins=bins, range=(0, 300), alpha=1.0, color="skyblue"
+    )
 
     # Add labels and title
     plt.xlabel("레벨", fontsize=12)

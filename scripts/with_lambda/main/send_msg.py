@@ -34,7 +34,9 @@ def send(event, msg, image=None, log_type=1, error=None):
 
         return {
             "statusCode": 200,
-            "body": json.dumps({"message": "메시지 전송 성공", "response": response.json(), "msg": msg}),
+            "body": json.dumps(
+                {"message": "메시지 전송 성공", "response": response.json(), "msg": msg}
+            ),
         }
 
     else:
@@ -50,7 +52,9 @@ def send(event, msg, image=None, log_type=1, error=None):
 
         return {
             "statusCode": 200,
-            "body": json.dumps({"message": "메시지 전송 성공", "response": response.json(), "msg": msg}),
+            "body": json.dumps(
+                {"message": "메시지 전송 성공", "response": response.json(), "msg": msg}
+            ),
         }
 
 
@@ -61,124 +65,196 @@ def send_log(log_type, event, msg="", image=None):
     log_type: 3 - 디스코드 에러 로그
     """
 
-    body = json.loads(event["body"])
-    command_type = body["authorizing_integration_owners"].keys()  # 0: 서버, 1: 유저
+    now = f"<t:{int(time.time())}:f>"
 
-    guild_id = body["guild_id"]
-    channel_id = body["channel"]["id"]
-    member_id = body["member"]["user"]["id"]
-    member_name = body["member"]["user"]["global_name"]
-    member_username = body["member"]["user"]["username"]
+    if log_type in [1, 2, 3]:
+        body = json.loads(event["body"])
+        command_type = body["authorizing_integration_owners"].keys()  # 0: 서버, 1: 유저
 
-    if "0" in command_type:
+        guild_id = body["guild_id"]
+        channel_id = body["channel"]["id"]
+        member_id = body["member"]["user"]["id"]
+        member_name = body["member"]["user"]["global_name"]
+        member_username = body["member"]["user"]["username"]
+
         guild_name = misc.get_guild_name(guild_id)
         channel_name = body["channel"]["name"]
 
-    now = f"<t:{int(time.time())}:f>"
+        if (log_type == 1) or (log_type == 2):
 
-    if (log_type == 1) or (log_type == 2):
+            if "0" in command_type:
+                embed_json = {
+                    "time": now,
+                    "type": "서버",
+                    "server": f"{guild_name} ({guild_id})",
+                    "channel": f"{channel_name} ({channel_id})",
+                    "author": f"{member_name} - {member_username} ({member_id})",
+                    "cmd": (
+                        f"{body["data"]["name"]}\n{body['data']['options']}"
+                        if "options" in body["data"]
+                        else body["data"]["name"]
+                    ),
+                    "msg": msg,
+                }
+            else:
+                embed_json = {
+                    "time": now,
+                    "type": "유저",
+                    "server": f"{guild_id}",
+                    "channel": f"{channel_id}",
+                    "author": f"{member_name} - {member_username} ({member_id})",
+                    "cmd": (
+                        f"{body["data"]["name"]}\n{body['data']['options']}"
+                        if "options" in body["data"]
+                        else body["data"]["name"]
+                    ),
+                    "msg": msg,
+                }
 
-        if "0" in command_type:
-            embed_json = {
-                "time": now,
-                "type": "서버",
-                "server": f"{guild_name} ({guild_id})",
-                "channel": f"{channel_name} ({channel_id})",
-                "author": f"{member_name} - {member_username} ({member_id})",
-                "cmd": (
-                    f"{body["data"]["name"]}\n{body['data']['options']}"
-                    if "options" in body["data"]
-                    else body["data"]["name"]
-                ),
-                "msg": msg,
-            }
+            if log_type == 1:
+                title = "투데이즈 명령어 로그"
+                color = 3447003
+
+            else:  # 2
+                title = "투데이즈 관리자 명령어 로그"
+                color = 10181046
+
+            fields = []
+            for key, value in embed_json.items():
+                if value != None:
+                    fields.append(
+                        {
+                            "name": key,
+                            "value": value,
+                            "inline": False,
+                        }
+                    )
+
+        elif log_type == 3:
+            if "0" in command_type:
+                embed_json = {
+                    "time": now,
+                    "type": "서버",
+                    "server": f"{guild_name} ({guild_id})",
+                    "channel": f"{channel_name} ({channel_id})",
+                    "author": f"{member_name} - {member_username} ({member_id})",
+                    "cmd": (
+                        f"{body["data"]["name"]}\n{body['data']['options']}"
+                        if "options" in body["data"]
+                        else body["data"]["name"]
+                    ),
+                    "error": msg,
+                }
+            else:
+                embed_json = {
+                    "time": now,
+                    "type": "유저",
+                    "server": f"{guild_id}",
+                    "channel": f"{channel_id}",
+                    "author": f"{member_name} - {member_username} ({member_id})",
+                    "cmd": (
+                        f"{body["data"]["name"]}\n{body['data']['options']}"
+                        if "options" in body["data"]
+                        else body["data"]["name"]
+                    ),
+                    "error": msg,
+                }
+
+            title = "투데이즈 명령어 에러 로그"
+            color = 15548997
+
+            fields = []
+            for key, value in embed_json.items():
+                if value != None:
+                    fields.append(
+                        {
+                            "name": key,
+                            "value": value,
+                            "inline": False,
+                        }
+                    )
+
         else:
+            return
+
+    else:
+        if log_type == 4:
             embed_json = {
                 "time": now,
-                "type": "유저",
-                "server": f"{guild_id}",
-                "channel": f"{channel_id}",
-                "author": f"{member_name} - {member_username} ({member_id})",
-                "cmd": (
-                    f"{body["data"]["name"]}\n{body['data']['options']}"
-                    if "options" in body["data"]
-                    else body["data"]["name"]
-                ),
-                "msg": msg,
+                "cmd": event["action"],
             }
 
-        if log_type == 1:
-            title = "투데이즈 명령어 로그"
+            title = "투데이즈 데이터 업데이트 로그"
             color = 3447003
 
-        elif log_type == 2:
-            title = "투데이즈 관리자 명령어 로그"
-            color = 10181046
+            fields = []
+            for key, value in embed_json.items():
+                if value != None:
+                    fields.append(
+                        {
+                            "name": key,
+                            "value": value,
+                            "inline": False,
+                        }
+                    )
 
-        fields = []
-        for key, value in embed_json.items():
-            if value != None:
-                fields.append(
-                    {
-                        "name": key,
-                        "value": value,
-                        "inline": False,
-                    }
-                )
-
-    elif log_type == 3:
-        if "0" in command_type:
+        elif log_type == 5:
             embed_json = {
                 "time": now,
-                "type": "서버",
-                "server": f"{guild_name} ({guild_id})",
-                "channel": f"{channel_name} ({channel_id})",
-                "author": f"{member_name} - {member_username} ({member_id})",
-                "cmd": (
-                    f"{body["data"]["name"]}\n{body['data']['options']}"
-                    if "options" in body["data"]
-                    else body["data"]["name"]
-                ),
+                "cmd": event["action"],
                 "error": msg,
             }
+
+            title = "투데이즈 데이터 업데이트 에러 로그"
+            color = 15548997
+
+            fields = []
+            for key, value in embed_json.items():
+                if value != None:
+                    fields.append(
+                        {
+                            "name": key,
+                            "value": value,
+                            "inline": False,
+                        }
+                    )
+
+        elif log_type == 6:
+            embed_json = {
+                "time": now,
+                "cmd": event["action"],
+                "error": msg,
+            }
+
+            title = "투데이즈 플레이어 등록 / 업데이트 로그"
+            color = 3447003
+
+            fields = []
+            for key, value in embed_json.items():
+                if value != None:
+                    fields.append(
+                        {
+                            "name": key,
+                            "value": value,
+                            "inline": False,
+                        }
+                    )
+
         else:
-            embed_json = {
-                "time": now,
-                "type": "유저",
-                "server": f"{guild_id}",
-                "channel": f"{channel_id}",
-                "author": f"{member_name} - {member_username} ({member_id})",
-                "cmd": (
-                    f"{body["data"]["name"]}\n{body['data']['options']}"
-                    if "options" in body["data"]
-                    else body["data"]["name"]
-                ),
-                "error": msg,
-            }
-
-        title = "투데이즈 명령어 에러 로그"
-        color = 15548997
-
-        fields = []
-        for key, value in embed_json.items():
-            if value != None:
-                fields.append(
-                    {
-                        "name": key,
-                        "value": value,
-                        "inline": False,
-                    }
-                )
+            return
 
     # 로그 전송
     payload = {
-        "content": "" if log_type in [1, 2] else f"<@{ADMIN_ID}>",
+        "content": "" if log_type in [1, 2, 4] else f"<@{ADMIN_ID}>",
         "embeds": [{"title": title, "color": color, "fields": fields}],
     }
 
     url = f"https://discord.com/api/v10/channels/{LOG_CHANNEL_ID}/messages"
 
-    headers = {"Authorization": f"Bot {DISCORD_TOKEN}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bot {DISCORD_TOKEN}",
+        "Content-Type": "application/json",
+    }
 
     response = requests.post(url, headers=headers, data=json.dumps(payload))
 

@@ -3,11 +3,14 @@ import datetime
 import requests
 import platform
 import numpy as np
+import mojang
+
+from typing import Optional, Literal
 
 import data_manager
 
 
-def convert_path(path):
+def convert_path(path: str) -> str:
     """
     운영 체제에 따라 경로를 변환함.
     윈도우에서는 백슬래시를 사용하고, 유닉스에서는 슬래시를 사용.
@@ -20,7 +23,7 @@ def convert_path(path):
     return os.path.normpath(system_path)
 
 
-def get_ip():
+def get_ip() -> str:
     response = requests.get("https://api64.ipify.org?format=json")
 
     data = response.json()
@@ -28,7 +31,7 @@ def get_ip():
     return data["ip"]
 
 
-def get_guild_name(guild_id):
+def get_guild_name(guild_id: str) -> str:
     url = f"https://discord.com/api/v10/guilds/{guild_id}"
 
     headers = {"Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"}
@@ -39,7 +42,7 @@ def get_guild_name(guild_id):
     return data["name"]
 
 
-def get_guild_list():
+def get_guild_list() -> list[dict[str, str]]:
     url = "https://discord.com/api/v10/users/@me/guilds"
 
     headers = {"Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"}
@@ -50,79 +53,139 @@ def get_guild_list():
     return data
 
 
-def get_name(name="", id=""):
+def get_name(
+    name: str = "", id: int = 0
+) -> Optional[str]:  # get_profile으로 대체 Class Profile
     if name:
-        data = data_manager.read_data("Users", "lower_name-index", {"lower_name": name.lower()})
+        data = data_manager.read_data(
+            "Users", "lower_name-index", {"lower_name": name.lower()}
+        )
+
     elif id:
         data = data_manager.read_data("Users", condition_dict={"id": id})
+
+    else:
+        return None
 
     return data[0]["name"] if data else None
 
 
-def get_uuid(name=""):
-    data = data_manager.read_data("Users", "lower_name-index", {"lower_name": name.lower()})
+def get_uuid(name: str) -> Optional[str]:
+    data = data_manager.read_data(
+        "Users", "lower_name-index", {"lower_name": name.lower()}
+    )
 
     return data[0]["uuid"] if data else None
 
 
-def get_profile_from_mc(name="", uuid="", names=None):
+def get_profile_from_mc(
+    name: str = "", uuid: str = "", names: Optional[list[str]] = None
+) -> Optional[dict[str, dict[str, str]]]:
+    api = mojang.API()
+
     if name:
-        response = requests.get(f"https://api.minecraftservices.com/minecraft/profile/lookup/name/{name}")
-        if not "name" in response:
-            response = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{name}")
+        _uuid = api.get_uuid(name)
+        if not _uuid:
+            return None
+
+        _name = api.get_username(_uuid)
+        if not _name:
+            return None
+
+        return {name: {"uuid": _uuid, "name": _name}}
+
+        # response = requests.get(
+        #     f"https://api.minecraftservices.com/minecraft/profile/lookup/name/{name}"
+        # )
+        # if not "name" in response:
+        #     response = requests.get(
+        #         f"https://api.mojang.com/users/profiles/minecraft/{name}"
+        #     )
 
     elif uuid:
-        response = requests.get(f"https://api.minecraftservices.com/minecraft/profile/lookup/{uuid}")
-        if not "name" in response:
-            response = requests.get(f"https://api.mojang.com/user/profile/{uuid}")
+        _name = api.get_username(uuid)
+        if not _name:
+            return None
+
+        _uuid = api.get_uuid(_name)
+        if not _uuid:
+            return None
+
+        return {_uuid: {"uuid": _uuid, "name": _name}}
+
+        # response = requests.get(
+        #     f"https://api.minecraftservices.com/minecraft/profile/lookup/{uuid}"
+        # )
+        # if not "name" in response:
+        #     response = requests.get(f"https://api.mojang.com/user/profile/{uuid}")
 
     elif names:
         # names를 10개 단위로 나눔
         chunk_size = 10
-        chunked_list = [names[i : i + chunk_size] for i in range(0, len(names), chunk_size)]
+        chunked_list = [
+            names[i : i + chunk_size] for i in range(0, len(names), chunk_size)
+        ]
 
-        profiles = []
+        profiles: dict[str, dict[str, str]] = {}
 
         for chunk in chunked_list:
-            response = requests.post(
-                "https://api.minecraftservices.com/minecraft/profile/lookup/bulk/byname", json=chunk
-            )
+            uuids = api.get_uuids(chunk)
+            for _name, _uuid in uuids.items():
+                for __name in names:
+                    if _name.lower() == __name.lower():
+                        profiles[__name] = {"uuid": _uuid, "name": _name}
 
-            data = response.json()
+            # response = requests.post(
+            #     "https://api.minecraftservices.com/minecraft/profile/lookup/bulk/byname",
+            #     json=chunk,
+            # )
 
-            if len(data) != len(chunk):
-                data.extend([{}] * (len(chunk) - len(data)))
+            # data = response.json()
 
-            profiles.extend(data)
+            # if len(data) != len(chunk):
+            #     data.extend([{}] * (len(chunk) - len(data)))
+
+            # profiles.extend(data)
 
         return profiles
 
-    return response.json() if response.status_code == 200 else None
+    # return response.json() if response.status_code == 200 else None
 
 
-def get_id(name="", uuid=""):
+def get_id(name: str = "", uuid: str = "") -> Optional[int]:
     if name:
-        data = data_manager.read_data("Users", "lower_name-index", {"lower_name": name.lower()})
+        data = data_manager.read_data(
+            "Users", "lower_name-index", {"lower_name": name.lower()}
+        )
+
     elif uuid:
         data = data_manager.read_data("Users", "uuid-index", {"uuid": uuid})
+
+    else:
+        return None
 
     return int(data[0]["id"]) if data else None
 
 
-def get_max_id():
+def get_max_id() -> int:
     data = data_manager.scan_data("Users", key="id")
+
+    if not data:
+        return 0
 
     max_id = max([int(item["id"]) for item in data])
 
     return max_id
 
 
-def get_main_slot(name):
-    data = data_manager.read_data("Users", "lower_name-index", {"lower_name": name.lower()})
-    return int(data[0]["mainSlot"])
+def get_main_slot(name: str) -> Optional[int]:
+    data = data_manager.read_data(
+        "Users", "lower_name-index", {"lower_name": name.lower()}
+    )
+    return int(data[0]["mainSlot"]) if data else None
 
 
-def convert_job(job):
+def convert_job(job: int | str) -> Optional[str]:
     job_dict = {
         "0": "검호",
         "1": "매화",
@@ -145,39 +208,43 @@ def convert_job(job):
     return job_dict[str(job)]
 
 
-def get_today():
-    kst_now = datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=9)
+def get_today(days_before=0) -> datetime.date:
+    kst_now = (
+        datetime.datetime.now(datetime.UTC)
+        + datetime.timedelta(hours=9)
+        - datetime.timedelta(days=days_before)
+    )
     today_kst = kst_now.date()
 
     return today_kst
 
 
-def get_today_from_input(today):
+def get_today_from_input(day: Optional[str]) -> datetime.date | Literal[-1, -2]:
     """
     -1: 날짜 입력이 올바르지 않음
     -2: 미래 날짜
     today: datetime.date
     """
-    # YYYY-MM-DD, MM-DD, DD, 1일전, ...
+    # YYYY-MM-DD, MM-DD, DD, -1, ...
     try:
         todayR = get_today()
 
-        if today:
-            if (idx := today.find("일전")) != -1:
-                date = int(today[:idx])
+        if day:
+            if day[0] == "-" and day[1:].isdigit():
+                date = int(day[1:])
                 today = todayR - datetime.timedelta(days=date)
 
             else:
-                date_type = today.count("-")
+                date_type = day.count("-")
                 today_list = str(todayR).split("-")
 
                 if date_type == 0:  # 날짜만
-                    today = "-".join(today_list[:2]) + "-" + today
+                    day = "-".join(today_list[:2]) + "-" + day
 
                 if date_type == 1:
-                    today = today_list[0] + "-" + today
+                    day = today_list[0] + "-" + day
 
-                today = datetime.datetime.strptime(today, "%Y-%m-%d").date()
+                today = datetime.datetime.strptime(day, "%Y-%m-%d").date()
 
         else:
             today = todayR
@@ -191,7 +258,7 @@ def get_today_from_input(today):
     return today
 
 
-def pchip_slopes(x, y):
+def pchip_slopes(x: np.ndarray, y: np.ndarray) -> np.ndarray:
     """
     (x, y)가 주어졌을 때, 각 x[i]에서의 접선 기울기 m[i]를
     Fritsch-Carlson 방법에 따라 계산하여 반환합니다.
@@ -221,7 +288,7 @@ def pchip_slopes(x, y):
     return m
 
 
-def pchip_interpolate(x, y, x_new):
+def pchip_interpolate(x: np.ndarray, y: np.ndarray, x_new: np.ndarray) -> np.ndarray:
     """
     x, y 데이터를 PCHIP 방식으로 보간하여,
     새로 주어진 x_new에서의 보간값을 반환합니다.

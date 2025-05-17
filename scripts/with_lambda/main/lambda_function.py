@@ -7,6 +7,7 @@ import send_msg as sm
 import get_rank_info as gri
 import register_player as rp
 import get_character_info as gci
+import update
 
 
 ADMIN_ID = os.getenv("DISCORD_ADMIN_ID")
@@ -27,8 +28,15 @@ def lambda_handler(event, context):
 
 def command_handler(event):
 
-    body = json.loads(event["body"])
+    if event.get("action", None) == "update_1D":
+        update.update_1D(event)
 
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"message": "업데이트 완료"}, ensure_ascii=False),
+        }
+
+    body = json.loads(event["body"])
     cmd = body["data"]["name"]
     options = body["data"]["options"] if "options" in body["data"] else []
 
@@ -76,7 +84,10 @@ def command_handler(event):
 
         today = misc.get_today_from_input(today)
         if today == -1:
-            return sm.send(event, "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)")
+            return sm.send(
+                event,
+                "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",
+            )
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
@@ -85,6 +96,9 @@ def command_handler(event):
         else:
             msg, image_path = gri.get_rank_history(page, period, today)
 
+        if not msg:
+            raise Exception("cannot get rank info")
+
         return sm.send(event, msg, image=image_path)
 
     elif cmd == "검색":
@@ -92,6 +106,7 @@ def command_handler(event):
         _type = options[0]["name"]
         options = options[0]["options"]
 
+        name = None
         slot = None
         period = 7
         today = None
@@ -109,24 +124,32 @@ def command_handler(event):
             elif i["name"] == "날짜":
                 today = i["value"]
 
+        if name is None:
+            return sm.send(event, "닉네임을 입력해주세요.")
+
         register_msg = None
-        if rp.is_registered(name) is False:
+        if not rp.is_registered(name):
             result = rp.register_player(name, 1)
 
             if result == 1:
-                register_msg = f"등록되어있지 않은 플레이어네요. {name}님을 등록했어요.\n\n"
+                register_msg = (
+                    f"등록되어있지 않은 플레이어네요. {name}님을 등록했어요.\n\n"
+                )
             elif result == -1:
                 return sm.send(event, f"오류가 발생했어요. 닉네임을 확인해주세요.")
 
         today = misc.get_today_from_input(today)
         if today == -1:
-            return sm.send(event, "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)")
+            return sm.send(
+                event,
+                "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",
+            )
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
         if _type == "레벨":
             msg, image_path = gci.get_character_info(name, slot, period, today)
-        elif _type == "랭킹":
+        else:  # 랭킹
             msg, image_path = gci.get_charater_rank_history(name, period, today)
 
         if register_msg:
@@ -136,6 +159,7 @@ def command_handler(event):
 
     elif cmd == "등록":
 
+        name = None
         slot = 1
         for i in options:
 
@@ -145,15 +169,63 @@ def command_handler(event):
             elif i["name"] == "슬롯":
                 slot = i["value"]
 
+        if name is None:
+            return sm.send(event, "닉네임을 입력해주세요.")
+
         result = rp.register_player(name, slot)
 
-        if result == 1:
-            msg = f"{name}님을 등록했습니다."
-        elif result == -1:
+        if result == -1:
             msg = f"{name}님의 등록에 실패했습니다. 닉네임을 확인해주세요."
+        else:  # 1, 2
+            msg = f"{name}님을 등록했습니다."
 
         return sm.send(event, msg)
 
     else:
-        sm.send(event, "오류가 발생했습니다.", log_type=3, error=f"unhandled command: {cmd}")
+        sm.send(
+            event, "오류가 발생했습니다.", log_type=3, error=f"unhandled command: {cmd}"
+        )
         return {"statusCode": 400, "body": json.dumps(f"unhandled command: {cmd}")}
+
+
+if __name__ == "__main__":
+    # lambda_handler({"action": "update_1D"}, None)
+    event = {
+        "body": """
+        {"authorizing_integration_owners":
+            {
+                "0":"738633695186911232",
+                "1":"407775594714103808"
+            },
+        "channel":
+            {
+                "id":"1248627932037910558",
+                "name":"채팅"
+            },
+        "data":{
+            "name":"검색",
+            "options":[
+                {
+                    "name":"레벨",
+                    "options":[
+                        {
+                            "name":"닉네임",
+                            "type":3,
+                            "value":"prodays"
+                        }
+                    ]
+                }
+            ]
+        },
+        "guild_id":"738633695186911232",
+        "member":{
+            "user":{
+                "global_name":"데이즈",
+                "id":"407775594714103808",
+                "username":"prodays"
+                }
+            }
+        }""",
+    }
+    lambda_handler(event, None)
+    pass
