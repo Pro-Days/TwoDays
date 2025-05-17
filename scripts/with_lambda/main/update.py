@@ -33,8 +33,8 @@ def update_1D(event):
             # t.start()
             # threads.append(t)
 
-            # 2 players/sec: 600 players -> 5 min: 50 won/month
-            # time.sleep(0.5)
+            # 10 players/sec: 1000 players -> 100 sec
+            # time.sleep(0.1)
 
         for t in threads:
             t.join()

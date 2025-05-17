@@ -7,6 +7,7 @@ import send_msg as sm
 import get_rank_info as gri
 import register_player as rp
 import get_character_info as gci
+import get_level_distribution as gld
 import update
 
 
@@ -86,7 +87,7 @@ def command_handler(event):
         if today == -1:
             return sm.send(
                 event,
-                "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",
+                "날짜 입력이 올바르지 않습니다: YYYY-MM-DD, MM-DD, DD, -n (예시: 2025-12-31, 12-01, 05, -1, -20)",
             )
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
@@ -151,7 +152,7 @@ def command_handler(event):
         if today == -1:
             return sm.send(
                 event,
-                "날짜 입력이 올바르지 않습니다. (YYYY-MM-DD, MM-DD, DD, 1일전, ...)",
+                "날짜 입력이 올바르지 않습니다: YYYY-MM-DD, MM-DD, DD, -n (예시: 2025-12-31, 12-01, 05, -1, -20)",
             )
         elif today == -2:
             return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
@@ -163,6 +164,28 @@ def command_handler(event):
 
         if register_msg:
             msg = register_msg + msg
+
+        return sm.send(event, msg, image=image_path)
+
+    elif cmd == "유저분포":
+
+        today = "-1"
+        for i in options:
+            if i["name"] == "날짜":
+                today = i["value"]
+
+        today = misc.get_today_from_input(today)
+        if today == -1:
+            return sm.send(
+                event,
+                "날짜 입력이 올바르지 않습니다: YYYY-MM-DD, MM-DD, DD, -n (예시: 2025-12-31, 12-01, 05, -1, -20)",
+            )
+        elif today == -2:
+            return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
+        elif today == misc.get_today():
+            return sm.send(event, "오늘 날짜는 조회할 수 없습니다.")
+
+        msg, image_path = gld.get_level_distribution(today)
 
         return sm.send(event, msg, image=image_path)
 
