@@ -73,7 +73,7 @@ def command_handler(event):
         today = None
         period = None
         for i in options:
-            if i["name"] == "랭킹 범위":
+            if i["name"] == "랭킹범위":
                 range_str = i["value"]
 
             elif i["name"] == "날짜":

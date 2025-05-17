@@ -49,23 +49,21 @@ json_objects = {
         "description": "캐릭터 레벨 랭킹을 보여줍니다.",
         "options": [
             {
-                "name": "페이지",
-                "description": "페이지 번호 (1~10)",
-                "type": 4,
+                "name": "랭킹범위",
+                "description": "랭킹 범위: 1~100..1~100 (예시: 1..10, 70..100)",
+                "type": 3,
                 "required": False,
-                "min_value": 1,
-                "max_value": 10,
             },
             {
                 "name": "기간",
-                "description": "랭킹을 조회할 기간 (2~)",
+                "description": "랭킹을 조회할 기간: 2~ (예시: 2, 10, 123)",
                 "type": 4,
                 "required": False,
                 "min_value": 2,
             },
             {
                 "name": "날짜",
-                "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, -1, ...)",
+                "description": "캐릭터 정보를 조회할 기준 날짜: YYYY-MM-DD, MM-DD, DD, -n (예시: 2025-12-31, 12-01, 05, -1, -20)",
                 "type": 3,
                 "required": False,
             },
@@ -90,20 +88,20 @@ json_objects = {
                 "options": [
                     {
                         "name": "닉네임",
-                        "description": "캐릭터 닉네임",
+                        "description": "캐릭터 닉네임: 대소문자 구분X (예시: ProDays, prodays, PRODAYS)",
                         "type": 3,
                         "required": True,
                     },
                     {
                         "name": "기간",
-                        "description": "캐릭터 정보를 조회할 기간 (2~)",
+                        "description": "캐릭터 정보를 조회할 기간: 2~ (예시: 2, 10, 123)",
                         "type": 4,
                         "required": False,
                         "min_value": 2,
                     },
                     {
                         "name": "날짜",
-                        "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, -1, ...)",
+                        "description": "캐릭터 정보를 조회할 기준 날짜: YYYY-MM-DD, MM-DD, DD, -1, ... (예시: 2025-12-31, 12-01, 05, -1, -20)",
                         "type": 3,
                         "required": False,
                     },
@@ -128,7 +126,7 @@ json_objects = {
                     },
                     {
                         "name": "슬롯",
-                        "description": "캐릭터 슬롯 번호 (1~5)",
+                        "description": "캐릭터 슬롯 번호: 1~5 (예시: 1, 2, 3, 4, 5)",
                         "type": 4,
                         "required": False,
                         "min_value": 1,
@@ -136,14 +134,14 @@ json_objects = {
                     },
                     {
                         "name": "기간",
-                        "description": "캐릭터 정보를 조회할 기간 (2~)",
+                        "description": "캐릭터 정보를 조회할 기간: 2~ (예시: 2, 10, 123)",
                         "type": 4,
                         "required": False,
                         "min_value": 2,
                     },
                     {
                         "name": "날짜",
-                        "description": "캐릭터 정보를 조회할 기준 날짜 (YYYY-MM-DD, MM-DD, DD, -1, ...)",
+                        "description": "캐릭터 정보를 조회할 기준 날짜: YYYY-MM-DD, MM-DD, DD, -1, ... (예시: 2025-12-31, 12-01, 05, -1, -20)",
                         "type": 3,
                         "required": False,
                     },
@@ -171,7 +169,7 @@ json_objects = {
             },
             {
                 "name": "슬롯",
-                "description": "메인 캐릭터 (본캐) 슬롯 번호 (1~5)",
+                "description": "메인 캐릭터 (본캐) 슬롯 번호: 1~5 (예시: 1, 2, 3, 4, 5)",
                 "type": 4,
                 "required": False,
                 "min_value": 1,
