@@ -84,11 +84,19 @@ def get_profile_from_mc(
     api = mojang.API()
 
     if name:
-        _uuid = api.get_uuid(name)
+        try:
+            _uuid = api.get_uuid(name)
+        except:
+            return None
+
         if not _uuid:
             return None
 
-        _name = api.get_username(_uuid)
+        try:
+            _name = api.get_username(_uuid)
+        except:
+            return None
+
         if not _name:
             return None
 
@@ -103,11 +111,19 @@ def get_profile_from_mc(
         #     )
 
     elif uuid:
-        _name = api.get_username(uuid)
+        try:
+            _name = api.get_username(uuid)
+        except:
+            return None
+
         if not _name:
             return None
 
-        _uuid = api.get_uuid(_name)
+        try:
+            _uuid = api.get_uuid(_name)
+        except:
+            return None
+
         if not _uuid:
             return None
 
@@ -129,7 +145,11 @@ def get_profile_from_mc(
         profiles: dict[str, dict[str, str]] = {}
 
         for chunk in chunked_list:
-            uuids = api.get_uuids(chunk)
+            try:
+                uuids = api.get_uuids(chunk)
+            except:
+                continue
+
             for _name, _uuid in uuids.items():
                 for __name in names:
                     if _name.lower() == __name.lower():
@@ -350,9 +370,9 @@ def get_exp_data():
 if __name__ == "__main__":
     # print(get_guild_list())
     # print(get_max_id())
-    # print(get_profile_from_mc(name="aasdwdddddwdwdwd"))
+    print(get_profile_from_mc(names=["prodays", "prodays2"]))
     # print(get_main_slot("prodays"))
     # print(get_today_from_input("12일전"))
-    print(get_name(id=1))
+    # print(get_name(id=1))
 
     pass

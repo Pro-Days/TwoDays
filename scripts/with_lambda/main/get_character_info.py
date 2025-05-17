@@ -366,9 +366,9 @@ def get_character_info(name, slot, period, today):
     )
     text_rank = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
     # exp_change, next_lvup, max_lv_day
-    text_exp = f"\n일일 평균 획득 경험치는 {exp_change}이고, {next_lvup}일 후에 레벨업을 할 것 같아요."
+    text_exp = f"\n일일 평균 획득 경험치는 {exp_change}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요.\n만렙까지는 약 {max_lv_day}일 남았어요."
 
-    msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_rank}{text_exp}"
+    msg = f"{text_day} {name}님의 {text_slot}레벨은 {current_level:.2f}이고, {text_changed}{text_exp}{text_rank}"
 
     return msg, image_path
 
@@ -691,8 +691,8 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_charater_rank_history("prodays", 5, today))
-    # print(get_character_info("prodays", None, 7, today))
+    # print(get_charater_rank_history("prodays", 5, today))
+    print(get_character_info("prodays", None, 1, today))
     # print(get_current_character_data("ProDays"))
     # print(get_character_data("steve", 1, 7, today))
 
