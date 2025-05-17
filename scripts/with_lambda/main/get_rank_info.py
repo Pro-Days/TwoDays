@@ -726,7 +726,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
         image_path = "/tmp/image.png"
     else:
         image_path = "image.png"
-    plt.savefig(image_path, dpi=300, bbox_inches="tight")
+    plt.savefig(image_path, dpi=200, bbox_inches="tight")
     plt.close()
 
     msg = f"{period}일 동안의 {_range[0]}~{_range[1]}위 랭킹 히스토리를 보여드릴게요."
@@ -737,7 +737,7 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-05-16", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # print(get_rank_history([1, 20], 30, today))
+    # print(get_rank_history([1, 30], 10, today))
     print(get_rank_info([1, 30], today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))

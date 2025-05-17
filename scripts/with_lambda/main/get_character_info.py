@@ -322,7 +322,7 @@ def get_character_info(name, slot, period, today):
     else:
         image_path = "image.png"
 
-    plt.savefig(image_path, dpi=300, bbox_inches="tight")
+    plt.savefig(image_path, dpi=250, bbox_inches="tight")
     plt.close()
 
     current_level = df["level"].iat[-1]
@@ -412,17 +412,25 @@ def get_charater_rank_history(name, period, today):
     )
 
     if data is None:
-        data = []
+        data = []  # Remove unnecessary fields
 
-    for i, j in enumerate(data):
-        del data[i]["level"]
-        del data[i]["job"]
-        del data[i]["id"]
+    for item in data:
+        del item["level"]
+        del item["job"]
+        del item["id"]
 
-        for i1, j1 in enumerate(data.copy()):
-            if j["date"] == j1["date"] and j["rank"] > j1["rank"]:
-                del data[i]
-                break
+    # Group by date and keep only the entry with smallest rank for each date
+    date_to_best_rank = {}
+    for item in data:
+        date = item["date"]
+        if (
+            date not in date_to_best_rank
+            or item["rank"] < date_to_best_rank[date]["rank"]
+        ):
+            date_to_best_rank[date] = item
+
+    # Reconstruct the list with only the entries with smallest rank per date
+    data = list(date_to_best_rank.values())
 
     for i, j in enumerate(data):
         data[i]["rank"] = 101 - int(j["rank"])
@@ -542,7 +550,7 @@ def get_charater_rank_history(name, period, today):
     else:
         image_path = "image.png"
 
-    plt.savefig(image_path, dpi=300, bbox_inches="tight")
+    plt.savefig(image_path, dpi=250, bbox_inches="tight")
     plt.close()
 
     msg = f"{period}일 동안의 {name}님의 랭킹 변화를 보여드릴게요."
@@ -688,9 +696,9 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # print(get_charater_rank_history("prodays", 5, today))
-    # print(get_character_info("prodays", None, 1, today))
-    print(get_current_character_data("1mkr", 0))
+    print(get_charater_rank_history("prodays", 100, today))
+    # print(get_character_info("prodays", None, 100, today))
+    # print(get_current_character_data("1mkr", 0))
     # print(get_character_data("steve", 1, 7, today))
 
     pass
