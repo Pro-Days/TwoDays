@@ -189,7 +189,7 @@ def command_handler(event):
 
 
 if __name__ == "__main__":
-    # lambda_handler({"action": "update_1D"}, None)
+    lambda_handler({"action": "update_1D"}, None)
     event = {
         "body": """
         {"authorizing_integration_owners":
@@ -227,5 +227,5 @@ if __name__ == "__main__":
             }
         }""",
     }
-    lambda_handler(event, None)
+    # lambda_handler(event, None)
     pass

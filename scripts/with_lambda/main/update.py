@@ -43,7 +43,7 @@ def update_1D(event):
 
     # 랭커 등록, 업데이트
     try:
-        rankdata = gri.get_current_rank_data()
+        rankdata = gri.get_current_rank_data(page=0, days_before=days_before + 1)
 
         failed_list = []
         registered_names = rp.get_registered_players()
