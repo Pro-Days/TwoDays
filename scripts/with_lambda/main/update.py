@@ -46,8 +46,8 @@ def update_1D(event):
         rankdata = gri.get_current_rank_data(None, days_before=days_before + 1)
 
         failed_list = []
-        registered_names = rp.get_registered_players()
-        registered_names = [player["name"] for player in registered_names]
+        registered_players = rp.get_registered_players()
+        registered_names = [player["name"] for player in registered_players]
         for i, j in enumerate(rankdata):
             try:
                 name = j["name"]
@@ -118,6 +118,14 @@ def update_player(event, name, id):
     try:
         data = gci.get_current_character_data(name, days_before + 1)  # 어제
 
+        if not misc.get_profile_from_mc(name):  # 웹사이트 열리면 코드 필요 없음
+            result = rp.register_player(name, misc.get_main_slot(name))
+
+            if result == 1:
+                sm.send_log(6, event, f"{name} 등록")
+            elif result == 2:
+                sm.send_log(6, event, f"{name} 업데이트")
+
         if not data:
             result = rp.register_player(name, misc.get_main_slot(name))
 
@@ -142,6 +150,14 @@ def update_player(event, name, id):
     if failed_list:
         try:
             data = gci.get_current_character_data(name, days_before + 1)  # 어제
+
+            if not misc.get_profile_from_mc(name):  # 웹사이트 열리면 코드 필요 없음
+                result = rp.register_player(name, misc.get_main_slot(name))
+
+                if result == 1:
+                    sm.send_log(6, event, f"{name} 등록")
+                elif result == 2:
+                    sm.send_log(6, event, f"{name} 업데이트")
 
             if not data:
                 result = rp.register_player(name, misc.get_main_slot(name))

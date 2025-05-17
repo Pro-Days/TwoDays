@@ -318,7 +318,7 @@ def get_character_info(name, slot, period, today):
 
     os_name = platform.system()
     if os_name == "Linux":
-        image_path = misc.convert_path("\\tmp\\image.png")
+        image_path = "/tmp/image.png"
     else:
         image_path = "image.png"
 
@@ -546,7 +546,7 @@ def get_charater_rank_history(name, period, today):
 
     os_name = platform.system()
     if os_name == "Linux":
-        image_path = misc.convert_path("\\tmp\\image.png")
+        image_path = "/tmp/image.png"
     else:
         image_path = "image.png"
 

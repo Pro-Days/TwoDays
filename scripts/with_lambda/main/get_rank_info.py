@@ -432,7 +432,7 @@ def get_rank_info(_range: list[int], today: datetime.date) -> tuple:
     # 이미지 저장
     os_name = platform.system()
     if os_name == "Linux":
-        image_path = misc.convert_path("\\tmp\\image.png")
+        image_path = "/tmp/image.png"
     else:
         image_path = "image.png"
 

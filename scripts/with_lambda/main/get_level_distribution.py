@@ -1,6 +1,5 @@
 import datetime
 import platform
-import random
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -78,8 +77,4 @@ if __name__ == "__main__":
     today = misc.get_today() - datetime.timedelta(days=1)
 
     print(get_level_distribution(today))
-    # print(get_rank_info(1, today))
-    # print(get_current_rank_data())
-    # print(get_prev_player_rank(50, "2025-01-01"))
-    # print(get_rank_data(datetime.date(2025, 2, 1)))
     pass
