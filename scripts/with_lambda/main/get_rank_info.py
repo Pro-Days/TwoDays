@@ -448,6 +448,8 @@ def get_rank_info(_range: list[int], today: datetime.date) -> tuple:
 def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tuple:
     current_data = get_current_rank_data() if day == misc.get_today() else None
 
+    rank_count = _range[1] - _range[0] + 1
+
     start_date = day - datetime.timedelta(days=period - 1)
     today = day.strftime("%Y-%m-%d")
     start_date = start_date.strftime("%Y-%m-%d")
@@ -463,7 +465,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
         data[i]["id"] = int(j["id"])
-        data[i]["level"] = j["level"]
+        data[i]["slot"] = int(j["slot"])
 
         del data[i]["job"]
 
@@ -475,6 +477,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
                         "date": today,
                         "rank": i + 1,
                         "id": misc.get_id(name=j["name"]),
+                        "slot": j["slot"],
                     }
                 )
 
@@ -487,7 +490,9 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
     df["date"] = pd.to_datetime(df["date"])
 
     # plt.figure(figsize=(10 * math.log10(period), 6))
-    plt.figure(figsize=(period * 0.5 if period >= 15 else period * 0.3 + 3, 6))
+    plt.figure(
+        figsize=(period * 0.5 if period >= 15 else period * 0.3 + 3, 0.6 * rank_count)
+    )
 
     # Define a custom color palette for better distinction between lines
     colors = [
@@ -504,42 +509,51 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
         "#436e6f",
         "#c56477",
         "#ac7f0f",
-    ]
+    ]  # Create a unique identifier for each player-slot combination
+    df["player_slot_id"] = df["id"].astype(str) + "_" + df["slot"].astype(str)
 
-    # Get unique player IDs
-    player_ids = df["id"].unique()
+    # Get unique player-slot combinations
+    player_slot_ids = df["player_slot_id"].unique()
 
     # 가장 최근 날짜의 데이터 찾기
     latest_date = df["date"].max()
 
-    # 각 플레이어의 최근 순위 찾기 (높은 순위를 나중에 그려 위에 표시되도록)
+    # 각 플레이어-슬롯 조합의 최근 순위 찾기 (높은 순위를 나중에 그려 위에 표시되도록)
     player_latest_ranks = {}
-    for player_id in player_ids:
-        player_data = df[df["id"] == player_id]
-        # 해당 ID의 가장 최근 날짜 데이터 찾기
+    for player_slot_id in player_slot_ids:
+        player_data = df[df["player_slot_id"] == player_slot_id]
+        # 해당 ID와 슬롯의 가장 최근 날짜 데이터 찾기
         player_latest = player_data[player_data["date"] == player_data["date"].max()]
         if not player_latest.empty:
-            player_latest_ranks[player_id] = player_latest["rank"].iloc[0]
+            player_latest_ranks[player_slot_id] = player_latest["rank"].iloc[0]
         else:
-            player_latest_ranks[player_id] = 999  # 데이터가 없는 경우 낮은 우선순위
-
-    # 최근 순위 기준으로 오름차순 정렬 (낮은 순위 먼저, 높은 순위 나중에 그려서 위에 표시)
-    sorted_player_ids = sorted(
-        player_ids, key=lambda pid: player_latest_ranks[pid], reverse=True
+            player_latest_ranks[player_slot_id] = (
+                999  # 데이터가 없는 경우 낮은 우선순위    # 최근 순위 기준으로 오름차순 정렬 (낮은 순위 먼저, 높은 순위 나중에 그려서 위에 표시)
+            )
+    sorted_player_slot_ids = sorted(
+        player_slot_ids, key=lambda psid: player_latest_ranks[psid], reverse=True
     )
 
     # 텍스트 라벨의 위치를 추적하기 위한 딕셔너리
     # key: (date, rank) 좌표, value: 해당 좌표에 이미 텍스트가 있는지 여부
-    text_positions = {}
-
-    # Plot each player's data with a specific color, 최근 순위가 높은 플레이어가 가장 나중에 그려져 위에 표시됨
-    for i, player_id in enumerate(sorted_player_ids):
-        group = df[df["id"] == player_id]
+    text_positions = (
+        {}
+    )  # Plot each player-slot combination's data with a specific color, 최근 순위가 높은 플레이어가 가장 나중에 그려져 위에 표시됨
+    for i, player_slot_id in enumerate(sorted_player_slot_ids):
+        group = df[df["player_slot_id"] == player_slot_id]
         color_idx = i % len(colors)  # Cycle through colors if more players than colors
-        player_name = misc.get_name(id=int(player_id))  # 플레이어 이름 가져오기
+
+        # Extract player ID and slot from the combined ID
+        player_id, slot = player_slot_id.split("_")
+        player_id = int(player_id)
+        slot = int(slot)
+
+        player_name = misc.get_name(id=player_id)  # 플레이어 이름 가져오기
 
         if player_name is None:
             continue
+
+        player_label = player_name
 
         # 데이터 프레임에서 날짜를 정렬하여 날짜 간격을 확인
         sorted_group = group.sort_values(by="date")
@@ -575,11 +589,11 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
         # 각 연속된 날짜 그룹마다 별도의 선으로 그리기
         for group_idx, group_data in enumerate(date_groups):
             if len(group_data) > 0:
-                group_df = pd.DataFrame(group_data)
-
-                # 단일 데이터 포인트인지 확인 (선이 아니라 점)
+                group_df = pd.DataFrame(
+                    group_data
+                )  # 단일 데이터 포인트인지 확인 (선이 아니라 점)
                 is_single_point = len(group_df) == 1
-                zorder = 100 - player_latest_ranks[player_id]
+                zorder = 100 - player_latest_ranks[player_slot_id]
 
                 if not is_single_point:
                     # 선 그리기 (마커 없이)
@@ -616,15 +630,16 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
                 last_rank = group_df["rank"].iloc[-1]
 
                 # 날짜와 순위를 이용해 위치 키를 생성
-                position_key = (mdates.date2num(last_date), last_rank)
-
-                # 가장 최근 날짜 데이터의 경우 우측에 표시 (겹침 없음, 항상 오른쪽에)
+                position_key = (
+                    mdates.date2num(last_date),
+                    last_rank,
+                )  # 가장 최근 날짜 데이터의 경우 우측에 표시 (겹침 없음, 항상 오른쪽에)
                 if last_date == latest_date:
                     plt.text(
                         last_date
                         + pd.Timedelta(days=0.5),  # 마지막 날짜보다 조금 오른쪽
                         last_rank,
-                        player_name,
+                        player_label,
                         color="black",
                         fontweight="bold",
                         fontsize=10,
@@ -651,7 +666,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
                         plt.text(
                             last_date,  # 마지막 데이터 위치
                             last_rank + 0.4,  # 데이터 포인트보다 약간 아래에
-                            player_name,
+                            player_label,
                             color="black",
                             fontweight="bold",
                             fontsize=10,
@@ -663,7 +678,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
                         plt.text(
                             last_date,  # 마지막 데이터 위치
                             last_rank - 0.2,  # 데이터 포인트보다 약간 위에
-                            player_name,
+                            player_label,
                             color="black",
                             fontweight="bold",
                             fontsize=10,
@@ -722,9 +737,9 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-05-16", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # print(get_rank_history([80, 90], 10, today))
-    # print(get_rank_info([1, 10], today))
-    print(get_current_rank_data())
+    # print(get_rank_history([1, 20], 30, today))
+    print(get_rank_info([1, 30], today))
+    # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))
     pass
