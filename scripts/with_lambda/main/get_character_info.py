@@ -690,7 +690,7 @@ if __name__ == "__main__":
 
     # print(get_charater_rank_history("prodays", 5, today))
     # print(get_character_info("prodays", None, 1, today))
-    print(get_current_character_data("prodays", 0))
+    print(get_current_character_data("1mkr", 0))
     # print(get_character_data("steve", 1, 7, today))
 
     pass

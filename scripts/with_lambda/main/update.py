@@ -168,5 +168,5 @@ def update_player(event, name, id):
 
 
 if __name__ == "__main__":
-    # print(lambda_handler({"action": "update_1D"}, None))
+    update_1D({})
     pass

@@ -20,6 +20,7 @@ import matplotlib.patheffects as path_effects  # Added import for path effects
 import misc
 import data_manager
 import register_player
+import get_character_info as gci
 
 plt.style.use("seaborn-v0_8-pastel")
 if platform.system() == "Linux":
@@ -74,7 +75,7 @@ def get_current_rank_data(_range: Optional[list[int]] = None, days_before=0) -> 
     {"name": "ProDays", "job": "검호", "level": "100", "slot": 1}
     """
 
-    today = misc.get_today(days_before)
+    today = misc.get_today(days_before + 1)
     today_str = today.strftime("%Y-%m-%d")
 
     players = register_player.get_registered_players()
@@ -102,11 +103,17 @@ def get_current_rank_data(_range: Optional[list[int]] = None, days_before=0) -> 
         if name is None:
             continue
 
+        level = gci.get_current_character_data(name, days_before)
+
+        if not level:
+            continue
+        level = level[d["slot"] - 1]["level"]
+
         rankdata.append(
             {
                 "name": name,
                 "job": misc.convert_job(d["job"]),
-                "level": Decimal(d["level"]),
+                "level": level,
                 "slot": d["slot"],
             }
         )
@@ -715,9 +722,9 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-05-16", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_rank_history([80, 90], 10, today))
-    # print(get_rank_info(1, today))
-    # print(get_current_rank_data())
+    # print(get_rank_history([80, 90], 10, today))
+    # print(get_rank_info([1, 10], today))
+    print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))
     pass
