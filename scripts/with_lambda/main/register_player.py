@@ -14,7 +14,7 @@ def register_player(name, slot):
     if profile is None:
         return -1
 
-    uuid = profile[name]["id"]
+    uuid = profile[name]["uuid"]
     name = profile[name]["name"]
 
     item = data_manager.read_data("Users", "uuid-index", {"uuid": uuid})
@@ -69,6 +69,6 @@ def is_registered(name):
 
 
 if __name__ == "__main__":
-    # register_player("asdf123", 1)
-    print(get_registered_players())
+    print(register_player("asdf123", 1))
+    # print(get_registered_players())
     pass
