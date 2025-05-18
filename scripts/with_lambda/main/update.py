@@ -228,5 +228,5 @@ def update_player(event, name, id):
 
 
 if __name__ == "__main__":
-    update_1D({})
+    update_1D({"action": "update_1D"})
     pass
