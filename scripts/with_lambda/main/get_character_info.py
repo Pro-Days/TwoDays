@@ -650,39 +650,46 @@ def get_similar_character_avg(period, today, level):
         return None
 
     chars = []
-    level_range = 5
-
-    for i in db_data:
-        date, slot = i["date-slot"].split("#")
-        slot = int(slot)
-
-        todayR = misc.get_today()
-
-        if today == todayR.strftime("%Y-%m-%d"):
-            if (
-                date == (todayR - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-                and (-level_range <= i["level"] - level <= level_range)
-                and not (i["id"], slot) in chars
-            ):
-                chars.append((i["id"], slot))
-
-        else:
-            if (
-                date == today
-                and (-level_range <= i["level"] - level <= level_range)
-                and not (i["id"], slot) in chars
-            ):  # 레벨 범위 이후에 수정
-                chars.append((i["id"], slot))
-
+    level_range = 1
     dates = {}
-    for i in db_data:
-        date, slot = i["date-slot"].split("#")
 
-        if not date in dates.keys():
-            dates[date] = []
+    while level_range < 10:
+        for i in db_data:
+            date, slot = i["date-slot"].split("#")
+            slot = int(slot)
 
-        if (i["id"], int(slot)) in chars:
-            dates[date].append(i["level"])
+            todayR = misc.get_today()
+
+            if today == todayR.strftime("%Y-%m-%d"):
+                if (
+                    date == (todayR - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+                    and (-level_range <= i["level"] - level <= level_range)
+                    and not (i["id"], slot) in chars
+                ):
+                    chars.append((i["id"], slot))
+
+            else:
+                if (
+                    date == today
+                    and (-level_range <= i["level"] - level <= level_range)
+                    and not (i["id"], slot) in chars
+                ):  # 레벨 범위 이후에 수정
+                    chars.append((i["id"], slot))
+
+        dates = {}
+        for i in db_data:
+            date, slot = i["date-slot"].split("#")
+
+            if not date in dates.keys():
+                dates[date] = []
+
+            if (i["id"], int(slot)) in chars:
+                dates[date].append(i["level"])
+
+        if len(dates[max(dates.keys())]) < 10:
+            level_range += 1
+        else:
+            break
 
     for date in sorted(dates.keys()):
         if dates[date]:
@@ -696,9 +703,10 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_charater_rank_history("prodays", 100, today))
-    # print(get_character_info("prodays", None, 100, today))
+    # print(get_charater_rank_history("prodays", 100, today))
+    print(get_character_info("prodays", 2, 10, today))
     # print(get_current_character_data("1mkr", 0))
     # print(get_character_data("steve", 1, 7, today))
+    # print(get_similar_character_avg(7, today, 1))
 
     pass

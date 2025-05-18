@@ -73,6 +73,8 @@ def get_current_rank_data(_range: Optional[list[int]] = None, days_before=0) -> 
 
     현재 전체 캐릭터 랭킹 데이터 반환
     {"name": "ProDays", "job": "검호", "level": "100", "slot": 1}
+
+    slot은 닉네임 확인 후 직접 검색해서 입력
     """
 
     today = misc.get_today(days_before + 1)
