@@ -160,7 +160,7 @@ def command_handler(event):
         if _type == "레벨":
             msg, image_path = gci.get_character_info(name, slot, period, today)
         else:  # 랭킹
-            msg, image_path = gci.get_charater_rank_history(name, period, today)
+            msg, image_path = gci.get_charater_rank_history(name, slot, period, today)
 
         if register_msg:
             msg = register_msg + msg

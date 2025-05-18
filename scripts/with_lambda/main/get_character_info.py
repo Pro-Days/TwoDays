@@ -69,11 +69,12 @@ def get_current_character_data(name, days_before=0):
 def get_character_info(name, slot, period, today):
     if slot is None:
         slot = misc.get_main_slot(name)
+        default = True
+    else:
+        default = slot == misc.get_main_slot(name)
 
     data = get_character_data(name, slot, period, today)
     name = misc.get_name(name)
-
-    default = slot == 1
 
     if data == None:
         return (
@@ -390,7 +391,13 @@ def calc_exp_change(l0, l1, period):
     return exp_mean, next_lvup, max_day
 
 
-def get_charater_rank_history(name, period, today):
+def get_charater_rank_history(name, slot, period, today):
+    if slot is None:
+        slot = misc.get_main_slot(name)
+        default = True
+    else:
+        default = slot == misc.get_main_slot(name)
+
     name = misc.get_name(name)
 
     if name is None:
@@ -403,59 +410,66 @@ def get_charater_rank_history(name, period, today):
     start_date = today - datetime.timedelta(days=period - 1)
     today_text = today.strftime("%Y년 %m월 %d일")
     today = today.strftime("%Y-%m-%d")
-    start_date = start_date.strftime("%Y-%m-%d")
+    start_date_str = start_date.strftime("%Y-%m-%d")
 
     data = dm.read_data(
         "Ranks",
         index="id-date-index",
-        condition_dict={"id": _id, "date": [start_date, today]},
+        condition_dict={"id": _id, "date": [start_date_str, today]},
     )
 
     if data is None:
-        data = []  # Remove unnecessary fields
+        data = []
+    else:
+        ranks = {}
+        for d in range(period):
+            date = start_date + datetime.timedelta(days=d)
+            date_str = date.strftime("%Y-%m-%d")
 
-    for item in data:
-        del item["level"]
-        del item["job"]
-        del item["id"]
+            if (
+                date_str == today
+                or date < datetime.datetime.strptime(data[0]["date"], "%Y-%m-%d").date()
+            ):
+                continue
 
-    # Group by date and keep only the entry with smallest rank for each date
-    date_to_best_rank = {}
-    for item in data:
-        date = item["date"]
-        if (
-            date not in date_to_best_rank
-            or item["rank"] < date_to_best_rank[date]["rank"]
-        ):
-            date_to_best_rank[date] = item
+            for item in data:
+                if item["date"] == date_str and item["slot"] == slot:
+                    ranks[item["date"]] = item
+                    break
+            else:
+                ranks[date_str] = {
+                    "rank": 101,
+                    "date": date_str,
+                }
 
-    # Reconstruct the list with only the entries with smallest rank per date
-    data = list(date_to_best_rank.values())
-
-    for i, j in enumerate(data):
-        data[i]["rank"] = 101 - int(j["rank"])
+        data = list(ranks.values())
 
     if current_data is not None:
         for i, j in enumerate(current_data):  # job level name
-            if j["name"].lower() == name.lower():
+            if j["name"].lower() == name.lower() and j["slot"] == slot:
                 data.append(
                     {
-                        "rank": 100 - i,
+                        "rank": i + 1,
                         "date": today,
                     }
                 )
                 break
+        else:
+            data.append(
+                {
+                    "rank": 101,
+                    "date": today,
+                }
+            )
 
-    period = len(set([i["date"] for i in data]))
+    period = len(data)
 
-    if period == 0:
-        return f"{name}님의 랭킹 정보가 없어요.", None
-
-    elif period == 1:  # 등록 직후 데이터가 없을 때
+    if period == 1:  # 등록 직후 데이터가 없을 때
         text_day = (
             "지금" if today == misc.get_today().strftime("%Y-%m-%d") else today_text
         )
-        text_rank = f"{name}님의 랭킹은 {101 - data[0]['rank']}위에요."
+        cur_rank = data[0]["rank"]
+        text_rank = f"{name}님의{f' {slot}번 슬롯' if not default else ''} 랭킹은 {f'{cur_rank}위에요.' if cur_rank < 101 else '순위에 등록되어있지 않아요.'}"
         return f"{text_day} {text_rank}", None
 
     # 이미지 생성
@@ -465,10 +479,10 @@ def get_charater_rank_history(name, period, today):
     plt.figure(figsize=(10, 4))
     smooth_coeff = 10
 
-    label = f"{name}의 랭킹 히스토리"
+    label = f"{name}의{f' {slot}번 슬롯' if not default else ''} 랭킹 히스토리"
 
     x = np.arange(len(df["date"]))
-    y = np.array(df["rank"].values, dtype=float)
+    y = np.array(df["rank"], dtype=float)
 
     x_new = np.linspace(
         x.min(), x.max(), len(df["date"]) * smooth_coeff - smooth_coeff + 1
@@ -477,20 +491,28 @@ def get_charater_rank_history(name, period, today):
     y_smooth = misc.pchip_interpolate(x, y, x_new)
 
     plt.plot(
-        df["date"],
-        df["rank"],
+        df["date"][0] + pd.to_timedelta(x_new, unit="D"),
+        y_smooth,
+        color="C0",
+    )
+    plt.plot(
+        df["date"][df["rank"] < 101],
+        df["rank"][df["rank"] < 101],
         color="C0",
         marker="o" if period <= 50 else ".",
         label=label,
         linestyle="",
     )
     plt.plot(
-        df["date"][0] + pd.to_timedelta(x_new, unit="D"),
-        y_smooth,
-        color="C0",
+        df["date"][df["rank"] == 101],
+        df["rank"][df["rank"] == 101],
+        color="C2",
+        marker="o" if period <= 50 else ".",
+        linestyle="",
     )
 
-    plt.ylim(df["rank"].min() - 5, df["rank"].max() + 5)
+    ylim = (min(df["rank"].max() + 5, 102), max(df["rank"].min() - 5, -1))
+    plt.ylim(ylim)
 
     for i in range(len(df) - 1):
         plt.fill_between(
@@ -499,6 +521,7 @@ def get_charater_rank_history(name, period, today):
                 x_new[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1], unit="D"
             ),
             y_smooth[i * smooth_coeff : i * smooth_coeff + smooth_coeff + 1],
+            101,
             color="#A0DEFF",
             alpha=1,
         )
@@ -529,12 +552,25 @@ def get_charater_rank_history(name, period, today):
     # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
     for i in tick_indices:
         plt.annotate(
-            f'{101 - df["rank"].iloc[i]}위',
+            f'{df["rank"].iloc[i]}위' if df["rank"].iloc[i] < 101 else "N/A",
             (df["date"].iloc[i], df["rank"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
         )
+
+    # 최고 랭킹에 텍스트 추가
+    if min(df["rank"]) < 101:
+        date = int(df["rank"].idxmin())
+
+        if date not in tick_indices:
+            plt.annotate(
+                f'{min(df["rank"])}위',
+                (df["date"].iloc[date], df["rank"].min()),
+                textcoords="offset points",
+                xytext=(0, 10),
+                ha="center",
+            )
 
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -542,7 +578,7 @@ def get_charater_rank_history(name, period, today):
     # ax.spines["bottom"].set_visible(False)
 
     plt.yticks([])
-    plt.legend(loc="upper left")
+    plt.legend()
 
     os_name = platform.system()
     if os_name == "Linux":
@@ -553,7 +589,7 @@ def get_charater_rank_history(name, period, today):
     plt.savefig(image_path, dpi=250, bbox_inches="tight")
     plt.close()
 
-    msg = f"{period}일 동안의 {name}님의 랭킹 변화를 보여드릴게요."
+    msg = f"{period}일 동안의 {name}님의{f' {slot}번 슬롯' if not default else ''} 랭킹 변화를 보여드릴게요."
 
     return msg, image_path
 
@@ -703,8 +739,8 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # print(get_charater_rank_history("prodays", 100, today))
-    print(get_character_info("prodays", 2, 10, today))
+    print(get_charater_rank_history("abca", 1, 10, today))
+    # print(get_character_info("prodays", 2, 10, today))
     # print(get_current_character_data("1mkr", 0))
     # print(get_character_data("steve", 1, 7, today))
     # print(get_similar_character_avg(7, today, 1))
