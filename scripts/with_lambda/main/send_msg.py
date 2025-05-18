@@ -63,6 +63,9 @@ def send_log(log_type, event, msg="", image=None):
     log_type: 1 - 명령어 로그
     log_type: 2 - 관리자 명령어 로그
     log_type: 3 - 디스코드 에러 로그
+    log_type: 4 - 데이터 업데이트 로그
+    log_type: 5 - 데이터 업데이트 에러 로그
+    log_type: 6 - 플레이어 등록 / 업데이트 로그
     """
 
     now = f"<t:{int(time.time())}:f>"
@@ -223,7 +226,7 @@ def send_log(log_type, event, msg="", image=None):
             embed_json = {
                 "time": now,
                 "cmd": event["action"],
-                "error": msg,
+                "user-type": msg,
             }
 
             title = "투데이즈 플레이어 등록 / 업데이트 로그"
