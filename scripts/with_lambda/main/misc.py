@@ -81,7 +81,7 @@ def get_uuid(name: str) -> Optional[str]:
 def get_profile_from_mc(
     name: str = "", uuid: str = "", names: Optional[list[str]] = None
 ) -> Optional[dict[str, dict[str, str]]]:
-    api = mojang.API()
+    api = mojang.API(retry_on_ratelimit=True, ratelimit_sleep_time=1)
 
     if name:
         try:

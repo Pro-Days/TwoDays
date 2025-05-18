@@ -52,13 +52,16 @@ def update_1D(event):
             try:
                 name = j["name"]
 
-                if name not in registered_names:
+                if name not in registered_names:  # 등록 안된 유저
                     result = rp.register_player(name, 1)
 
                     if result == 1:
-                        sm.send_log(6, event, f"{name} 등록")
+                        sm.send_log(6, event, f"{name} 등록 not name1")
                     elif result == 2:
-                        sm.send_log(6, event, f"{name} 업데이트")
+                        changed_name = misc.get_profile_from_mc(name=name)
+                        sm.send_log(
+                            6, event, f"{name} -> {changed_name} 업데이트 not name1"
+                        )
 
                 item = {
                     "date": today.strftime("%Y-%m-%d"),
@@ -78,13 +81,16 @@ def update_1D(event):
                 try:
                     name = j["name"]
 
-                    if name not in registered_names:
+                    if name not in registered_names:  # 등록 안된 유저
                         result = rp.register_player(name, 1)
 
                         if result == 1:
-                            sm.send_log(6, event, f"{name} 등록")
+                            sm.send_log(6, event, f"{name} 등록 not name2")
                         elif result == 2:
-                            sm.send_log(6, event, f"{name} 업데이트")
+                            changed_name = misc.get_profile_from_mc(name=name)
+                            sm.send_log(
+                                6, event, f"{name} -> {changed_name} 업데이트 not name2"
+                            )
 
                     item = {
                         "date": today.strftime("%Y-%m-%d"),
@@ -118,21 +124,38 @@ def update_player(event, name, id):
     try:
         data = gci.get_current_character_data(name, days_before + 1)  # 어제
 
-        if not misc.get_profile_from_mc(name):  # 웹사이트 열리면 코드 필요 없음
-            result = rp.register_player(name, misc.get_main_slot(name))
+        # 웹사이트 열리면 코드 필요 없음
+        if not misc.get_profile_from_mc(
+            name
+        ):  # name에 해당하는 유저 없음, 등록은 되어있음 -> 닉네임 변경함 => uuid로 등록
+            uuid = misc.get_uuid(name)
+            if not uuid:
+                sm.send_log(5, event, f"{name} 닉네임 변경, 등록된 uuid 없음1")
+                raise Exception
+
+            changed_name = misc.get_profile_from_mc(uuid=uuid)
+            result = rp.register_player(changed_name, misc.get_main_slot(name))
 
             if result == 1:
-                sm.send_log(6, event, f"{name} 등록")
+                sm.send_log(6, event, f"{name} -> {changed_name} 등록 mcprofile1")
             elif result == 2:
-                sm.send_log(6, event, f"{name} 업데이트")
+                sm.send_log(6, event, f"{name} -> {changed_name} 업데이트 mcprofile1")
 
-        if not data:
-            result = rp.register_player(name, misc.get_main_slot(name))
+        if (
+            not data
+        ):  # 웹사이트에 검색 안됨, 등록 되어있음 -> 닉네임 변경함 => uuid로 등록
+            uuid = misc.get_uuid(name)
+            if not uuid:
+                sm.send_log(5, event, f"{name} 닉네임 변경, 등록된 uuid 없음1")
+                raise Exception
+
+            changed_name = misc.get_profile_from_mc(uuid=uuid)
+            result = rp.register_player(changed_name, misc.get_main_slot(name))
 
             if result == 1:
-                sm.send_log(6, event, f"{name} 등록")
+                sm.send_log(6, event, f"{name} -> {changed_name} 등록 not data1")
             elif result == 2:
-                sm.send_log(6, event, f"{name} 업데이트")
+                sm.send_log(6, event, f"{name} -> {changed_name} 업데이트 not data1")
 
         else:
             for i, j in enumerate(data):
@@ -151,21 +174,42 @@ def update_player(event, name, id):
         try:
             data = gci.get_current_character_data(name, days_before + 1)  # 어제
 
-            if not misc.get_profile_from_mc(name):  # 웹사이트 열리면 코드 필요 없음
-                result = rp.register_player(name, misc.get_main_slot(name))
+            # 웹사이트 열리면 코드 필요 없음
+            if not misc.get_profile_from_mc(
+                name
+            ):  # name에 해당하는 유저 없음, 등록은 되어있음 -> 닉네임 변경함 => uuid로 등록
+                uuid = misc.get_uuid(name)
+                if not uuid:
+                    sm.send_log(5, event, f"{name} 닉네임 변경, 등록된 uuid 없음2")
+                    raise Exception
+
+                changed_name = misc.get_profile_from_mc(uuid=uuid)
+                result = rp.register_player(changed_name, misc.get_main_slot(name))
 
                 if result == 1:
-                    sm.send_log(6, event, f"{name} 등록")
+                    sm.send_log(6, event, f"{name} -> {changed_name} 등록 mcprofile2")
                 elif result == 2:
-                    sm.send_log(6, event, f"{name} 업데이트")
+                    sm.send_log(
+                        6, event, f"{name} -> {changed_name} 업데이트 mcprofile2"
+                    )
 
-            if not data:
-                result = rp.register_player(name, misc.get_main_slot(name))
+            if (
+                not data
+            ):  # 웹사이트에 검색 안됨, 등록 되어있음 -> 닉네임 변경함 => uuid로 등록
+                uuid = misc.get_uuid(name)
+                if not uuid:
+                    sm.send_log(5, event, f"{name} 닉네임 변경, 등록된 uuid 없음2")
+                    raise Exception
+
+                changed_name = misc.get_profile_from_mc(uuid=uuid)
+                result = rp.register_player(changed_name, misc.get_main_slot(name))
 
                 if result == 1:
-                    sm.send_log(6, event, f"{name} 등록")
+                    sm.send_log(6, event, f"{name} -> {changed_name} 등록 not data2")
                 elif result == 2:
-                    sm.send_log(6, event, f"{name} 업데이트")
+                    sm.send_log(
+                        6, event, f"{name} -> {changed_name} 업데이트 not data2"
+                    )
 
             else:
                 for i, j in enumerate(data):
