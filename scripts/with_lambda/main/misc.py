@@ -187,7 +187,7 @@ def get_id(name: str = "", uuid: str = "") -> Optional[int]:
     return int(data[0]["id"]) if data else None
 
 
-def get_max_id() -> int:
+def get_max_id() -> int:  # id -> uuid로 변경
     data = data_manager.scan_data("Users", key="id")
 
     if not data:

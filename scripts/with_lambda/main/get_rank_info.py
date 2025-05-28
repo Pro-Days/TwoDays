@@ -456,7 +456,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
     today = day.strftime("%Y-%m-%d")
     start_date = start_date.strftime("%Y-%m-%d")
 
-    data = data_manager.scan_data(
+    data = data_manager.scan_data(  # date index에서 정렬키(rank)로 정렬
         "Ranks",
         filter_dict={"date": [start_date, today], "rank": _range},
     )

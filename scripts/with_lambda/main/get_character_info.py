@@ -640,7 +640,7 @@ def get_all_character_avg(period, today):
     today = today.strftime("%Y-%m-%d")
     start_date = start_date.strftime("%Y-%m-%d")
 
-    db_data = dm.scan_data(
+    db_data = dm.scan_data(  # id==0에 평균 데이터 매일 저장
         "DailyData",
         index="date-slot-level-index",
         filter_dict={"date-slot": [f"{start_date}#0", f"{today}#4"]},
@@ -674,7 +674,7 @@ def get_similar_character_avg(period, today, level):
     today = today.strftime("%Y-%m-%d")
     start_date = start_date.strftime("%Y-%m-%d")
 
-    db_data = dm.scan_data(
+    db_data = dm.scan_data(  # 매일 레벨 구간별로 저장해서 불러오기
         "DailyData",
         index="date-slot-level-index",
         filter_dict={

@@ -26,7 +26,7 @@ def get_level_distribution(today):
 
     data = []
     for i in range(5):
-        temp_data = data_manager.scan_data(
+        temp_data = data_manager.scan_data(  # 매일 레벨 구간별로 저장된 데이터 불러오기
             "DailyData", filter_dict={"date-slot": f"{today_text}#{i}"}
         )
 
