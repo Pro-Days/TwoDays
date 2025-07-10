@@ -30,7 +30,6 @@ matplotlib.use("Agg")
 
 
 def get_current_character_data(name, days_before=0):
-
     data = [
         {"job": "검호", "level": Decimal(1.0)},
         {"job": "검호", "level": Decimal(1.0)},
@@ -53,15 +52,30 @@ def get_current_character_data(name, days_before=0):
         coef = random.uniform(0.3, 0.7)
 
         for _ in range(delta_days):
-            d["level"] += Decimal(
-                round(
-                    Decimal(2.5)
-                    * Decimal(coef + random.uniform(-0.3, 0.8))
-                    * Decimal(math.cos((float(d["level"]) / 205) * math.pi / 2))
-                    / Decimal((i + 1) ** 0.5),
-                    4,
+            if d["level"] < 200:
+                d["level"] += Decimal(
+                    round(
+                        Decimal(2.5)
+                        * Decimal(coef + random.uniform(-0.3, 0.8))
+                        * Decimal(math.cos((float(d["level"]) / 205) * math.pi / 2))
+                        / Decimal((i + 1) ** 0.5),
+                        4,
+                    )
                 )
-            )
+                d["level"] = min(d["level"], Decimal(200.0))
+
+            else:
+                d["level"] += Decimal(
+                    round(
+                        Decimal(2.5)
+                        * Decimal(coef + random.uniform(-0.3, 0.8))
+                        * Decimal(
+                            math.cos(((float(d["level"]) - 200) / 255) * math.pi / 2)
+                        )
+                        / Decimal((i + 1) ** 0.5),
+                        4,
+                    )
+                )
 
     return data
 
@@ -300,7 +314,7 @@ def get_character_info(name, slot, period, today):
     # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
     for i in tick_indices:
         plt.annotate(
-            f'Lv.{int(df["level"].iloc[i])}  {(df["level"].iloc[i] % 1) * 100:.2f}%',
+            f"Lv.{int(df['level'].iloc[i])}  {(df['level'].iloc[i] % 1) * 100:.2f}%",
             (df["date"].iloc[i], df["level"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
@@ -552,7 +566,7 @@ def get_charater_rank_history(name, slot, period, today):
     # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
     for i in tick_indices:
         plt.annotate(
-            f'{df["rank"].iloc[i]}위' if df["rank"].iloc[i] < 101 else "N/A",
+            f"{df['rank'].iloc[i]}위" if df["rank"].iloc[i] < 101 else "N/A",
             (df["date"].iloc[i], df["rank"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
@@ -565,7 +579,7 @@ def get_charater_rank_history(name, slot, period, today):
 
         if date not in tick_indices:
             plt.annotate(
-                f'{min(df["rank"])}위',
+                f"{min(df['rank'])}위",
                 (df["date"].iloc[date], df["rank"].min()),
                 textcoords="offset points",
                 xytext=(0, 10),
@@ -739,9 +753,9 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    print(get_charater_rank_history("abca", 1, 10, today))
+    # print(get_charater_rank_history("abca", 1, 10, today))
     # print(get_character_info("prodays", 2, 10, today))
-    # print(get_current_character_data("1mkr", 0))
+    print(get_current_character_data("1mkr", -26))
     # print(get_character_data("steve", 1, 7, today))
     # print(get_similar_character_avg(7, today, 1))
 
