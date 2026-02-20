@@ -1,26 +1,22 @@
-import os
-import math
-import random
 import datetime
+import os
 import platform
-import requests
 import threading
-import pandas as pd
-from decimal import Decimal
-from typing import Optional
-from PIL import Image, ImageDraw, ImageFont
 
-import matplotlib
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import matplotlib.ticker as ticker
-import matplotlib.font_manager as fm
-import matplotlib.patheffects as path_effects  # Added import for path effects
-
-import misc
 import data_manager
-import register_player
 import get_character_info as gci
+import matplotlib
+import matplotlib.dates as mdates
+import matplotlib.font_manager as fm
+import matplotlib.patheffects as path_effects
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import misc
+import pandas as pd
+import register_player
+import requests
+from models import CharacterData
+from PIL import Image, ImageDraw, ImageFont
 
 plt.style.use("seaborn-v0_8-pastel")
 if platform.system() == "Linux":
@@ -34,8 +30,12 @@ plt.rcParams["font.family"] = prop.get_name()
 matplotlib.use("Agg")
 
 
-def download_image(url, num, list_name):
-    response = requests.get(url)
+def download_image(url: str, num: int, list_name: list[str]) -> None:
+    """
+    플레이어 머리 이미지 다운로드
+    """
+
+    response: requests.Response = requests.get(url)
 
     os_name = platform.system()
     if os_name == "Linux":
@@ -45,138 +45,103 @@ def download_image(url, num, list_name):
 
     with open(head_path, "wb") as file:
         file.write(response.content)
+
     list_name[num] = head_path
 
 
-def get_rank_data(day, _range: Optional[list[int]] = None):
-    data = data_manager.read_data(
-        "Ranks", condition_dict={"date": day.strftime("%Y-%m-%d")}
+def get_rank_data(
+    target_date: datetime.date, start: int = 1, end: int = 100
+) -> list[CharacterData]:
+    """
+    특정 날짜의 랭킹 데이터를 가져오는 함수
+    """
+
+    data: list[dict] = data_manager.read_data(
+        "Ranks", condition_dict={"date": target_date.strftime("%Y-%m-%d")}
     )
 
-    if data is None:
-        return None
+    if not data:
+        return []
 
-    for i, j in enumerate(data):
-        data[i]["rank"] = int(j["rank"])
-        data[i]["id"] = int(j["id"])
-        data[i]["job"] = int(j["job"])
-        data[i]["level"] = j["level"]
-        data[i]["name"] = misc.get_name(id=j["id"])
-        data[i]["slot"] = int(j["slot"])
+    rank_data: list[CharacterData] = []
 
-    return data[_range[0] - 1 : _range[1]] if _range else data
-
-
-def get_current_rank_data(_range: Optional[list[int]] = None, days_before=0) -> list:
-    """
-    todo: page -> 범위로 변경
-
-    현재 전체 캐릭터 랭킹 데이터 반환
-    {"name": "ProDays", "job": "검호", "level": "100", "slot": 1}
-
-    slot은 닉네임 확인 후 직접 검색해서 입력
-    """
-
-    today = misc.get_today(days_before + 1)
-    today_str = today.strftime("%Y-%m-%d")
-
-    players = register_player.get_registered_players()
-
-    data = []
-
-    for player in players:
-        playerdata = data_manager.read_data(
-            "DailyData",
-            None,
-            {"id": player["id"], "date-slot": [f"{today_str}#0", f"{today_str}#4"]},
-        )
-        if playerdata is None:
-            continue
-
-        for i in range(5):
-            playerdata[i].update({"slot": i + 1})
-            data.append(playerdata[i])
-
-    rankdata = []
-
-    for d in data:
-        name = misc.get_name(id=d["id"])
-
-        if name is None:
-            continue
-
-        level = gci.get_current_character_data(name, days_before)
-
-        if not level:
-            continue
-        level = level[d["slot"] - 1]["level"]
-
-        rankdata.append(
-            {
-                "name": name,
-                "job": misc.convert_job(d["job"]),
-                "level": level,
-                "slot": d["slot"],
-            }
+    for item in data:
+        rank_data.append(
+            CharacterData(
+                uuid=item["uuid"],
+                level=item["level"],
+                date=target_date,
+            )
         )
 
-    rankdata = sorted(rankdata, key=lambda x: x["level"], reverse=True)[:100]
-
-    return rankdata[_range[0] - 1 : _range[1]] if _range else rankdata
+    return rank_data[start - 1 : end]
 
 
-def get_rank_info(_range: list[int], today: datetime.date) -> tuple:
-    data = {
-        "Rank": list(range(_range[0], _range[1] + 1)),
+def get_current_rank_data(start: int = 1, end: int = 100) -> list[CharacterData]:
+    """
+    현재 랭킹 데이터를 가져오는 함수
+    등록되지 않은 플레이어는 등록시킴
+    """
+
+    players: list[dict] = register_player.get_registered_players()
+
+    rank_data: list[CharacterData] = [
+        gci.get_current_character_data(player["uuid"]) for player in players
+    ]
+
+    rank_data.sort(key=lambda x: x.level, reverse=True)
+
+    return rank_data[start - 1 : end]
+
+
+def get_rank_info(start: int, end: int, target_date: datetime.date):
+    data: dict[str, list] = {
+        "Rank": list(range(start, end + 1)),
         "Name": [],
         "Level": [],
-        "Job": [],
         "Change": [],
     }
 
-    rank_count = _range[1] - _range[0] + 1
+    rank_count: int = end - start + 1
 
-    if today == misc.get_today():
-        current_data = get_current_rank_data(_range)
+    if target_date == misc.get_today():
+        current_data: list[CharacterData] = get_current_rank_data(start, end)
     else:
-        current_data = get_rank_data(today, _range)
+        current_data: list[CharacterData] = get_rank_data(target_date, start, end)
 
-    if current_data is None:
+    if not current_data:
         return None, None
 
     # 실시간 랭킹 데이터를 가져와서 data에 추가
     for i in range(rank_count):
-        name = current_data[i]["name"]  # 닉네임 변경 반영한 최신 닉네임
+        uuid: str = current_data[i].uuid
+        name: str | None = misc.get_name_from_uuid(uuid=uuid)
+
+        if name is None:
+            name = "알 수 없음"
+
         data["Name"].append(name)
-        data["Level"].append(current_data[i]["level"])
-        data["Job"].append(current_data[i]["job"])
+        data["Level"].append(current_data[i].level)
 
-        user_id = misc.get_id(name=name)
+        prev_date: datetime.date = target_date - datetime.timedelta(days=1)
+        prev_date_str: str = prev_date.strftime("%Y-%m-%d")
 
-        if user_id is None:  # 1. 등록x -> 등록 2. 닉네임 변경 -> 등록
-            register_player.register_player(name, 1)
-            user_id = misc.get_id(name=name)
-
-        prev_date = today - datetime.timedelta(days=1)
-        prev_date_str = prev_date.strftime("%Y-%m-%d")
-
-        prev_rank = data_manager.read_data(
-            "Ranks", "id-date-index", {"id": user_id, "date": prev_date_str}
+        # 이전 날짜의 랭킹 데이터를 가져와서 변동 정보 계산
+        prev_rank: list[dict] = data_manager.read_data(
+            "Ranks", "uuid-date-index", {"uuid": uuid, "date": prev_date_str}
         )
 
-        if prev_rank is None:
+        # 이전 랭킹 데이터가 없는 경우
+        if not prev_rank:
             data["Change"].append(None)
+
+        # 이전 랭킹 데이터가 있는 경우 변동 계산
         else:
-            prev_rank = sorted(prev_rank, key=lambda x: x["rank"])
+            diff: int = prev_rank[0]["rank"] - (i + start)
+            data["Change"].append(diff)
 
-            for j in prev_rank:
-                if j["slot"] == current_data[i]["slot"]:
-                    data["Change"].append(j["rank"] - (i + _range[0]))
-                    break
-            else:
-                data["Change"].append(None)
-
-    avatar_images = [""] * rank_count
+    # 랭킹에 해당하는 플레이어의 머리 이미지 다운로드
+    avatar_images: list[str] = [""] * rank_count
 
     os_name = platform.system()
     if os_name == "Linux":
@@ -188,7 +153,7 @@ def get_rank_info(_range: list[int], today: datetime.date) -> tuple:
         os.makedirs(os.path.dirname(head_path))
 
     # rank_count개의 스레드 생성
-    threads = []
+    threads: list[threading.Thread] = []
     for i in range(rank_count):
         url = f"https://mineskin.eu/helm/{data['Name'][i]}/100.png"
         thread = threading.Thread(
@@ -219,10 +184,7 @@ def get_rank_info(_range: list[int], today: datetime.date) -> tuple:
     draw = ImageDraw.Draw(rank_info_image)
 
     draw.rectangle(
-        [
-            (0, 0),
-            (width, header_height),
-        ],
+        [(0, 0), (width, header_height)],
         fill=aqua,
         width=2,
     )
@@ -245,11 +207,6 @@ def get_rank_info(_range: list[int], today: datetime.date) -> tuple:
             "Rank": str(data["Rank"][i]),
             "Name": data["Name"][i],
             "Level": f"{data['Level'][i]:.1f}",
-            "Job": (
-                data["Job"][i]
-                if isinstance(data["Job"][i], str)
-                else misc.convert_job(data["Job"][i])
-            ),
             "Change": data["Change"][i],
         }
 
@@ -440,49 +397,57 @@ def get_rank_info(_range: list[int], today: datetime.date) -> tuple:
 
     rank_info_image.save(image_path)
 
-    text_day = "지금" if today == misc.get_today() else today.strftime("%Y년 %m월 %d일")
+    text_day = (
+        "지금"
+        if target_date == misc.get_today()
+        else target_date.strftime("%Y년 %m월 %d일")
+    )
 
-    msg = f"{text_day} {_range[0]}~{_range[1]}위 캐릭터 랭킹을 보여드릴게요."
+    msg = f"{text_day} {start}~{end}위 캐릭터 랭킹을 보여드릴게요."
 
     return msg, image_path
 
 
-def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tuple:
-    current_data = get_current_rank_data() if day == misc.get_today() else None
-
-    rank_count = _range[1] - _range[0] + 1
-
-    start_date = day - datetime.timedelta(days=period - 1)
-    today = day.strftime("%Y-%m-%d")
-    start_date = start_date.strftime("%Y-%m-%d")
-
-    data = data_manager.scan_data(  # date index에서 정렬키(rank)로 정렬
-        "Ranks",
-        filter_dict={"date": [start_date, today], "rank": _range},
+def get_rank_history(
+    start: int, end: int, period: int, target_date: datetime.date
+) -> tuple:
+    current_data: list[CharacterData] = (
+        get_current_rank_data() if target_date == misc.get_today() else []
     )
 
-    if data is None:
+    rank_count: int = end - start + 1
+
+    start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
+    target_date_str: str = target_date.strftime("%Y-%m-%d")
+    start_date_str: str = start_date.strftime("%Y-%m-%d")
+
+    data: list[dict] = data_manager.scan_data(
+        "Ranks",
+        filter_dict={
+            "date": [start_date_str, target_date_str],
+            "rank": [start, end],
+        },
+    )
+
+    if not data:
         return None, None
 
     for i, j in enumerate(data):
         data[i]["rank"] = int(j["rank"])
-        data[i]["id"] = int(j["id"])
-        data[i]["slot"] = int(j["slot"])
-
-        del data[i]["job"]
+        data[i]["uuid"] = j["uuid"]
 
     if current_data is not None:
-        for i, j in enumerate(current_data):  # job level name
-            if _range[0] - 1 <= i < _range[1]:
+        for i, j in enumerate(current_data):
+            if start - 1 <= i < end:
                 data.append(
                     {
-                        "date": today,
+                        "date": target_date_str,
                         "rank": i + 1,
-                        "id": misc.get_id(name=j["name"]),
-                        "slot": j["slot"],
+                        "uuid": j.uuid,
                     }
                 )
 
+    # 실제 데이터로 기간 계산
     period = len(set([i["date"] for i in data]))
 
     data = sorted(data, key=lambda x: x["date"])
@@ -496,7 +461,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
         figsize=(period * 0.5 if period >= 15 else period * 0.3 + 3, 0.6 * rank_count)
     )
 
-    # Define a custom color palette for better distinction between lines
+    # 색상 리스트
     colors = [
         "#fb9a99",
         "#80b1d3",
@@ -511,46 +476,39 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
         "#436e6f",
         "#c56477",
         "#ac7f0f",
-    ]  # Create a unique identifier for each player-slot combination
-    df["player_slot_id"] = df["id"].astype(str) + "_" + df["slot"].astype(str)
+    ]
 
-    # Get unique player-slot combinations
-    player_slot_ids = df["player_slot_id"].unique()
+    # 중복 없는 uuid 리스트 생성
+    player_uuids = df["uuid"].unique()
 
     # 가장 최근 날짜의 데이터 찾기
     latest_date = df["date"].max()
 
-    # 각 플레이어-슬롯 조합의 최근 순위 찾기 (높은 순위를 나중에 그려 위에 표시되도록)
+    # 각 플레이어 조합의 최근 순위 찾기 (높은 순위를 나중에 그려 위에 표시되도록)
     player_latest_ranks = {}
-    for player_slot_id in player_slot_ids:
-        player_data = df[df["player_slot_id"] == player_slot_id]
+    for player_uuid in player_uuids:
+        player_data = df[df["uuid"] == player_uuid]
         # 해당 ID와 슬롯의 가장 최근 날짜 데이터 찾기
         player_latest = player_data[player_data["date"] == player_data["date"].max()]
         if not player_latest.empty:
-            player_latest_ranks[player_slot_id] = player_latest["rank"].iloc[0]
+            player_latest_ranks[player_uuid] = player_latest["rank"].iloc[0]
         else:
-            player_latest_ranks[player_slot_id] = (
+            player_latest_ranks[player_uuid] = (
                 999  # 데이터가 없는 경우 낮은 우선순위    # 최근 순위 기준으로 오름차순 정렬 (낮은 순위 먼저, 높은 순위 나중에 그려서 위에 표시)
             )
-    sorted_player_slot_ids = sorted(
-        player_slot_ids, key=lambda psid: player_latest_ranks[psid], reverse=True
+    sorted_player_uuids = sorted(
+        player_uuids, key=lambda psid: player_latest_ranks[psid], reverse=True
     )
 
     # 텍스트 라벨의 위치를 추적하기 위한 딕셔너리
     # key: (date, rank) 좌표, value: 해당 좌표에 이미 텍스트가 있는지 여부
-    text_positions = (
-        {}
-    )  # Plot each player-slot combination's data with a specific color, 최근 순위가 높은 플레이어가 가장 나중에 그려져 위에 표시됨
-    for i, player_slot_id in enumerate(sorted_player_slot_ids):
-        group = df[df["player_slot_id"] == player_slot_id]
-        color_idx = i % len(colors)  # Cycle through colors if more players than colors
+    text_positions = {}
+    # 최근 순위가 높은 플레이어가 가장 나중에 그려져 위에 표시됨
+    for i, player_uuid in enumerate(sorted_player_uuids):
+        group = df[df["uuid"] == player_uuid]
+        color_idx: int = i % len(colors)
 
-        # Extract player ID and slot from the combined ID
-        player_id, slot = player_slot_id.split("_")
-        player_id = int(player_id)
-        slot = int(slot)
-
-        player_name = misc.get_name(id=player_id)  # 플레이어 이름 가져오기
+        player_name = misc.get_name_from_uuid(uuid=player_uuid)
 
         if player_name is None:
             continue
@@ -589,13 +547,13 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
             date_groups.append(current_group)
 
         # 각 연속된 날짜 그룹마다 별도의 선으로 그리기
-        for group_idx, group_data in enumerate(date_groups):
+        for group_data in date_groups:
             if len(group_data) > 0:
                 group_df = pd.DataFrame(
                     group_data
                 )  # 단일 데이터 포인트인지 확인 (선이 아니라 점)
                 is_single_point = len(group_df) == 1
-                zorder = 100 - player_latest_ranks[player_slot_id]
+                zorder = 100 - player_latest_ranks[player_uuid]
 
                 if not is_single_point:
                     # 선 그리기 (마커 없이)
@@ -708,11 +666,11 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
         df["date"].iloc[-1]
         + pd.Timedelta(days=0.5),  # 우측 여백 늘림 (닉네임 표시 공간)
     )
-    plt.ylim(_range[1] + 1, _range[0] - 1)
+    plt.ylim(end + 1, start - 1)
 
     # 범례 제거 (닉네임을 직접 선 위에 표시하므로 범례가 필요 없음)
 
-    plt.yticks(range(_range[0], _range[1] + 1))
+    plt.yticks(range(start, end + 1))
 
     # 회색 격자선 추가
     plt.grid(axis="both", linestyle="--", alpha=0.5)
@@ -731,7 +689,7 @@ def get_rank_history(_range: list[int], period: int, day: datetime.date) -> tupl
     plt.savefig(image_path, dpi=200, bbox_inches="tight")
     plt.close()
 
-    msg = f"{period}일 동안의 {_range[0]}~{_range[1]}위 랭킹 히스토리를 보여드릴게요."
+    msg = f"{period}일 동안의 {start}~{end}위 랭킹 히스토리를 보여드릴게요."
     return msg, image_path
 
 
@@ -740,7 +698,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_rank_history([1, 30], 10, today))
-    print(get_rank_info([1, 30], today))
+    print(get_rank_info(1, 30, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))

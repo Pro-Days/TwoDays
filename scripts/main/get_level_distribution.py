@@ -1,13 +1,12 @@
 import datetime
 import platform
 
+import data_manager
 import matplotlib
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-import matplotlib.font_manager as fm
-
 import misc
-import data_manager
 
 plt.style.use("seaborn-v0_8-pastel")
 if platform.system() == "Linux":
@@ -21,24 +20,22 @@ plt.rcParams["font.family"] = prop.get_name()
 matplotlib.use("Agg")
 
 
-def get_level_distribution(today):
-    today_text = today.strftime("%Y-%m-%d")
+def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
+    target_date_str: str = target_date.strftime("%Y-%m-%d")
 
-    data = []
+    data: list[float] = []
     for i in range(5):
-        temp_data = data_manager.scan_data(  # 매일 레벨 구간별로 저장된 데이터 불러오기
-            "DailyData", filter_dict={"date-slot": f"{today_text}#{i}"}
+        # 매일 레벨 구간별로 저장된 데이터 불러오기
+        temp_data: list[dict] = data_manager.scan_data(
+            "DailyData", filter_dict={"date-slot": f"{target_date_str}#{i}"}
         )
 
         if temp_data:
-            data.extend(temp_data)
-
-    for i in range(len(data)):
-        data[i] = data[i]["level"]
+            data.extend([item["level"] for item in temp_data])
 
     # 히스토그램 그리기
     plt.figure(figsize=(10, 6))
-    bins = 100  # Fixed number of bins
+    bins = 100
     n, bins, patches = plt.hist(
         data, bins=bins, range=(1, 200), alpha=1.0, color="skyblue"
     )
@@ -68,7 +65,7 @@ def get_level_distribution(today):
     plt.savefig(image_path, dpi=250, bbox_inches="tight")
     plt.close()
 
-    msg = f"{today.strftime('%Y년 %m월 %d일')} 기준 등록된 플레이어의 레벨 분포를 보여드릴게요.\n부캐릭터를 포함해서 총 {len(data)}개의 캐릭터가 등록되어있어요.\n이 이미지는 서버의 모든 플레이어의 정보를 포함하지 않아요."
+    msg = f"{target_date.strftime('%Y년 %m월 %d일')} 기준 등록된 플레이어의 레벨 분포를 보여드릴게요.\n부캐릭터를 포함해서 총 {len(data)}개의 캐릭터가 등록되어있어요.\n이 이미지는 서버의 모든 플레이어의 정보를 포함하지 않아요."
     return msg, image_path
 
 

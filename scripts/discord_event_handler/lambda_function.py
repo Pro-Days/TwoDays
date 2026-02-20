@@ -1,0 +1,100 @@
+import json
+import os
+import traceback
+
+import boto3
+from nacl.exceptions import BadSignatureError
+from nacl.signing import VerifyKey
+
+PUBLIC_KEY: str | None = os.getenv("DISCORD_PUBLIC_KEY")
+
+
+def lambda_handler(event, context):
+    try:
+        print(f"start!\nevent: {event}")
+
+        # PUBLIC_KEY가 설정되어 있지 않으면 500 반환
+        if not PUBLIC_KEY:
+            return {"statusCode": 500, "body": json.dumps("public key not set")}
+
+        body: dict = json.loads(event["body"])
+
+        signature: str = event["headers"]["x-signature-ed25519"]
+        timestamp: str = event["headers"]["x-signature-timestamp"]
+
+        # 키 검증
+        verify_key = VerifyKey(bytes.fromhex(PUBLIC_KEY))
+        message: str = timestamp + event["body"]
+
+        try:
+            verify_key.verify(message.encode(), signature=bytes.fromhex(signature))
+
+        # 검증 실패 시 401 반환
+        except BadSignatureError:
+            return {"statusCode": 401, "body": json.dumps("invalid request signature")}
+
+        # 검증 성공
+        print("verify complete")
+
+        cmd_type: int = body["type"]
+
+        # 1: 핑
+        if cmd_type == 1:
+            return {"statusCode": 200, "body": json.dumps({"type": 1})}
+
+        # 2: 명령어
+        elif cmd_type == 2:
+
+            lambda_service = boto3.client(
+                service_name="lambda", region_name="ap-northeast-2"
+            )
+            functionName: str = "TA_DEV-lambda_main"
+
+            # 람다 함수 호출 (비동기)
+            lambda_service.invoke(
+                FunctionName=functionName,
+                InvocationType="Event",
+                Payload=json.dumps(event),
+            )
+
+            body: dict = json.loads(event["body"])
+
+            # 옵션에서 "나만보기"가 켜져 있는지 확인
+            options: list[dict] = (
+                body["data"]["options"] if "options" in body["data"] else []
+            )
+
+            # "나만보기" 옵션이 켜져 있으면 flag에 64 더하기
+            flag: int = 128
+            for i in options:
+                if i["name"] == "나만보기" and i["value"]:
+                    flag += 64
+                    break
+
+                elif "options" in i:
+                    for j in i["options"]:
+                        if j["name"] == "나만보기" and j["value"]:
+                            flag += 64
+                            break
+
+            # 람다 함수 호출 후 바로 응답 반환
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps(
+                    {
+                        "type": 5,
+                        "data": {
+                            "flags": flag,
+                        },
+                    }
+                ),
+            }
+
+        # 그 외의 요청 타입은 400 반환
+        else:
+            return {"statusCode": 400, "body": json.dumps("unhandled request type")}
+
+    # 람다 함수 호출이나 검증 과정에서 예외 발생 시 400 반환
+    except Exception:
+        return {"statusCode": 400, "body": json.dumps(traceback.format_exc())}

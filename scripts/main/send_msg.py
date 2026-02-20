@@ -1,13 +1,18 @@
-import os
 import json
+import os
 import time
-import requests
 
 import misc
+import requests
 
-LOG_CHANNEL_ID = os.getenv("DISCORD_LOG_CHANNEL_ID")
-ADMIN_ID = os.getenv("DISCORD_ADMIN_ID")
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+LOG_CHANNEL_ID: str | None = os.getenv("DISCORD_LOG_CHANNEL_ID")
+ADMIN_ID: str | None = os.getenv("DISCORD_ADMIN_ID")
+DISCORD_TOKEN: str | None = os.getenv("DISCORD_TOKEN")
+
+if not LOG_CHANNEL_ID or not ADMIN_ID or not DISCORD_TOKEN:
+    raise ValueError(
+        "DISCORD_LOG_CHANNEL_ID, DISCORD_ADMIN_ID, and DISCORD_TOKEN must be set in environment variables."
+    )
 
 
 def send(event, msg, image=None, log_type=1, error=None):
@@ -39,23 +44,23 @@ def send(event, msg, image=None, log_type=1, error=None):
             ),
         }
 
-    else:
-        url = f"https://discord.com/api/v10/webhooks/{os.getenv("DISCORD_APP_ID", None)}/{interaction_token}/messages/@original"
+    # 이미지 없음
+    url = f"https://discord.com/api/v10/webhooks/{os.getenv('DISCORD_APP_ID', None)}/{interaction_token}/messages/@original"
 
-        headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json"}
 
-        response = requests.patch(url, headers=headers, data=json.dumps(payload))
+    response = requests.patch(url, headers=headers, data=json.dumps(payload))
 
-        print(f"메시지 전송 완료: {response.json()}, {msg.replace('\n', '\\n')}")
+    print(f"메시지 전송 완료: {response.json()}, {msg.replace('\n', '\\n')}")
 
-        send_log(log_type, event, msg if error == None else error)
+    send_log(log_type, event, msg if error == None else error)
 
-        return {
-            "statusCode": 200,
-            "body": json.dumps(
-                {"message": "메시지 전송 성공", "response": response.json(), "msg": msg}
-            ),
-        }
+    return {
+        "statusCode": 200,
+        "body": json.dumps(
+            {"message": "메시지 전송 성공", "response": response.json(), "msg": msg}
+        ),
+    }
 
 
 def send_log(log_type, event, msg="", image=None):
@@ -66,6 +71,7 @@ def send_log(log_type, event, msg="", image=None):
     log_type: 4 - 데이터 업데이트 로그
     log_type: 5 - 데이터 업데이트 에러 로그
     log_type: 6 - 플레이어 등록 / 업데이트 로그
+    # TODO: enum
     """
 
     now = f"<t:{int(time.time())}:f>"

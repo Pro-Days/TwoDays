@@ -12,8 +12,8 @@ jobs:
         
       - name: Build binary
         run: |
-          cd scripts/with_lambda/main && zip deployment_main.zip *
-          
+          cd scripts/main && zip deployment_main.zip *
+
       - name: deploy
         uses: appleboy/lambda-action@v0.2.0
         with:
@@ -21,27 +21,7 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ap-northeast-2
           function_name: TA_DEV-lambda_main
-          zip_file: scripts/with_lambda/main/deployment_main.zip
-
-  # deploy_update:
-  #   name: deploy lambda function update
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: checkout source code
-  #       uses: actions/checkout@v4
-        
-  #     - name: Build binary
-  #       run: |
-  #         cd scripts/with_lambda/update && zip deployment_update.zip *
-
-  #     - name: default deploy
-  #       uses: appleboy/lambda-action@v0.2.0
-  #       with:
-  #         aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #         aws_region: ap-northeast-2
-  #         function_name: TA_DEV-update
-  #         zip_file: scripts/with_lambda/update/deployment_update.zip
+          zip_file: scripts/main/deployment_main.zip
 
   deploy_event:
     name: deploy lambda function event handler
@@ -52,7 +32,7 @@ jobs:
         
       - name: Build binary
         run: |
-          cd scripts/with_lambda/discord_event_handler && zip deployment_event.zip *
+          cd scripts/discord_event_handler && zip deployment_event.zip *
 
       - name: default deploy
         uses: appleboy/lambda-action@v0.2.0
@@ -61,4 +41,4 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ap-northeast-2
           function_name: discord_event_handler
-          zip_file: scripts/with_lambda/discord_event_handler/deployment_event.zip
+          zip_file: scripts/discord_event_handler/deployment_event.zip

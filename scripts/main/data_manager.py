@@ -1,17 +1,24 @@
 import os
-import boto3
 import platform
-from boto3.dynamodb.conditions import Key
 
+import boto3
+from boto3.dynamodb.conditions import And, Between, Equals, Key
 
-os_name = platform.system()
+# 운영 체제에 따라 AWS 자격 증명 설정
+os_name: str = platform.system()
 if os_name == "Linux":
     session = boto3.Session(
         region_name="ap-northeast-2",
     )
+
 else:
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY", None)
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", None)
+    AWS_ACCESS_KEY_ID: str | None = os.getenv("AWS_ACCESS_KEY", None)
+    AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_SECRET_ACCESS_KEY", None)
+
+    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+        raise ValueError(
+            "AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY must be set in environment variables."
+        )
 
     session = boto3.Session(
         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -19,20 +26,26 @@ else:
         region_name="ap-northeast-2",
     )
 
-db_name = os.environ.get("DB_NAME", "")
+db_name: str = os.environ.get("DB_NAME", "")
 dynamodb = session.resource("dynamodb")
 
 
-def read_data(table_name, index=None, condition_dict=None):
+def read_data(
+    table_name: str, index: str | None = None, condition_dict: dict | None = None
+) -> list[dict]:
+    """
+    DynamoDB에서 데이터를 읽어오는 함수
+    """
+
     table_name = db_name + "-" + table_name
     table = dynamodb.Table(table_name)  # type: ignore
 
-    condition = None
+    condition: Between | Equals | And | None = None
     if condition_dict:
         for key, value in condition_dict.items():
 
             if isinstance(value, list):
-                add = Key(key).between(value[0], value[1])
+                add: Between | Equals = Key(key).between(value[0], value[1])
             else:
                 add = Key(key).eq(value)
 
@@ -41,7 +54,9 @@ def read_data(table_name, index=None, condition_dict=None):
             else:
                 condition = condition & add
 
-    query_params = {"KeyConditionExpression": condition}
+    query_params: dict[str, str | Between | Equals | And | None] = {
+        "KeyConditionExpression": condition
+    }
 
     if index:
         query_params["IndexName"] = index
@@ -50,18 +65,28 @@ def read_data(table_name, index=None, condition_dict=None):
 
     items = response.get("Items", [])
 
-    return items if items else None
+    return items
 
 
-def scan_data(table_name, index=None, key=None, filter_dict=None):
+def scan_data(
+    table_name: str,
+    index: str | None = None,
+    key: str | None = None,
+    filter_dict: dict | None = None,
+) -> list[dict]:
+    """
+    DynamoDB에서 데이터를 스캔하는 함수
+    사용을 권장하지 않음 (비용 및 성능 문제)
+    """
+
     table_name = db_name + "-" + table_name
     table = dynamodb.Table(table_name)  # type: ignore
 
-    filter_data = None
+    filter_data: Between | Equals | And | None = None
     if filter_dict:
         for _key, value in filter_dict.items():
             if isinstance(value, list):
-                add = Key(_key).between(value[0], value[1])
+                add: Between | Equals = Key(_key).between(value[0], value[1])
             else:
                 add = Key(_key).eq(value)
 
@@ -70,7 +95,7 @@ def scan_data(table_name, index=None, key=None, filter_dict=None):
             else:
                 filter_data = filter_data & add
 
-    scan_params = {}
+    scan_params: dict[str, str | Between | Equals | And | None] = {}
 
     if key:
         scan_params["ProjectionExpression"] = key
@@ -92,10 +117,14 @@ def scan_data(table_name, index=None, key=None, filter_dict=None):
 
         items.extend(response.get("Items", []))
 
-    return items if items else None
+    return items
 
 
-def write_data(table_name, item):
+def write_data(table_name: str, item: dict) -> None:
+    """
+    DynamoDB에 데이터를 쓰는 함수
+    """
+
     table_name = db_name + "-" + table_name
     table = dynamodb.Table(table_name)  # type: ignore
 
