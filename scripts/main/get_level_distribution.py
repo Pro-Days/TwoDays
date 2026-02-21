@@ -21,17 +21,20 @@ matplotlib.use("Agg")
 
 
 def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
-    target_date_str: str = target_date.strftime("%Y-%m-%d")
-
     data: list[float] = []
-    for i in range(5):
-        # 매일 레벨 구간별로 저장된 데이터 불러오기
-        temp_data: list[dict] = data_manager.scan_data(
-            "DailyData", filter_dict={"date-slot": f"{target_date_str}#{i}"}
+    last_evaluated_key = None
+    while True:
+        temp_data, last_evaluated_key = data_manager.manager.get_internal_level_page(
+            snapshot_date=target_date,
+            page_size=200,
+            exclusive_start_key=last_evaluated_key,
         )
+        if not temp_data:
+            break
 
-        if temp_data:
-            data.extend([item["level"] for item in temp_data])
+        data.extend([float(item["Level"]) for item in temp_data if "Level" in item])
+        if not last_evaluated_key:
+            break
 
     # 히스토그램 그리기
     plt.figure(figsize=(10, 6))

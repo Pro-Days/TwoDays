@@ -1,6 +1,10 @@
 name: deploy to lambda
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
+      - develop
 
 jobs:
   deploy_main:
@@ -14,13 +18,24 @@ jobs:
         run: |
           cd scripts/main && zip deployment_main.zip *
 
-      - name: deploy
+      - name: deploy to develop
+        if: github.ref == 'refs/heads/develop'
         uses: appleboy/lambda-action@v0.2.0
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ap-northeast-2
           function_name: TA_DEV-lambda_main
+          zip_file: scripts/main/deployment_main.zip
+
+      - name: deploy to main
+        if: github.ref == 'refs/heads/main'
+        uses: appleboy/lambda-action@v0.2.0
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ap-northeast-2
+          function_name: TwoDays-lambda_main # TODO: 실제 람다 함수 이름으로 변경
           zip_file: scripts/main/deployment_main.zip
 
   deploy_event:
@@ -34,11 +49,22 @@ jobs:
         run: |
           cd scripts/discord_event_handler && zip deployment_event.zip *
 
-      - name: default deploy
+      - name: deploy to develop
+        if: github.ref == 'refs/heads/develop'
         uses: appleboy/lambda-action@v0.2.0
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ap-northeast-2
           function_name: discord_event_handler
+          zip_file: scripts/discord_event_handler/deployment_event.zip
+
+      - name: deploy to main
+        if: github.ref == 'refs/heads/main'
+        uses: appleboy/lambda-action@v0.2.0
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ap-northeast-2
+          function_name: TwoDays-discord_event_handler # TODO: 실제 람다 함수 이름으로 변경
           zip_file: scripts/discord_event_handler/deployment_event.zip

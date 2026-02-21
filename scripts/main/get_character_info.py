@@ -384,69 +384,68 @@ def calc_exp_change(l0: float, l1: float, period: int) -> tuple[float, int, int]
 def get_charater_rank_history(
     uuid: str, name: str, period: int, target_date: datetime.date
 ):
-
+    today = misc.get_today()
     current_data: list[CharacterData] = (
-        gri.get_current_rank_data() if target_date == misc.get_today() else []
+        gri.get_current_rank_data() if target_date == today else []
     )
 
     start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
     target_date_text: str = target_date.strftime("%Y년 %m월 %d일")
-    target_date_str: str = target_date.strftime("%Y-%m-%d")
-    start_date_str: str = start_date.strftime("%Y-%m-%d")
 
-    data: list[dict] = dm.read_data(
-        "Ranks",
-        index="uuid-date-index",
-        condition_dict={"uuid": uuid, "date": [start_date_str, target_date_str]},
+    history_items, _ = dm.manager.get_user_snapshot_history(
+        uuid=uuid,
+        start_date=start_date,
+        end_date=target_date,
     )
 
-    if data:
-        ranks: dict = {}
+    rank_by_date: dict[datetime.date, int | None] = {}
+    for item in history_items:
+        sk = item.get("SK")
+        if not isinstance(sk, str) or not sk.startswith("SNAP#"):
+            continue
 
-        for d in range(period):
-            date: datetime.date = start_date + datetime.timedelta(days=d)
-            date_str: str = date.strftime("%Y-%m-%d")
+        date_value = datetime.datetime.strptime(sk.removeprefix("SNAP#"), "%Y-%m-%d").date()
+        rank = item.get("Level_Rank")
+        if rank is None:
+            continue
 
-            # 데이터가 존재하는 날짜이지만, 검색 날짜보다 이전 날짜의 데이터라면 (등록 후 데이터 없는 기간)
-            if (
-                date == target_date
-                or date < datetime.datetime.strptime(data[0]["date"], "%Y-%m-%d").date()
-            ):
-                continue
+        rank_by_date[date_value] = int(rank)
 
-            # 데이터가 존재한다면 랭킹 정보 추가
-            for item in data:
-                if item["date"] == date_str:
-                    ranks[item["date"]] = item
-                    break
+    first_rank_date: datetime.date | None = min(rank_by_date) if rank_by_date else None
+    data: list[dict] = []
+    for d in range(period):
+        date_value = start_date + datetime.timedelta(days=d)
+        if first_rank_date is None:
+            continue
+        if target_date == today and date_value == target_date:
+            continue
+        if first_rank_date and date_value < first_rank_date:
+            continue
 
-            # 데이터가 존재하지 않는 날짜라면 None으로 추가
-            else:
-                ranks[date_str] = {
-                    "rank": None,
-                    "date": date_str,
-                }
+        date_str = date_value.strftime("%Y-%m-%d")
+        data.append(
+            {
+                "rank": rank_by_date.get(date_value),
+                "date": date_str,
+            }
+        )
 
-        # rank, date 정보만 남기기
-        data = list(ranks.values())
-
-    if current_data is not None:
-        for i, j in enumerate(current_data):  # job level name
-            if j.uuid.lower() == uuid:
-                data.append(
-                    {
-                        "rank": i + 1,
-                        "date": target_date,
-                    }
-                )
+    if target_date == today:
+        rank = 101
+        for i, item in enumerate(current_data):
+            if item.uuid == uuid:
+                rank = i + 1
                 break
-        else:
-            data.append(
-                {
-                    "rank": 101,
-                    "date": target_date,
-                }
-            )
+
+        data.append(
+            {
+                "rank": rank,
+                "date": target_date,
+            }
+        )
+
+    if not data:
+        return f"{target_date_text} {name}님의 랭킹 정보가 없어요.", None
 
     # 실제 데이터로 기간 계산
     period = len(data)
@@ -454,11 +453,9 @@ def get_charater_rank_history(
     # 기간이 1이라면 (등록 직후 데이터가 없을 때)
     if period == 1:
         text_day: str = (
-            "지금"
-            if target_date == misc.get_today().strftime("%Y-%m-%d")
-            else target_date_text
+            "지금" if target_date == today else target_date_text
         )
-        cur_rank: int = data[0]["rank"]
+        cur_rank = data[0]["rank"]
         text_rank: str = (
             f"{name}님의 랭킹은 {f'{cur_rank}위에요.' if cur_rank else '순위에 등록되어있지 않아요.'}"
         )
@@ -586,6 +583,26 @@ def get_charater_rank_history(
     return msg, image_path
 
 
+def _get_internal_level_rows(target_date: datetime.date) -> list[dict]:
+    rows: list[dict] = []
+    last_evaluated_key = None
+
+    while True:
+        page, last_evaluated_key = dm.manager.get_internal_level_page(
+            snapshot_date=target_date,
+            page_size=200,
+            exclusive_start_key=last_evaluated_key,
+        )
+        if not page:
+            break
+
+        rows.extend(page)
+        if not last_evaluated_key:
+            break
+
+    return rows
+
+
 def get_character_data(
     uuid: str, period: int, target_date: datetime.date
 ) -> list[CharacterData]:
@@ -596,32 +613,27 @@ def get_character_data(
     # 시작 날짜 계산
     start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
 
-    # 날짜 문자열로 변환
-    target_date_str: str = target_date.strftime("%Y-%m-%d")
-    start_date_str: str = start_date.strftime("%Y-%m-%d")
-
-    db_data: list[dict] = dm.read_data(
-        "DailyData",
-        None,
-        {
-            "uuid": uuid,
-            "date-slot": [f"{start_date_str}#0", f"{target_date_str}#4"],
-        },
+    db_data, _ = dm.manager.get_user_snapshot_history(
+        uuid=uuid,
+        start_date=start_date,
+        end_date=target_date,
     )
 
     data: list[CharacterData] = []
 
-    # 불러온 데이터가 존재한다면
-    for i in db_data:
-        date_str: str = i["date"]
-        date: datetime.date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+    for item in sorted(db_data, key=lambda row: row.get("SK", "")):
+        sk = item.get("SK")
+        if not isinstance(sk, str) or not sk.startswith("SNAP#"):
+            continue
+        if "Level" not in item:
+            continue
 
-        data.append(CharacterData(uuid=uuid, level=i["level"], date=date))
+        date = datetime.datetime.strptime(sk.removeprefix("SNAP#"), "%Y-%m-%d").date()
+        data.append(CharacterData(uuid=uuid, level=item["Level"], date=date))
 
     # 당일 데이터라면 실시간으로 레벨 정보 가져와서 추가
-    if target_date_str == misc.get_today().strftime("%Y-%m-%d"):
+    if target_date == misc.get_today() and (not data or data[-1].date != target_date):
         today_data: CharacterData = get_current_character_data(uuid=uuid)
-
         data.append(today_data)
 
     return data
@@ -633,35 +645,19 @@ def get_all_character_avg(
     data: list[CharacterData] = []
 
     start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
+    for d in range(period):
+        date_value = start_date + datetime.timedelta(days=d)
+        rows = _get_internal_level_rows(date_value)
+        levels = [row["Level"] for row in rows if "Level" in row]
+        if not levels:
+            continue
 
-    target_date_str: str = target_date.strftime("%Y-%m-%d")
-    start_date_str: str = start_date.strftime("%Y-%m-%d")
-
-    db_data: list[dict] = dm.scan_data(
-        "DailyData",
-        index="date-level-index",
-        filter_dict={"date": [f"{start_date_str}", f"{target_date_str}"]},
-    )
-
-    if not db_data:
-        return []
-
-    dates: dict[str, list[int]] = {}
-
-    for i in db_data:
-        date, _ = i["date-slot"].split("#")
-
-        if not date in dates.keys():
-            dates[date] = []
-
-        dates[date].append(i["level"])
-
-    for date in sorted(dates.keys()):
+        avg_level = Decimal(round(float(sum(levels) / len(levels)), 4))
         data.append(
             CharacterData(
                 uuid="avg",
-                level=Decimal(round(sum(dates[date]) / len(dates[date]), 4)),
-                date=datetime.datetime.strptime(date, "%Y-%m-%d").date(),
+                level=avg_level,
+                date=date_value,
             )
         )
 
@@ -675,85 +671,62 @@ def get_similar_character_avg(
 
     start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
 
-    target_date_str: str = target_date.strftime("%Y-%m-%d")
-    start_date_str: str = start_date.strftime("%Y-%m-%d")
+    levels_by_date: dict[datetime.date, list[tuple[str, Decimal]]] = {}
+    for d in range(period):
+        date_value = start_date + datetime.timedelta(days=d)
+        rows = _get_internal_level_rows(date_value)
 
-    db_data: list[dict] = dm.scan_data(  # 매일 레벨 구간별로 저장해서 불러오기
-        "DailyData",
-        index="date-level-index",
-        filter_dict={
-            "date": [f"{start_date_str}", f"{target_date_str}"],
-        },
-    )
+        normalized: list[tuple[str, Decimal]] = []
+        for row in rows:
+            pk = row.get("PK")
+            if not isinstance(pk, str) or "Level" not in row:
+                continue
+            normalized.append((dm.manager.uuid_from_user_pk(pk), row["Level"]))
 
-    if not db_data:
+        if normalized:
+            levels_by_date[date_value] = normalized
+
+    if not levels_by_date:
         return []
 
-    # 유사한 캐릭터 uuid 저장 set
-    characters: set[str] = set()
-    dates: dict[str, list[int]] = {}
+    today = misc.get_today()
+    base_date = today - datetime.timedelta(days=1) if target_date == today else target_date
+    base_rows = levels_by_date.get(base_date, [])
+    if not base_rows:
+        return []
 
-    # 10캐릭터 이상이 나올 때까지 레벨 범위 넓히기
     MAX_LEVEL_RANGE = 10
     MIN_CHARACTER_COUNT = 10
-    level_range = 1
-    while level_range < MAX_LEVEL_RANGE:
-        # 데이터 돌면서 유사한 캐릭터 선택
-        for i in db_data:
-            date: str = i["date"]
-            today: datetime.date = misc.get_today()
-
-            if (
-                # 당일 데이터라면
-                target_date == today
-                # 하루 전을 기준으로 캐릭터 선택
-                and date == (today - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
-                # 레벨 범위 안에 있고
-                and -level_range <= i["level"] - level <= level_range
-                # 아직 선택된 캐릭터가 아니라면
-                and not i["uuid"] in characters
-            ):
-                characters.add(i["uuid"])
-
-            # 당일 데이터가 아니라면
-            else:
-                if (
-                    # 원하는 날짜의 데이터이고
-                    date == target_date
-                    # 레벨 범위 안에 있고
-                    and -level_range <= i["level"] - level <= level_range
-                    # 아직 선택된 캐릭터가 아니라면
-                    and not i["uuid"] in characters
-                ):  # 레벨 범위 이후에 수정
-                    characters.add(i["uuid"])
-
-        # 선택된 캐릭터들의 레벨 정보 저장
-        for i in db_data:
-            date: str = i["date"]
-
-            # 키가 없다면 초기화
-            if not date in dates.keys():
-                dates[date] = []
-
-            if i["uuid"] in characters:
-                dates[date].append(i["level"])
-
-        # 선택된 캐릭터가 10명 미만이라면 레벨 범위 넓히기
-        if len(dates[max(dates.keys())]) < MIN_CHARACTER_COUNT:
-            level_range += 1
-        else:
+    characters: set[str] = set()
+    for level_range in range(1, MAX_LEVEL_RANGE + 1):
+        characters = {
+            uuid
+            for uuid, item_level in base_rows
+            if abs(float(item_level) - level) <= level_range
+        }
+        if len(characters) >= MIN_CHARACTER_COUNT:
             break
 
-    # 유사한 캐릭터들의 날짜별 평균 레벨 계산
-    for date in sorted(dates.keys()):
-        if dates[date]:
-            data.append(
-                CharacterData(
-                    uuid="sim",
-                    level=Decimal(round(sum(dates[date]) / len(dates[date]), 4)),
-                    date=datetime.datetime.strptime(date, "%Y-%m-%d").date(),
-                )
+    if not characters:
+        return []
+
+    for date_value in sorted(levels_by_date):
+        selected_levels = [
+            item_level
+            for uuid, item_level in levels_by_date[date_value]
+            if uuid in characters
+        ]
+        if not selected_levels:
+            continue
+
+        avg_level = Decimal(round(float(sum(selected_levels) / len(selected_levels)), 4))
+        data.append(
+            CharacterData(
+                uuid="sim",
+                level=avg_level,
+                date=date_value,
             )
+        )
 
     return data
 

@@ -1,7 +1,6 @@
-from typing import Literal
+from decimal import Decimal
 
 import data_manager
-import misc
 
 
 def register_player(uuid: str, name: str) -> None:
@@ -9,32 +8,37 @@ def register_player(uuid: str, name: str) -> None:
     플레이어를 등록하는 함수
     """
 
-    data_manager.write_data(
-        "Users",
-        {
-            "name": name,
-            "uuid": uuid,
-            "lower_name": name.lower(),
-        },
+    prev = data_manager.manager.get_user_metadata(uuid)
+    current_power = prev.get("CurrentPower", Decimal(0)) if prev else Decimal(0)
+    current_level = prev.get("CurrentLevel", Decimal(1)) if prev else Decimal(1)
+
+    data_manager.manager.put_user_metadata(
+        uuid=uuid,
+        name=name,
+        current_level=current_level,
+        current_power=current_power,
     )
 
 
 def get_registered_players() -> list[dict]:
-    items: list[dict] = data_manager.scan_data("Users")
+    items: list[dict] = data_manager.manager.scan_all_user_metadata()
 
     if not items:
         return []
 
-    for item in items:
-        del item["lower_name"]
-
-    return items
+    players = [
+        {
+            "uuid": data_manager.manager.uuid_from_user_pk(item["PK"]),
+            "name": item["Name"],
+        }
+        for item in items
+    ]
+    players.sort(key=lambda item: item["name"].lower())
+    return players
 
 
 def is_registered(uuid: str) -> bool:
-    items: list[dict] = data_manager.read_data("Users", "uuid-index", {"uuid": uuid})
-
-    return bool(items)
+    return data_manager.manager.get_user_metadata(uuid) is not None
 
 
 if __name__ == "__main__":

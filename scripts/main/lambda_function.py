@@ -4,14 +4,15 @@ import datetime
 import json
 import os
 import traceback
-from typing import Literal
 
-import data_manager
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import get_character_info as gci
 import get_level_distribution as gld
 import get_rank_info as gri
 import misc
-import mojang
 import register_player as rp
 import send_msg as sm
 import update
@@ -321,8 +322,7 @@ def cmd_register(event: dict, options: list[dict]) -> dict:
 
 
 if __name__ == "__main__":
-    for i in range(135, -1, -1):
-        lambda_handler({"action": "update_1D", "days_before": i}, None)
+    lambda_handler({"action": "update_1D"}, None)
     event = {
         "body": """
         {"authorizing_integration_owners":
@@ -359,6 +359,4 @@ if __name__ == "__main__":
         }""",
     }
     # lambda_handler(event, None)
-    pass
-    pass
     pass

@@ -1,15 +1,19 @@
 import json
 import os
 import time
+from dotenv import load_dotenv
 
 import misc
 import requests
+
+load_dotenv()
 
 LOG_CHANNEL_ID: str | None = os.getenv("DISCORD_LOG_CHANNEL_ID")
 ADMIN_ID: str | None = os.getenv("DISCORD_ADMIN_ID")
 DISCORD_TOKEN: str | None = os.getenv("DISCORD_TOKEN")
 
 if not LOG_CHANNEL_ID or not ADMIN_ID or not DISCORD_TOKEN:
+    print(LOG_CHANNEL_ID is not None, ADMIN_ID is not None, DISCORD_TOKEN is not None)
     raise ValueError(
         "DISCORD_LOG_CHANNEL_ID, DISCORD_ADMIN_ID, and DISCORD_TOKEN must be set in environment variables."
     )

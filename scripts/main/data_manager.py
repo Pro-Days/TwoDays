@@ -3,9 +3,12 @@ from datetime import date
 from decimal import Decimal
 from enum import Enum
 from typing import Any
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import boto3
-from boto3.dynamodb.conditions import ConditionBase, Key
+from boto3.dynamodb.conditions import Attr, ConditionBase, Key
 
 # .env 파일에서 환경 변수 로드
 AWS_REGION: str = os.getenv("AWS_REGION", "ap-northeast-2")
@@ -22,6 +25,7 @@ class GSIName(str, Enum):
     OFFICIAL_POWER_RANK = "GSI_Official_Power_Rank"
     INTERNAL_LEVEL = "GSI_Internal_Level"
     INTERNAL_POWER = "GSI_Internal_Power"
+    FIND_USER_BY_NAME = "GSI_Find_User_By_Name"
 
 
 def _build_session() -> boto3.Session:
@@ -61,6 +65,10 @@ class SingleTableDataManager:
             return f"SNAP#{target_date.strftime('%Y-%m-%d')}"
 
         return f"SNAP#{target_date}"
+
+    @staticmethod
+    def uuid_from_user_pk(pk: str) -> str:
+        return pk.removeprefix("USER#")
 
     def _put_item(self, item: dict[str, Any]) -> None:
         self.table.put_item(Item=item)
@@ -203,6 +211,25 @@ class SingleTableDataManager:
 
         self._put_item(item)
 
+    def get_user_metadata(self, uuid: str) -> dict[str, Any] | None:
+        items, _ = self._query(
+            key_condition=Key("PK").eq(self.user_pk(uuid)) & Key("SK").eq("METADATA"),
+            limit=1,
+        )
+        return items[0] if items else None
+
+    def find_user_metadata_by_name(self, name: str) -> dict[str, Any] | None:
+        items, _ = self._query(
+            key_condition=Key("Name_Lower").eq(name.lower()) & Key("SK").eq("METADATA"),
+            index_name=GSIName.FIND_USER_BY_NAME,
+            limit=1,
+        )
+
+        return items[0] if items else None
+
+    def scan_all_user_metadata(self) -> list[dict[str, Any]]:
+        return self._scan_all(filter_expression=Attr("SK").eq("METADATA"))
+
     def put_daily_snapshot(
         self,
         uuid: str,
@@ -330,6 +357,17 @@ class SingleTableDataManager:
             limit=limit,
             exclusive_start_key=exclusive_start_key,
         )
+
+    def get_user_snapshot(
+        self, uuid: str, snapshot_date: date | str
+    ) -> dict[str, Any] | None:
+        items, _ = self.get_user_snapshot_history(
+            uuid=uuid,
+            start_date=snapshot_date,
+            end_date=snapshot_date,
+            limit=1,
+        )
+        return items[0] if items else None
 
     def get_level_range_users(
         self,

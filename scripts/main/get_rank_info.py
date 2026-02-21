@@ -49,6 +49,29 @@ def download_image(url: str, num: int, list_name: list[str]) -> None:
     list_name[num] = head_path
 
 
+def _get_official_level_rows(
+    target_date: datetime.date, limit: int = 100
+) -> list[dict]:
+    rows: list[dict] = []
+    last_evaluated_key = None
+
+    while len(rows) < limit:
+        page_size = min(100, limit - len(rows))
+        page, last_evaluated_key = data_manager.manager.get_official_level_top(
+            snapshot_date=target_date,
+            limit=page_size,
+            exclusive_start_key=last_evaluated_key,
+        )
+        if not page:
+            break
+
+        rows.extend(page)
+        if not last_evaluated_key:
+            break
+
+    return rows[:limit]
+
+
 def get_rank_data(
     target_date: datetime.date, start: int = 1, end: int = 100
 ) -> list[CharacterData]:
@@ -56,20 +79,21 @@ def get_rank_data(
     특정 날짜의 랭킹 데이터를 가져오는 함수
     """
 
-    data: list[dict] = data_manager.read_data(
-        "Ranks", condition_dict={"date": target_date.strftime("%Y-%m-%d")}
-    )
-
-    if not data:
+    rows: list[dict] = _get_official_level_rows(target_date, limit=end)
+    if not rows:
         return []
 
     rank_data: list[CharacterData] = []
 
-    for item in data:
+    for item in rows:
+        pk = item.get("PK")
+        if not isinstance(pk, str):
+            continue
+
         rank_data.append(
             CharacterData(
-                uuid=item["uuid"],
-                level=item["level"],
+                uuid=data_manager.manager.uuid_from_user_pk(pk),
+                level=item["Level"],
                 date=target_date,
             )
         )
@@ -95,15 +119,6 @@ def get_current_rank_data(start: int = 1, end: int = 100) -> list[CharacterData]
 
 
 def get_rank_info(start: int, end: int, target_date: datetime.date):
-    data: dict[str, list] = {
-        "Rank": list(range(start, end + 1)),
-        "Name": [],
-        "Level": [],
-        "Change": [],
-    }
-
-    rank_count: int = end - start + 1
-
     if target_date == misc.get_today():
         current_data: list[CharacterData] = get_current_rank_data(start, end)
     else:
@@ -111,6 +126,16 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
 
     if not current_data:
         return None, None
+
+    rank_count = min(end - start + 1, len(current_data))
+    data: dict[str, list] = {
+        "Rank": list(range(start, start + rank_count)),
+        "Name": [],
+        "Level": [],
+        "Change": [],
+    }
+
+    prev_date: datetime.date = target_date - datetime.timedelta(days=1)
 
     # 실시간 랭킹 데이터를 가져와서 data에 추가
     for i in range(rank_count):
@@ -123,21 +148,13 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
         data["Name"].append(name)
         data["Level"].append(current_data[i].level)
 
-        prev_date: datetime.date = target_date - datetime.timedelta(days=1)
-        prev_date_str: str = prev_date.strftime("%Y-%m-%d")
-
-        # 이전 날짜의 랭킹 데이터를 가져와서 변동 정보 계산
-        prev_rank: list[dict] = data_manager.read_data(
-            "Ranks", "uuid-date-index", {"uuid": uuid, "date": prev_date_str}
+        prev_snapshot = data_manager.manager.get_user_snapshot(
+            uuid=uuid, snapshot_date=prev_date
         )
-
-        # 이전 랭킹 데이터가 없는 경우
-        if not prev_rank:
+        if not prev_snapshot or "Level_Rank" not in prev_snapshot:
             data["Change"].append(None)
-
-        # 이전 랭킹 데이터가 있는 경우 변동 계산
         else:
-            diff: int = prev_rank[0]["rank"] - (i + start)
+            diff: int = int(prev_snapshot["Level_Rank"]) - (i + start)
             data["Change"].append(diff)
 
     # 랭킹에 해당하는 플레이어의 머리 이미지 다운로드
@@ -167,8 +184,8 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
     for thread in threads:
         thread.join()
 
-    header_text = ["순위", "닉네임", "레벨", "직업", "변동"]
-    header_widths = [160, 500, 280, 240, 240]
+    header_text = ["순위", "닉네임", "레벨", "변동"]
+    header_widths = [160, 580, 280, 240]
 
     header_height = 100
     row_height = 100
@@ -197,7 +214,7 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
         )
 
     x_offset = -10
-    x_list = [34, 110, 90, 66, 68]
+    x_list = [34, 110, 90, 68]
     for i, text in enumerate(header_text):
         draw.text((x_offset + x_list[i] + 24, 30), text, fill="black", font=font)
         x_offset += header_widths[i]
@@ -247,9 +264,6 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
             font=font,
         )
         x_offset += header_widths[2]
-
-        draw.text((x_offset + 84, text_y_offset), row["Job"], fill="black", font=font)
-        x_offset += header_widths[3]
 
         if row["Change"] is not None:
             change = int(row["Change"])
@@ -411,41 +425,36 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
 def get_rank_history(
     start: int, end: int, period: int, target_date: datetime.date
 ) -> tuple:
+    today = misc.get_today()
     current_data: list[CharacterData] = (
-        get_current_rank_data() if target_date == misc.get_today() else []
+        get_current_rank_data() if target_date == today else []
     )
 
     rank_count: int = end - start + 1
 
     start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
-    target_date_str: str = target_date.strftime("%Y-%m-%d")
-    start_date_str: str = start_date.strftime("%Y-%m-%d")
+    data: list[dict] = []
 
-    data: list[dict] = data_manager.scan_data(
-        "Ranks",
-        filter_dict={
-            "date": [start_date_str, target_date_str],
-            "rank": [start, end],
-        },
-    )
+    for offset in range(period):
+        day = start_date + datetime.timedelta(days=offset)
+        day_str = day.strftime("%Y-%m-%d")
+
+        if day == target_date and target_date == today:
+            day_data = current_data[start - 1 : end]
+        else:
+            day_data = get_rank_data(day, start, end)
+
+        for i, row in enumerate(day_data):
+            data.append(
+                {
+                    "date": day_str,
+                    "rank": i + start,
+                    "uuid": row.uuid,
+                }
+            )
 
     if not data:
         return None, None
-
-    for i, j in enumerate(data):
-        data[i]["rank"] = int(j["rank"])
-        data[i]["uuid"] = j["uuid"]
-
-    if current_data is not None:
-        for i, j in enumerate(current_data):
-            if start - 1 <= i < end:
-                data.append(
-                    {
-                        "date": target_date_str,
-                        "rank": i + 1,
-                        "uuid": j.uuid,
-                    }
-                )
 
     # 실제 데이터로 기간 계산
     period = len(set([i["date"] for i in data]))

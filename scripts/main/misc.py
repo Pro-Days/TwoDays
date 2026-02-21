@@ -57,13 +57,14 @@ def get_profile_from_name(name: str) -> tuple[str | None, str | None]:
     """
 
     # 닉네임이 등록되어있다면 데이터베이스에서 uuid 가져오기
-    data: list[dict] = data_manager.read_data(
-        "Users", "lower_name-index", {"lower_name": name.lower()}
-    )
+    metadata = data_manager.manager.find_user_metadata_by_name(name)
 
-    if data:
-        real_name = data[0]["name"]
-        uuid = data[0]["uuid"]
+    if metadata:
+        real_name = metadata.get("Name")
+        pk = metadata.get("PK")
+        uuid = (
+            data_manager.manager.uuid_from_user_pk(pk) if isinstance(pk, str) else None
+        )
 
     else:
         # 닉네임이 등록되어있지 않다면
@@ -84,10 +85,10 @@ def get_name_from_uuid(uuid: str) -> str | None:
     """
 
     # UUID가 등록되어있다면 데이터베이스에서 name 가져오기
-    data: list[dict] = data_manager.read_data("Users", "uuid-index", {"uuid": uuid})
+    metadata = data_manager.manager.get_user_metadata(uuid)
 
-    if data:
-        real_name = data[0]["name"]
+    if metadata:
+        real_name = metadata.get("Name")
 
     else:
         # UUID가 등록되어있지 않다면
