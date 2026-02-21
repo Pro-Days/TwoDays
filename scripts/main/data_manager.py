@@ -1,6 +1,7 @@
 import os
 from datetime import date
 from decimal import Decimal
+from enum import Enum
 from typing import Any
 
 import boto3
@@ -12,6 +13,15 @@ AWS_ACCESS_KEY: str | None = os.getenv("AWS_ACCESS_KEY", None)
 AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_SECRET_ACCESS_KEY", None)
 
 SINGLE_TABLE_NAME: str = os.getenv("SINGLE_TABLE_NAME", "").strip()
+
+
+class GSIName(str, Enum):
+    """DynamoDB GSI 이름 상수"""
+
+    OFFICIAL_LEVEL_RANK = "GSI_Official_Level_Rank"
+    OFFICIAL_POWER_RANK = "GSI_Official_Power_Rank"
+    INTERNAL_LEVEL = "GSI_Internal_Level"
+    INTERNAL_POWER = "GSI_Internal_Power"
 
 
 def _build_session() -> boto3.Session:
@@ -58,7 +68,7 @@ class SingleTableDataManager:
     def _query(
         self,
         key_condition: ConditionBase,
-        index_name: str | None = None,
+        index_name: GSIName | None = None,
         filter_expression: ConditionBase | None = None,
         projection_expression: str | None = None,
         scan_index_forward: bool = True,
@@ -74,7 +84,7 @@ class SingleTableDataManager:
         }
 
         if index_name:
-            query_params["IndexName"] = index_name
+            query_params["IndexName"] = index_name.value
         if filter_expression is not None:
             query_params["FilterExpression"] = filter_expression
         if projection_expression:
@@ -90,7 +100,7 @@ class SingleTableDataManager:
     def _query_all(
         self,
         key_condition: ConditionBase,
-        index_name: str | None = None,
+        index_name: GSIName | None = None,
         filter_expression: ConditionBase | None = None,
         projection_expression: str | None = None,
         scan_index_forward: bool = True,
@@ -118,7 +128,7 @@ class SingleTableDataManager:
 
     def _scan(
         self,
-        index_name: str | None = None,
+        index_name: GSIName | None = None,
         filter_expression: ConditionBase | None = None,
         projection_expression: str | None = None,
         limit: int | None = None,
@@ -129,7 +139,7 @@ class SingleTableDataManager:
         scan_params: dict[str, Any] = {}
 
         if index_name:
-            scan_params["IndexName"] = index_name
+            scan_params["IndexName"] = index_name.value
         if filter_expression is not None:
             scan_params["FilterExpression"] = filter_expression
         if projection_expression:
@@ -144,7 +154,7 @@ class SingleTableDataManager:
 
     def _scan_all(
         self,
-        index_name: str | None = None,
+        index_name: GSIName | None = None,
         filter_expression: ConditionBase | None = None,
         projection_expression: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -231,7 +241,7 @@ class SingleTableDataManager:
 
         return self._query(
             key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
-            index_name="GSI_Official_Level_Rank",
+            index_name=GSIName.OFFICIAL_LEVEL_RANK,
             scan_index_forward=True,
             limit=limit,
             exclusive_start_key=exclusive_start_key,
@@ -247,7 +257,7 @@ class SingleTableDataManager:
 
         return self._query(
             key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
-            index_name="GSI_Official_Power_Rank",
+            index_name=GSIName.OFFICIAL_POWER_RANK,
             scan_index_forward=True,
             limit=limit,
             exclusive_start_key=exclusive_start_key,
@@ -266,7 +276,7 @@ class SingleTableDataManager:
 
         return self._query(
             key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
-            index_name="GSI_Internal_Level",
+            index_name=GSIName.INTERNAL_LEVEL,
             scan_index_forward=False,
             limit=page_size,
             exclusive_start_key=exclusive_start_key,
@@ -285,7 +295,7 @@ class SingleTableDataManager:
 
         return self._query(
             key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
-            index_name="GSI_Internal_Power",
+            index_name=GSIName.INTERNAL_POWER,
             scan_index_forward=False,
             limit=page_size,
             exclusive_start_key=exclusive_start_key,
@@ -337,7 +347,7 @@ class SingleTableDataManager:
 
         return self._query(
             key_condition=key_condition,
-            index_name="GSI_Internal_Level",
+            index_name=GSIName.INTERNAL_LEVEL,
             scan_index_forward=False,
             limit=limit,
             exclusive_start_key=exclusive_start_key,
@@ -359,7 +369,7 @@ class SingleTableDataManager:
 
         return self._query(
             key_condition=key_condition,
-            index_name="GSI_Internal_Power",
+            index_name=GSIName.INTERNAL_POWER,
             scan_index_forward=False,
             limit=limit,
             exclusive_start_key=exclusive_start_key,
