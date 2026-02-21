@@ -1,142 +1,375 @@
 import os
-import platform
+from datetime import date
+from decimal import Decimal
+from typing import Any
 
 import boto3
-from boto3.dynamodb.conditions import And, Between, Equals, Key
+from boto3.dynamodb.conditions import ConditionBase, Key
 
-# 운영 체제에 따라 AWS 자격 증명 설정
-os_name: str = platform.system()
-if os_name == "Linux":
-    session = boto3.Session(
-        region_name="ap-northeast-2",
-    )
+# .env 파일에서 환경 변수 로드
+AWS_REGION: str = os.getenv("AWS_REGION", "ap-northeast-2")
+AWS_ACCESS_KEY: str | None = os.getenv("AWS_ACCESS_KEY", None)
+AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_SECRET_ACCESS_KEY", None)
 
-else:
-    AWS_ACCESS_KEY_ID: str | None = os.getenv("AWS_ACCESS_KEY", None)
-    AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_SECRET_ACCESS_KEY", None)
+SINGLE_TABLE_NAME: str = os.getenv("SINGLE_TABLE_NAME", "").strip()
 
-    if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
-        raise ValueError(
-            "AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY must be set in environment variables."
-        )
 
-    session = boto3.Session(
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        region_name="ap-northeast-2",
-    )
+def _build_session() -> boto3.Session:
+    """AWS 세션을 생성하는 헬퍼 함수"""
 
-db_name: str = os.environ.get("DB_NAME", "")
+    session_kwargs: dict[str, str] = {"region_name": AWS_REGION}
+
+    if AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY:
+        session_kwargs["aws_access_key_id"] = AWS_ACCESS_KEY
+        session_kwargs["aws_secret_access_key"] = AWS_SECRET_ACCESS_KEY
+
+    return boto3.Session(**session_kwargs)
+
+
+# AWS 세션과 DynamoDB 리소스 초기화
+session: boto3.Session = _build_session()
 dynamodb = session.resource("dynamodb")
 
 
-def read_data(
-    table_name: str, index: str | None = None, condition_dict: dict | None = None
-) -> list[dict]:
+class SingleTableDataManager:
     """
-    DynamoDB에서 데이터를 읽어오는 함수
+    Single Table 전용 데이터 접근 매니저 클래스.
     """
 
-    table_name = db_name + "-" + table_name
-    table = dynamodb.Table(table_name)  # type: ignore
+    def __init__(self) -> None:
+        # 테이블 초기화
+        self.table = dynamodb.Table(SINGLE_TABLE_NAME)  # type: ignore
 
-    condition: Between | Equals | And | None = None
-    if condition_dict:
-        for key, value in condition_dict.items():
+    @staticmethod
+    def user_pk(uuid: str) -> str:
+        return f"USER#{uuid}"
 
-            if isinstance(value, list):
-                add: Between | Equals = Key(key).between(value[0], value[1])
-            else:
-                add = Key(key).eq(value)
+    @staticmethod
+    def snapshot_sk(target_date: date | str) -> str:
 
-            if condition is None:
-                condition = add
-            else:
-                condition = condition & add
+        if isinstance(target_date, date):
+            return f"SNAP#{target_date.strftime('%Y-%m-%d')}"
 
-    query_params: dict[str, str | Between | Equals | And | None] = {
-        "KeyConditionExpression": condition
-    }
+        return f"SNAP#{target_date}"
 
-    if index:
-        query_params["IndexName"] = index
+    def _put_item(self, item: dict[str, Any]) -> None:
+        self.table.put_item(Item=item)
 
-    response = table.query(**query_params)
+    def _query(
+        self,
+        key_condition: ConditionBase,
+        index_name: str | None = None,
+        filter_expression: ConditionBase | None = None,
+        projection_expression: str | None = None,
+        scan_index_forward: bool = True,
+        limit: int | None = None,
+        # 페이징을 위한 ExclusiveStartKey: LastEvaluatedKey
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """Query: 단일 페이지 조회"""
 
-    items = response.get("Items", [])
+        query_params: dict[str, Any] = {
+            "KeyConditionExpression": key_condition,
+            "ScanIndexForward": scan_index_forward,
+        }
 
-    return items
+        if index_name:
+            query_params["IndexName"] = index_name
+        if filter_expression is not None:
+            query_params["FilterExpression"] = filter_expression
+        if projection_expression:
+            query_params["ProjectionExpression"] = projection_expression
+        if limit is not None:
+            query_params["Limit"] = limit
+        if exclusive_start_key is not None:
+            query_params["ExclusiveStartKey"] = exclusive_start_key
+
+        response = self.table.query(**query_params)
+        return response.get("Items", []), response.get("LastEvaluatedKey")
+
+    def _query_all(
+        self,
+        key_condition: ConditionBase,
+        index_name: str | None = None,
+        filter_expression: ConditionBase | None = None,
+        projection_expression: str | None = None,
+        scan_index_forward: bool = True,
+    ) -> list[dict[str, Any]]:
+        """Query: 전체 페이지 조회 (자동 페이징)"""
+
+        items: list[dict[str, Any]] = []
+        last_evaluated_key: dict[str, Any] | None = None
+
+        while True:
+            page_items, last_evaluated_key = self._query(
+                key_condition=key_condition,
+                index_name=index_name,
+                filter_expression=filter_expression,
+                projection_expression=projection_expression,
+                scan_index_forward=scan_index_forward,
+                exclusive_start_key=last_evaluated_key,
+            )
+            items.extend(page_items)
+
+            if not last_evaluated_key:
+                break
+
+        return items
+
+    def _scan(
+        self,
+        index_name: str | None = None,
+        filter_expression: ConditionBase | None = None,
+        projection_expression: str | None = None,
+        limit: int | None = None,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """Scan: 단일 페이지 조회"""
+
+        scan_params: dict[str, Any] = {}
+
+        if index_name:
+            scan_params["IndexName"] = index_name
+        if filter_expression is not None:
+            scan_params["FilterExpression"] = filter_expression
+        if projection_expression:
+            scan_params["ProjectionExpression"] = projection_expression
+        if limit is not None:
+            scan_params["Limit"] = limit
+        if exclusive_start_key is not None:
+            scan_params["ExclusiveStartKey"] = exclusive_start_key
+
+        response = self.table.scan(**scan_params)
+        return response.get("Items", []), response.get("LastEvaluatedKey")
+
+    def _scan_all(
+        self,
+        index_name: str | None = None,
+        filter_expression: ConditionBase | None = None,
+        projection_expression: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Scan: 전체 페이지 조회 (자동 페이징)"""
+
+        items: list[dict[str, Any]] = []
+        last_evaluated_key: dict[str, Any] | None = None
+
+        while True:
+            page_items, last_evaluated_key = self._scan(
+                index_name=index_name,
+                filter_expression=filter_expression,
+                projection_expression=projection_expression,
+                exclusive_start_key=last_evaluated_key,
+            )
+            items.extend(page_items)
+
+            if not last_evaluated_key:
+                break
+
+        return items
+
+    # -----------------------------
+    # 도메인 특화 메서드
+    # 유저 메타데이터 저장, 일일 스냅샷 저장, 랭킹 조회, 유저별 스냅샷 조회 등
+    # -----------------------------
+    def put_user_metadata(
+        self,
+        uuid: str,
+        name: str,
+        current_level: Decimal,
+        current_power: Decimal,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        item: dict[str, Any] = {
+            "PK": self.user_pk(uuid),
+            "SK": "METADATA",
+            "Name": name,
+            "Name_Lower": name.lower(),
+            "CurrentLevel": current_level,
+            "CurrentPower": current_power,
+        }
+
+        if extra:
+            item.update(extra)
+
+        self._put_item(item)
+
+    def put_daily_snapshot(
+        self,
+        uuid: str,
+        snapshot_date: date | str,
+        name: str,
+        level: Decimal,
+        power: Decimal,
+        level_rank: Decimal | None = None,
+        power_rank: Decimal | None = None,
+        extra: dict[str, Any] | None = None,
+    ) -> None:
+        item: dict[str, Any] = {
+            "PK": self.user_pk(uuid),
+            "SK": self.snapshot_sk(snapshot_date),
+            "Name": name,
+            "Level": level,
+            "Power": power,
+        }
+
+        if level_rank is not None:
+            item["Level_Rank"] = level_rank
+        if power_rank is not None:
+            item["Power_Rank"] = power_rank
+        if extra:
+            item.update(extra)
+
+        self._put_item(item)
+
+    def get_official_level_top(
+        self,
+        snapshot_date: date | str,
+        limit: int = 100,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """공식 레벨 랭킹 조회 (레벨 높은 순)"""
+
+        return self._query(
+            key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
+            index_name="GSI_Official_Level_Rank",
+            scan_index_forward=True,
+            limit=limit,
+            exclusive_start_key=exclusive_start_key,
+        )
+
+    def get_official_power_top(
+        self,
+        snapshot_date: date | str,
+        limit: int = 100,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """공식 전투력 랭킹 조회 (전투력 높은 순)"""
+
+        return self._query(
+            key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
+            index_name="GSI_Official_Power_Rank",
+            scan_index_forward=True,
+            limit=limit,
+            exclusive_start_key=exclusive_start_key,
+        )
+
+    def get_internal_level_page(
+        self,
+        snapshot_date: date | str,
+        page_size: int = 100,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """
+        내부 레벨 랭킹 조회 (레벨 높은 순)
+        DB에 저장된 레벨을 기준으로 조회
+        """
+
+        return self._query(
+            key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
+            index_name="GSI_Internal_Level",
+            scan_index_forward=False,
+            limit=page_size,
+            exclusive_start_key=exclusive_start_key,
+        )
+
+    def get_internal_power_page(
+        self,
+        snapshot_date: date | str,
+        page_size: int = 100,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """
+        내부 전투력 랭킹 조회 (전투력 높은 순)
+        DB에 저장된 전투력을 기준으로 조회
+        """
+
+        return self._query(
+            key_condition=Key("SK").eq(self.snapshot_sk(snapshot_date)),
+            index_name="GSI_Internal_Power",
+            scan_index_forward=False,
+            limit=page_size,
+            exclusive_start_key=exclusive_start_key,
+        )
+
+    def get_user_snapshot_history(
+        self,
+        uuid: str,
+        start_date: date | str | None = None,
+        end_date: date | str | None = None,
+        limit: int | None = None,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """유저 스냅샷 조회"""
+
+        key_condition: ConditionBase = Key("PK").eq(self.user_pk(uuid))
+
+        if start_date is not None and end_date is not None:
+            key_condition = key_condition & Key("SK").between(
+                self.snapshot_sk(start_date), self.snapshot_sk(end_date)
+            )
+        elif start_date is not None:
+            key_condition = key_condition & Key("SK").gte(self.snapshot_sk(start_date))
+        elif end_date is not None:
+            key_condition = key_condition & Key("SK").lte(self.snapshot_sk(end_date))
+        else:
+            key_condition = key_condition & Key("SK").begins_with("SNAP#")
+
+        return self._query(
+            key_condition=key_condition,
+            scan_index_forward=False,
+            limit=limit,
+            exclusive_start_key=exclusive_start_key,
+        )
+
+    def get_level_range_users(
+        self,
+        snapshot_date: date | str,
+        min_level: Decimal,
+        max_level: Decimal,
+        limit: int | None = None,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """레벨 범위 내 유저 조회"""
+
+        key_condition = Key("SK").eq(self.snapshot_sk(snapshot_date)) & Key(
+            "Level"
+        ).between(min_level, max_level)
+
+        return self._query(
+            key_condition=key_condition,
+            index_name="GSI_Internal_Level",
+            scan_index_forward=False,
+            limit=limit,
+            exclusive_start_key=exclusive_start_key,
+        )
+
+    def get_power_range_users(
+        self,
+        snapshot_date: date | str,
+        min_power: Decimal,
+        max_power: Decimal,
+        limit: int | None = None,
+        exclusive_start_key: dict[str, Any] | None = None,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """전투력 범위 내 유저 조회"""
+
+        key_condition = Key("SK").eq(self.snapshot_sk(snapshot_date)) & Key(
+            "Power"
+        ).between(min_power, max_power)
+
+        return self._query(
+            key_condition=key_condition,
+            index_name="GSI_Internal_Power",
+            scan_index_forward=False,
+            limit=limit,
+            exclusive_start_key=exclusive_start_key,
+        )
 
 
-def scan_data(
-    table_name: str,
-    index: str | None = None,
-    key: str | None = None,
-    filter_dict: dict | None = None,
-) -> list[dict]:
-    """
-    DynamoDB에서 데이터를 스캔하는 함수
-    사용을 권장하지 않음 (비용 및 성능 문제)
-    """
-
-    table_name = db_name + "-" + table_name
-    table = dynamodb.Table(table_name)  # type: ignore
-
-    filter_data: Between | Equals | And | None = None
-    if filter_dict:
-        for _key, value in filter_dict.items():
-            if isinstance(value, list):
-                add: Between | Equals = Key(_key).between(value[0], value[1])
-            else:
-                add = Key(_key).eq(value)
-
-            if filter_data is None:
-                filter_data = add
-            else:
-                filter_data = filter_data & add
-
-    scan_params: dict[str, str | Between | Equals | And | None] = {}
-
-    if key:
-        scan_params["ProjectionExpression"] = key
-
-    if filter_dict:
-        scan_params["FilterExpression"] = filter_data
-
-    if index:
-        scan_params["IndexName"] = index
-
-    response = table.scan(**scan_params)
-
-    items = response.get("Items", [])
-
-    # 페이지네이션 처리: LastEvaluatedKey가 있으면 계속해서 스캔
-    while "LastEvaluatedKey" in response:
-        scan_params["ExclusiveStartKey"] = response["LastEvaluatedKey"]
-        response = table.scan(**scan_params)
-
-        items.extend(response.get("Items", []))
-
-    return items
-
-
-def write_data(table_name: str, item: dict) -> None:
-    """
-    DynamoDB에 데이터를 쓰는 함수
-    """
-
-    table_name = db_name + "-" + table_name
-    table = dynamodb.Table(table_name)  # type: ignore
-
-    table.put_item(Item=item)
+# 데이터 매니저 인스턴스 생성
+# 싱글톤 패턴
+manager = SingleTableDataManager()
 
 
 if __name__ == "__main__":
-    # print(scan_data("TA_DEV-DailyData"))
-    # data = read_data("DailyData", None, {"id": 1, "date-slot": ["2025-01-01#0", "2025-01-01#4"]})
-    #     read_data(
-    #         "Ranks", index="id-date-index", condition_dict={"id": 1, "date": ["2025-03-10", "2025-03-18"]}
-    #     )
-    # )
-
     pass
