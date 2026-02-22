@@ -107,20 +107,71 @@ def _get_official_level_rows(
     return rows[:limit]
 
 
+def _get_internal_power_rows(
+    target_date: datetime.date, limit: int = 100
+) -> list[dict]:
+
+    logger.debug(
+        "_get_internal_power_rows start: " f"date={target_date} " f"limit={limit}"
+    )
+
+    rows: list[dict] = []
+    last_evaluated_key = None
+
+    while len(rows) < limit:
+        page_size = min(100, limit - len(rows))
+        page, last_evaluated_key = data_manager.manager.get_internal_power_page(
+            snapshot_date=target_date,
+            page_size=page_size,
+            exclusive_start_key=last_evaluated_key,
+        )
+        if not page:
+            break
+
+        rows.extend(page)
+
+        logger.debug(
+            "_get_internal_power_rows page fetched: "
+            f"page_items={len(page)} "
+            f"total={len(rows)} "
+            f"has_next={bool(last_evaluated_key)}"
+        )
+
+        if not last_evaluated_key:
+            break
+
+    logger.debug("_get_internal_power_rows complete: " f"returned={len(rows[:limit])}")
+
+    return rows[:limit]
+
+
 def get_rank_data(
-    target_date: datetime.date, start: int = 1, end: int = 100
+    target_date: datetime.date,
+    start: int = 1,
+    end: int = 100,
+    metric: str = "level",
 ) -> list[CharacterData]:
     """
     특정 날짜의 랭킹 데이터를 가져오는 함수
     """
 
     logger.info(
-        "get_rank_data start: " f"date={target_date} " f"start={start} " f"end={end}"
+        "get_rank_data start: "
+        f"date={target_date} "
+        f"start={start} "
+        f"end={end} "
+        f"metric={metric}"
     )
 
-    rows: list[dict] = _get_official_level_rows(target_date, limit=end)
+    if metric == "level":
+        rows: list[dict] = _get_official_level_rows(target_date, limit=end)
+    elif metric == "power":
+        rows = _get_internal_power_rows(target_date, limit=end)
+    else:
+        raise ValueError(f"unsupported rank metric: {metric}")
+
     if not rows:
-        logger.warning("get_rank_data no rows: " f"date={target_date}")
+        logger.warning("get_rank_data no rows: " f"date={target_date} " f"metric={metric}")
         return []
 
     rank_data: list[CharacterData] = []
@@ -142,19 +193,29 @@ def get_rank_data(
     result = rank_data[start - 1 : end]
 
     logger.info(
-        "get_rank_data complete: " f"date={target_date} " f"returned={len(result)}"
+        "get_rank_data complete: "
+        f"date={target_date} "
+        f"returned={len(result)} "
+        f"metric={metric}"
     )
 
     return result
 
 
-def get_current_rank_data(start: int = 1, end: int = 100) -> list[CharacterData]:
+def get_current_rank_data(
+    start: int = 1, end: int = 100, metric: str = "level"
+) -> list[CharacterData]:
     """
     현재 랭킹 데이터를 가져오는 함수
     등록되지 않은 플레이어는 등록시킴
     """
 
-    logger.info("get_current_rank_data start: " f"start={start} " f"end={end}")
+    logger.info(
+        "get_current_rank_data start: "
+        f"start={start} "
+        f"end={end} "
+        f"metric={metric}"
+    )
 
     players: list[dict] = register_player.get_registered_players()
 
@@ -162,13 +223,19 @@ def get_current_rank_data(start: int = 1, end: int = 100) -> list[CharacterData]
         gci.get_current_character_data(player["uuid"]) for player in players
     ]
 
-    rank_data.sort(key=lambda x: x.level, reverse=True)
+    if metric == "level":
+        rank_data.sort(key=lambda x: x.level, reverse=True)
+    elif metric == "power":
+        rank_data.sort(key=lambda x: x.power, reverse=True)
+    else:
+        raise ValueError(f"unsupported rank metric: {metric}")
 
     result = rank_data[start - 1 : end]
     logger.info(
         "get_current_rank_data complete: "
         f"players={len(players)} "
-        f"returned={len(result)}"
+        f"returned={len(result)} "
+        f"metric={metric}"
     )
     return result
 

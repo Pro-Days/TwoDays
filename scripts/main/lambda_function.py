@@ -252,7 +252,7 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
 def cmd_search(event: dict, options: list[dict]) -> dict:
     logger.debug(f"cmd_search options={truncate_text(options, 1000)}")
 
-    # 랭킹 또는 레벨 검색인지 확인
+    # 검색 타입 확인 (레벨 / 랭킹 / 전투력 / 전투력 랭킹)
     _type = options[0]["name"]
 
     name: str | None = None
@@ -324,12 +324,25 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
             f"date={target_date}"
         )
 
-        msg, image_path = gci.get_character_info(
+        msg, image_path = gci.get_character_level_info(
             uuid, real_name, period_int, target_date
         )
 
-    # 랭킹 검색이라면 랭킹 변화량 정보 가져오기
-    elif _type == "랭킹":
+    # 전투력 검색이라면 전투력 정보 가져오기
+    elif _type == "전투력":
+        logger.info(
+            "running power search: "
+            f"uuid={uuid} "
+            f"period={period_int} "
+            f"date={target_date}"
+        )
+
+        msg, image_path = gci.get_character_power_info(
+            uuid, real_name, period_int, target_date
+        )
+
+    # 랭킹 검색이라면 레벨 랭킹 변화량 정보 가져오기
+    elif _type == "레벨 랭킹":
         logger.info(
             "running rank search: "
             f"uuid={uuid} "
@@ -339,6 +352,19 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
 
         msg, image_path = gci.get_charater_rank_history(
             uuid, name, period_int, target_date
+        )
+
+    # 전투력 랭킹 검색이라면 전투력 랭킹 변화량 정보 가져오기
+    elif _type == "전투력 랭킹":
+        logger.info(
+            "running power rank search: "
+            f"uuid={uuid} "
+            f"period={period_int} "
+            f"date={target_date}"
+        )
+
+        msg, image_path = gci.get_charater_rank_history(
+            uuid, name, period_int, target_date, rank_type="power"
         )
 
     else:
