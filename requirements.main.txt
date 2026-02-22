@@ -1,0 +1,5 @@
+matplotlib==3.10.0
+pandas==2.2.3
+pillow==11.1.0
+requests==2.32.3
+mojang==1.1.0

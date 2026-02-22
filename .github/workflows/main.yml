@@ -13,10 +13,22 @@ jobs:
     steps:
       - name: checkout source code
         uses: actions/checkout@v4
-        
-      - name: Build binary
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build deployment package
         run: |
-          cd scripts/main && zip deployment_main.zip *
+          python -m pip install --upgrade pip
+          rm -rf build/main scripts/main/deployment_main.zip
+          mkdir -p build/main
+          pip install -r requirements.main.txt -t build/main
+          cp scripts/main/*.py build/main/
+          find build/main -type d -name '__pycache__' -prune -exec rm -rf {} +
+          find build/main -type f -name '*.pyc' -delete
+          cd build/main && zip -r ../../scripts/main/deployment_main.zip .
 
       - name: deploy to develop
         if: github.ref == 'refs/heads/develop'
@@ -44,10 +56,22 @@ jobs:
     steps:
       - name: checkout source code
         uses: actions/checkout@v4
-        
-      - name: Build binary
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build deployment package
         run: |
-          cd scripts/discord_event_handler && zip deployment_event.zip *
+          python -m pip install --upgrade pip
+          rm -rf build/event scripts/discord_event_handler/deployment_event.zip
+          mkdir -p build/event
+          pip install -r requirements.event.txt -t build/event
+          cp scripts/discord_event_handler/*.py build/event/
+          find build/event -type d -name '__pycache__' -prune -exec rm -rf {} +
+          find build/event -type f -name '*.pyc' -delete
+          cd build/event && zip -r ../../scripts/discord_event_handler/deployment_event.zip .
 
       - name: deploy to develop
         if: github.ref == 'refs/heads/develop'

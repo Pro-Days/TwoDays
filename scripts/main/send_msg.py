@@ -1,12 +1,16 @@
 import json
 import os
 import time
-from dotenv import load_dotenv
+
+try:
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
+
+    load_dotenv()
+except ImportError:
+    pass
 
 import misc
 import requests
-
-load_dotenv()
 
 LOG_CHANNEL_ID: str | None = os.getenv("DISCORD_LOG_CHANNEL_ID")
 ADMIN_ID: str | None = os.getenv("DISCORD_ADMIN_ID")

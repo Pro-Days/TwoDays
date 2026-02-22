@@ -2,6 +2,13 @@ import json
 import os
 import traceback
 
+try:
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
+
+    load_dotenv()
+except ImportError:
+    pass
+
 import boto3
 from nacl.exceptions import BadSignatureError
 from nacl.signing import VerifyKey

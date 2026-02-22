@@ -3,9 +3,13 @@ from datetime import date
 from decimal import Decimal
 from enum import Enum
 from typing import Any
-from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
+
+    load_dotenv()
+except ImportError:
+    pass
 
 import boto3
 from boto3.dynamodb.conditions import Attr, ConditionBase, Key

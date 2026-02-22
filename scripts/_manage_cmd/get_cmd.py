@@ -1,6 +1,14 @@
 import os
-import requests
 from pprint import pprint
+
+import requests
+
+try:
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
+
+    load_dotenv()
+except ImportError:
+    pass
 
 
 # global commands

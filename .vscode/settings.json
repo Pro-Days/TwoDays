@@ -8,5 +8,6 @@
         },
         "editor.formatOnType": true
     },
-    "isort.args": ["--profile", "black"]
+    "isort.args": ["--profile", "black"],
+    "python.envFile": "${workspaceFolder}/.env"
 }

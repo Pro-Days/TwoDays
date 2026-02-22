@@ -1,0 +1,4 @@
+-r requirements.main.txt
+-r requirements.event.txt
+boto3==1.42.53
+python-dotenv==1.2.1

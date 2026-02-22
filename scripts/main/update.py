@@ -1,9 +1,6 @@
 import traceback
 from datetime import date
 from decimal import Decimal
-from dotenv import load_dotenv
-
-load_dotenv()
 
 import data_manager as dm
 import get_character_info as gci

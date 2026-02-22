@@ -5,9 +5,12 @@ import json
 import os
 import traceback
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
 
-load_dotenv()
+    load_dotenv()
+except ImportError:
+    pass
 
 import get_character_info as gci
 import get_level_distribution as gld
@@ -16,15 +19,10 @@ import misc
 import register_player as rp
 import send_msg as sm
 import update
-from rich.console import Console
 
 ADMIN_ID: str | None = os.getenv("DISCORD_ADMIN_ID")
 if ADMIN_ID is None:
     raise Exception("DISCORD_ADMIN_ID is not set")
-
-# rich 콘솔 초기화
-# rich: 오류 로그를 보기 좋게 출력해주는 라이브러리
-console = Console()
 
 
 def lambda_handler(event, context) -> dict:
@@ -35,7 +33,7 @@ def lambda_handler(event, context) -> dict:
         return command_handler(event)
 
     except:
-        console.print_exception(show_locals=True)
+        traceback.print_exc()
         sm.send(event, "오류가 발생했습니다.", log_type=3, error=traceback.format_exc())
         return {"statusCode": 400, "body": json.dumps(traceback.format_exc())}
 

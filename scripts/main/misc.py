@@ -2,6 +2,13 @@ import datetime
 import os
 import platform
 
+try:
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
+
+    load_dotenv()
+except ImportError:
+    pass
+
 import data_manager
 import mojang
 import numpy as np
