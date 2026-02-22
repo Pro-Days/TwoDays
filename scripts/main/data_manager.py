@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
 from logging import Logger
@@ -86,6 +86,10 @@ class SingleTableDataManager:
     @staticmethod
     def uuid_from_user_pk(pk: str) -> str:
         return pk.removeprefix("USER#")
+
+    @staticmethod
+    def date_from_snapshot_sk(sk: str) -> date:
+        return datetime.strptime(sk.removeprefix("SNAP#"), "%Y-%m-%d").date()
 
     def _put_item(self, item: dict[str, Any]) -> None:
         logger.debug(

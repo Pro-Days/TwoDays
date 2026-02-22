@@ -350,8 +350,8 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
             f"date={target_date}"
         )
 
-        msg, image_path = gci.get_charater_rank_history(
-            uuid, name, period_int, target_date
+        msg, image_path = gci.get_character_rank_history(
+            uuid, name, period_int, target_date, metric="level"
         )
 
     # 전투력 랭킹 검색이라면 전투력 랭킹 변화량 정보 가져오기
@@ -363,8 +363,8 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
             f"date={target_date}"
         )
 
-        msg, image_path = gci.get_charater_rank_history(
-            uuid, name, period_int, target_date, rank_type="power"
+        msg, image_path = gci.get_character_rank_history(
+            uuid, name, period_int, target_date, metric="power"
         )
 
     else:

@@ -67,6 +67,12 @@ def _find_rank_position(
     return None
 
 
+def _get_rank_title(metric: str) -> str:
+    """metric 값에 대응하는 랭킹 제목을 반환"""
+
+    return "전투력 랭킹" if metric == "power" else "레벨 랭킹"
+
+
 def _save_and_close_chart(dpi: int = 250) -> str:
     image_path: str = "/tmp/image.png" if platform.system() == "Linux" else "image.png"
 
@@ -293,7 +299,7 @@ def _fill_smoothed_area(
             plt.fill_between(xs, ys, baseline, color=color, alpha=alpha)
 
 
-def _to_time_series_df(rows: list[CharacterData]) -> pd.DataFrame:
+def _to_time_series_df(rows: list[CharacterData] | list[dict]) -> pd.DataFrame:
     """데이터 리스트를 DataFrame으로 변환하고 date 컬럼을 datetime으로 변환"""
 
     df: pd.DataFrame = pd.DataFrame(rows)
@@ -335,6 +341,12 @@ def _format_power_point_label(df: pd.DataFrame, idx: int) -> str:
     """전투력 포인트 레이블을 'AB,CDE' 형식으로 반환하는 함수"""
 
     return f"{int(df['power'].iloc[idx]):,}"
+
+
+def _format_rank_point_label(df: pd.DataFrame, idx: int) -> str:
+    """랭킹 포인트 레이블을 'n위' 형식으로 반환하는 함수"""
+
+    return f"{int(df['rank'].iloc[idx]):,}위"
 
 
 def _render_metric_history_chart(
@@ -398,6 +410,83 @@ def _render_metric_history_chart(
     plt.legend(loc="upper left")
 
     return _save_and_close_chart()
+
+
+def _render_rank_history_chart(
+    df: pd.DataFrame,
+    period: int,
+    label: str,
+) -> str:
+    """랭킹 히스토리 그래프를 생성하는 공통 함수"""
+
+    plt.figure(figsize=(10, 4))
+
+    x_new, y_smooth = _compute_smooth_curve(df, "rank")
+
+    # 기간에 따라 마커 스타일을 다르게 설정
+    MARKER_THRESHOLD: int = 50
+
+    plt.plot(
+        df["date"].iloc[0] + pd.to_timedelta(x_new, unit="D"),
+        y_smooth,
+        color="C0",
+    )
+
+    plt.plot(
+        df["date"][df["rank"].notna()],
+        df["rank"][df["rank"].notna()],
+        color="C0",
+        marker="o" if period <= MARKER_THRESHOLD else ".",
+        label=label,
+        linestyle="",
+    )
+
+    ylim: tuple[float, float] = (
+        min(df["rank"].max() + 5, 102),  # type: ignore
+        max(df["rank"].min() - 5, -1),  # type: ignore
+    )
+    plt.ylim(ylim)
+
+    _fill_smoothed_area(
+        start_date=df["date"].iloc[0],
+        x_new=x_new,
+        y_smooth=y_smooth,
+        segment_count=len(df) - 1,
+        color="#A0DEFF",
+        alpha=1,
+        baseline=101,
+    )
+
+    ax: Axes = plt.gca()
+    tick_indices: list[int] = _configure_date_axis(ax, df, max_ticks=8)
+
+    for i in tick_indices:
+        plt.annotate(
+            _format_rank_point_label(df, i),
+            (df["date"].iloc[i], df["rank"].iloc[i]),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+        )
+
+    # 최고 랭킹에 텍스트 추가
+    rank_min = df["rank"].min()
+    best_idx: int = int(df["rank"].idxmin())
+
+    if best_idx not in tick_indices:
+        plt.annotate(
+            f"{int(rank_min)}위",
+            (df["date"].iloc[best_idx], rank_min),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+        )
+
+    _style_minimal_axes(ax)
+    plt.yticks([])
+    plt.legend()
+
+    return _save_and_close_chart(dpi=250)
 
 
 def _estimate_level(uuid: str, delta_days: int) -> Decimal:
@@ -724,124 +813,109 @@ def calc_exp_change(l0: float, l1: float, period: int) -> tuple[float, int, int]
     return exp_mean, next_lvup, max_day
 
 
-def get_charater_rank_history(
+def _get_character_rank_history_data(
     uuid: str,
-    name: str,
     period: int,
     target_date: datetime.date,
-    rank_type: str = "level",
-) -> tuple[str, str | None]:
-    """캐릭터 랭킹 정보 이미지 생성 및 메시지 반환"""
+    metric: str,
+) -> list[dict]:
+    """캐릭터의 랭킹 히스토리 데이터를 조회하여 반환"""
 
-    logger.info(
-        "get_charater_rank_history start: "
-        f"uuid={uuid} "
-        f"name={name} "
-        f"period={period} "
-        f"date={target_date} "
-        f"rank_type={rank_type}"
-    )
-
-    metric: str = rank_type
-    rank_title = "전투력 랭킹" if metric == "power" else "레벨 랭킹"
-
-    today = misc.get_today()
+    rank_field: str = "Power_Rank" if metric == "power" else "Level_Rank"
+    today: datetime.date = misc.get_today()
     current_data: list[CharacterData] = (
         gri.get_current_rank_data(metric=metric) if target_date == today else []
     )
 
     start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
-    target_date_text: str = target_date.strftime("%Y년 %m월 %d일")
 
     data: list[dict] = []
-    if metric == "level":
-        history_items, _ = dm.manager.get_user_snapshot_history(
-            uuid=uuid,
-            start_date=start_date,
-            end_date=target_date,
-        )
+    history_items, _ = dm.manager.get_user_snapshot_history(
+        uuid=uuid,
+        start_date=start_date,
+        end_date=target_date,
+    )
 
-        rank_by_date: dict[datetime.date, int | None] = {}
-        for item in history_items:
-            sk = item.get("SK")
-            if not isinstance(sk, str) or not sk.startswith("SNAP#"):
-                continue
+    rank_by_date: dict[datetime.date, int | None] = {}
+    for item in history_items:
+        sk: str = item["SK"]
+        date_value: datetime.date = dm.manager.date_from_snapshot_sk(sk)
+        rank_by_date[date_value] = int(item[rank_field])
 
-            date_value = datetime.datetime.strptime(
-                sk.removeprefix("SNAP#"), "%Y-%m-%d"
-            ).date()
-            rank = item.get("Level_Rank")
-            if rank is None:
-                continue
+    first_rank_date: datetime.date | None = min(rank_by_date) if rank_by_date else None
 
-            rank_by_date[date_value] = int(rank)
+    for d in range(period):
+        date_value = start_date + datetime.timedelta(days=d)
 
-        first_rank_date: datetime.date | None = (
-            min(rank_by_date) if rank_by_date else None
-        )
-        for d in range(period):
-            date_value = start_date + datetime.timedelta(days=d)
-            if first_rank_date is None:
-                continue
-            if target_date == today and date_value == target_date:
-                continue
-            if first_rank_date and date_value < first_rank_date:
-                continue
+        if first_rank_date is None:
+            continue
 
-            date_str = date_value.strftime("%Y-%m-%d")
-            data.append(
-                {
-                    "rank": rank_by_date.get(date_value),
-                    "date": date_str,
-                }
-            )
-    else:
-        first_rank_date: datetime.date | None = None
-        for d in range(period):
-            date_value = start_date + datetime.timedelta(days=d)
-            if target_date == today and date_value == target_date:
-                continue
+        if target_date == today and date_value == target_date:
+            continue
 
-            day_rank: int | None = None
-            day_ranks = gri.get_rank_data(date_value, metric=metric)
-            for i, row in enumerate(day_ranks, start=1):
-                if row.uuid == uuid:
-                    day_rank = i
-                    break
-
-            if first_rank_date is None:
-                if day_rank is None:
-                    continue
-                first_rank_date = date_value
-
-            data.append(
-                {
-                    "rank": day_rank,
-                    "date": date_value.strftime("%Y-%m-%d"),
-                }
-            )
-
-    if target_date == today:
-        rank = 101
-        for i, item in enumerate(current_data):
-            if item.uuid == uuid:
-                rank = i + 1
-                break
+        if first_rank_date and date_value < first_rank_date:
+            continue
 
         data.append(
             {
-                "rank": rank,
-                "date": target_date,
+                "rank": rank_by_date.get(date_value),
+                "date": date_value.strftime("%Y-%m-%d"),
             }
         )
 
+    if target_date == today:
+        for i, item in enumerate(current_data):
+            if item.uuid == uuid:
+                rank: int = i + 1
+
+                data.append(
+                    {
+                        "rank": rank,
+                        "date": target_date,
+                    }
+                )
+
+                break
+
+    return data
+
+
+def get_character_rank_history(
+    uuid: str,
+    name: str,
+    period: int,
+    target_date: datetime.date,
+    metric: str = "level",
+) -> tuple[str, str | None]:
+    """캐릭터 랭킹 정보 이미지 생성 및 메시지 반환 (공통 내부 함수)"""
+
+    logger.info(
+        "_get_character_rank_history start: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"period={period} "
+        f"date={target_date} "
+        f"metric={metric}"
+    )
+
+    rank_title: str = _get_rank_title(metric)
+    today: datetime.date = misc.get_today()
+    target_date_text: str = target_date.strftime("%Y년 %m월 %d일")
+
+    data: list[dict] = _get_character_rank_history_data(
+        uuid=uuid,
+        period=period,
+        target_date=target_date,
+        metric=metric,
+    )
+
     if not data:
         logger.warning(
-            "get_charater_rank_history no data: "
+            "_get_character_rank_history no data: "
             f"uuid={uuid} "
             f"name={name} "
             f"date={target_date} "
-            f"rank_type={metric}"
+            f"metric={metric}"
         )
 
         return f"{target_date_text} {name}님의 {rank_title} 정보가 없어요.", None
@@ -855,95 +929,23 @@ def get_charater_rank_history(
         cur_rank = data[0]["rank"]
         text_rank: str = (
             f"{name}님의 {rank_title}은 "
-            f"{f'{cur_rank}위에요.' if cur_rank and cur_rank < 101 else '순위에 등록되어있지 않아요.'}"
+            f"{f'{cur_rank}위에요.' if cur_rank is not None else '순위에 등록되어있지 않아요.'}"
         )
         return f"{text_day} {text_rank}", None
 
-    # 이미지 생성
-    df = pd.DataFrame(data)
-    df["date"] = pd.to_datetime(df["date"])
-
-    plt.figure(figsize=(10, 4))
-    smooth_coeff = 10
-
+    df: pd.DataFrame = _to_time_series_df(data)
     label: str = f"{name}의 {rank_title} 히스토리"
-
-    x_new, y_smooth = _compute_smooth_curve(df, "rank")
-
-    plt.plot(
-        df["date"][0] + pd.to_timedelta(x_new, unit="D"),
-        y_smooth,
-        color="C0",
-    )
-    plt.plot(
-        df["date"][df["rank"].notna()],
-        df["rank"][df["rank"].notna()],
-        color="C0",
-        marker="o" if period <= 50 else ".",
-        label=label,
-        linestyle="",
-    )
-    plt.plot(
-        df["date"][df["rank"].isna()],
-        df["rank"][df["rank"].isna()],
-        color="C2",
-        marker="o" if period <= 50 else ".",
-        linestyle="",
-    )
-
-    ylim = (min(df["rank"].max() + 5, 102), max(df["rank"].min() - 5, -1))
-    plt.ylim(ylim)
-
-    _fill_smoothed_area(
-        start_date=df["date"].iloc[0],
-        x_new=x_new,
-        y_smooth=y_smooth,
-        segment_count=len(df) - 1,
-        color="#A0DEFF",
-        alpha=1,
-        baseline=101,
-    )
-
-    ax = plt.gca()
-
-    tick_indices = _configure_date_axis(ax, df, max_ticks=8)
-
-    # 레이블 표시 로직 변경 - 날짜 tick과 동일한 간격 사용
-    for i in tick_indices:
-        plt.annotate(
-            f"{df['rank'].iloc[i]}위" if df["rank"].iloc[i] < 101 else "N/A",
-            (df["date"].iloc[i], df["rank"].iloc[i]),
-            textcoords="offset points",
-            xytext=(0, 10),
-            ha="center",
-        )
-
-    # 최고 랭킹에 텍스트 추가
-    if min(df["rank"]) < 101:
-        date = int(df["rank"].idxmin())
-
-        if date not in tick_indices:
-            plt.annotate(
-                f"{min(df['rank'])}위",
-                (df["date"].iloc[date], df["rank"].min()),
-                textcoords="offset points",
-                xytext=(0, 10),
-                ha="center",
-            )
-
-    _style_minimal_axes(ax)
-    plt.legend()
-    image_path = _save_and_close_chart(dpi=250)
+    image_path: str = _render_rank_history_chart(df=df, period=period, label=label)
 
     msg: str = f"{period}일 동안의 {name}님의 {rank_title} 변화를 보여드릴게요."
 
     logger.info(
-        "get_charater_rank_history complete: "
+        "_get_character_rank_history complete: "
         f"uuid={uuid} "
         f"name={name} "
         f"period={period} "
         f"image={image_path} "
-        f"rank_type={metric}"
+        f"metric={metric}"
     )
 
     return msg, image_path
@@ -1127,12 +1129,17 @@ if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
     today = misc.get_today()
 
-    # print(get_charater_rank_history("abca", 1, 10, today))
-    print(
-        get_character_power_info(
-            "ef45c670d0a0426693e1f00831319c32", "ProDays", 30, today
-        )
-    )
+    # print(
+    #     get_character_rank_history(
+    #         "ef45c670d0a0426693e1f00831319c32", "ProDays", 30, today, metric="level"
+    #     )
+    # )
+
+    # print(
+    #     get_character_power_info(
+    #         "ef45c670d0a0426693e1f00831319c32", "ProDays", 30, today
+    #     )
+    # )
     # print(
     #     get_character_level_info(
     #         "ef45c670d0a0426693e1f00831319c32", "ProDays", 30, today

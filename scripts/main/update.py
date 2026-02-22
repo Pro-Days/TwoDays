@@ -16,6 +16,8 @@ from log_utils import get_logger
 if TYPE_CHECKING:
     from logging import Logger
 
+    from models import CharacterData
+
 logger: Logger = get_logger(__name__)
 
 
@@ -63,42 +65,81 @@ def update_1D(event, days_before: int = 0):
 
     # 랭커 등록, 업데이트
     try:
-        rankdata = gri.get_current_rank_data()
+        level_rank_data: list[CharacterData] = gri.get_current_rank_data(metric="level")
+        power_rank_data: list[CharacterData] = gri.get_current_rank_data(metric="power")
 
-        logger.info("update_1D rank phase start: " f"rank_count={len(rankdata)}")
+        logger.info(
+            "update_1D rank phase start: "
+            f"level_rank_count={len(level_rank_data)} "
+            f"power_rank_count={len(power_rank_data)}"
+        )
 
-        failed_list = []
-        for rank, character in enumerate(rankdata, start=1):
+        level_rank_map: dict[str, Decimal] = {
+            character.uuid: Decimal(rank)
+            for rank, character in enumerate(level_rank_data, start=1)
+        }
+        power_rank_map: dict[str, Decimal] = {
+            character.uuid: Decimal(rank)
+            for rank, character in enumerate(power_rank_data, start=1)
+        }
+
+        character_map: dict[str, CharacterData] = {}
+        ordered_uuids: list[str] = []
+
+        for character in level_rank_data + power_rank_data:
+            if character.uuid in character_map:
+                continue
+
+            character_map[character.uuid] = character
+            ordered_uuids.append(character.uuid)
+
+        failed_list: list[str] = []
+        for uuid in ordered_uuids:
             try:
-                snapshot = dm.manager.get_user_snapshot(character.uuid, today)
-                name = misc.get_name_from_uuid(character.uuid)
+                character: CharacterData = character_map[uuid]
+                snapshot = dm.manager.get_user_snapshot(uuid, today)
+                name = misc.get_name_from_uuid(uuid)
 
                 if name is None:
-                    name = (
-                        snapshot.get("Name", character.uuid)
-                        if snapshot
-                        else character.uuid
-                    )
+                    name = snapshot.get("Name", uuid) if snapshot else uuid
 
-                power = snapshot.get("Power", Decimal(0)) if snapshot else Decimal(0)
+                snapshot_level = (
+                    snapshot.get("Level") if snapshot and "Level" in snapshot else None
+                )
+                snapshot_power = (
+                    snapshot.get("Power") if snapshot and "Power" in snapshot else None
+                )
+
+                level = (
+                    snapshot_level
+                    if snapshot_level is not None
+                    else getattr(character, "level", Decimal(0))
+                )
+                power = (
+                    snapshot_power
+                    if snapshot_power is not None
+                    else getattr(character, "power", Decimal(0))
+                )
 
                 dm.manager.put_daily_snapshot(
-                    uuid=character.uuid,
+                    uuid=uuid,
                     snapshot_date=today,
                     name=name,
-                    level=character.level,
+                    level=level,
                     power=power,
-                    level_rank=Decimal(rank),
+                    level_rank=level_rank_map.get(uuid),
+                    power_rank=power_rank_map.get(uuid),
                 )
 
             except Exception:
                 logger.exception(
                     "update_1D rank write failed (first pass): "
-                    f"rank={rank} "
-                    f"uuid={getattr(character, 'uuid', None)}"
+                    f"uuid={uuid} "
+                    f"level_rank={level_rank_map.get(uuid)} "
+                    f"power_rank={power_rank_map.get(uuid)}"
                 )
 
-                failed_list.append((rank, character))
+                failed_list.append(uuid)
 
         if failed_list:
 
@@ -106,44 +147,60 @@ def update_1D(event, days_before: int = 0):
                 "update_1D retrying failed rank writes: " f"count={len(failed_list)}"
             )
 
-            for rank, character in failed_list:
+            for uuid in failed_list:
                 try:
-                    snapshot = dm.manager.get_user_snapshot(character.uuid, today)
-                    name = misc.get_name_from_uuid(character.uuid)
+                    character = character_map[uuid]
+                    snapshot = dm.manager.get_user_snapshot(uuid, today)
+                    name = misc.get_name_from_uuid(uuid)
 
                     if name is None:
-                        name = (
-                            snapshot.get("Name", character.uuid)
-                            if snapshot
-                            else character.uuid
-                        )
+                        name = snapshot.get("Name", uuid) if snapshot else uuid
 
+                    snapshot_level = (
+                        snapshot.get("Level")
+                        if snapshot and "Level" in snapshot
+                        else None
+                    )
+                    snapshot_power = (
+                        snapshot.get("Power")
+                        if snapshot and "Power" in snapshot
+                        else None
+                    )
+
+                    level = (
+                        snapshot_level
+                        if snapshot_level is not None
+                        else getattr(character, "level", Decimal(0))
+                    )
                     power = (
-                        snapshot.get("Power", Decimal(0)) if snapshot else Decimal(0)
+                        snapshot_power
+                        if snapshot_power is not None
+                        else getattr(character, "power", Decimal(0))
                     )
 
                     dm.manager.put_daily_snapshot(
-                        uuid=character.uuid,
+                        uuid=uuid,
                         snapshot_date=today,
                         name=name,
-                        level=character.level,
+                        level=level,
                         power=power,
-                        level_rank=Decimal(rank),
+                        level_rank=level_rank_map.get(uuid),
+                        power_rank=power_rank_map.get(uuid),
                     )
 
                 except Exception:
 
                     logger.exception(
                         "update_1D rank write failed (retry): "
-                        f"rank={rank} "
-                        f"uuid={getattr(character, 'uuid', None)}"
+                        f"uuid={uuid} "
+                        f"level_rank={level_rank_map.get(uuid)} "
+                        f"power_rank={power_rank_map.get(uuid)}"
                     )
 
                     sm.send_log(
                         5,
                         event,
-                        f"랭킹 데이터 업데이트 실패: {character}"
-                        + traceback.format_exc(),
+                        f"랭킹 데이터 업데이트 실패: {uuid}" + traceback.format_exc(),
                     )
 
         logger.info("update_1D rank phase complete")
