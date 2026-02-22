@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import data_manager
 from log_utils import get_logger
 
-logger = get_logger(__name__)
+if TYPE_CHECKING:
+    from logging import Logger
+
+logger: Logger = get_logger(__name__)
 
 
 def register_player(uuid: str, name: str) -> None:
