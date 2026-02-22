@@ -176,7 +176,7 @@ def get_name_from_uuid(uuid: str) -> str | None:
     return real_name
 
 
-def get_profile_from_mc(names: list[str]):
+def get_profiles_from_mc(names: list[str]) -> dict[str, dict[str, str]]:
     logger.info("get_profile_from_mc start: " f"requested_count={len(names)}")
 
     api = mojang.API(retry_on_ratelimit=True, ratelimit_sleep_time=1)
@@ -233,7 +233,7 @@ def get_exp_data() -> list[int]:
 if __name__ == "__main__":
     # print(get_guild_list())
     # print(get_max_id())
-    print(get_profile_from_mc(names=["prodays", "prodays2"]))
+    print(get_profiles_from_mc(names=["prodays", "prodays2"]))
     # print(get_main_slot("prodays"))
     # print(get_today_from_input("12일전"))
     # print(get_name(id=1))

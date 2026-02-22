@@ -318,8 +318,8 @@ class SingleTableDataManager:
         uuid: str,
         snapshot_date: date | str,
         name: str,
-        level: Decimal,
-        power: Decimal,
+        level: Decimal | None,
+        power: Decimal | None,
         level_rank: Decimal | None = None,
         power_rank: Decimal | None = None,
         extra: dict[str, Any] | None = None,
@@ -328,10 +328,12 @@ class SingleTableDataManager:
             "PK": self.user_pk(uuid),
             "SK": self.snapshot_sk(snapshot_date),
             "Name": name,
-            "Level": level,
-            "Power": power,
         }
 
+        if level is not None:
+            item["Level"] = level
+        if power is not None:
+            item["Power"] = power
         if level_rank is not None:
             item["Level_Rank"] = level_rank
         if power_rank is not None:

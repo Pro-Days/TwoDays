@@ -18,7 +18,7 @@ import misc
 import numpy as np
 import pandas as pd
 from log_utils import get_logger
-from models import CharacterData
+from models import CharacterData, PlayerSearchData
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -194,7 +194,9 @@ def _pchip_interpolate(x: np.ndarray, y: np.ndarray, x_new: np.ndarray) -> np.nd
     # 길이 확인
     if len(x) != len(y):
         raise ValueError("x와 y의 길이가 다름!")
-    if np.any(np.diff(x) <= 0):
+
+    # x가 오름차순으로 정렬되어 있는지 확인
+    if np.any(np.diff(x) <= 0):  # type: ignore
         raise ValueError("x는 오름차순으로 정렬되어 있어야 합니다.")
 
     # 각 점에서의 기울기 계산
@@ -559,6 +561,44 @@ def get_current_character_data(uuid: str, days_before=0) -> CharacterData:
     )
 
     return character_data
+
+
+def get_current_character_data_by_name(name: str) -> PlayerSearchData:
+    """
+    플레이어 검색 기반 최신 캐릭터 정보 가져오기 (이름 기반)
+
+    현재는 임시로 이름 -> UUID -> 임의 데이터 생성 방식
+    실제 크롤링 로직으로 교체되더라도 update.py 인터페이스는 유지
+    """
+
+    logger.info("get_current_character_data_by_name start: " f"name={name}")
+
+    real_name, uuid = misc.get_profile_from_name(name)
+
+    if not real_name or not uuid:
+        logger.warning(
+            "get_current_character_data_by_name failed to resolve: " f"name={name}"
+        )
+        raise ValueError(f"failed to resolve profile from name: {name}")
+
+    data: CharacterData = get_current_character_data(uuid)
+
+    result = PlayerSearchData(
+        name=real_name,
+        level=data.level,
+        power=data.power,
+    )
+
+    logger.info(
+        "get_current_character_data_by_name complete: "
+        f"input={name} "
+        f"resolved_name={result.name} "
+        f"uuid={uuid} "
+        f"level={result.level} "
+        f"power={result.power}"
+    )
+
+    return result
 
 
 def get_character_level_info(

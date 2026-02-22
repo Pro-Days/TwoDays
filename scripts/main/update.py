@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import traceback
-from datetime import date
+from collections.abc import Callable
+from datetime import date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import data_manager as dm
 import get_character_info as gci
@@ -16,275 +17,227 @@ from log_utils import get_logger
 if TYPE_CHECKING:
     from logging import Logger
 
-    from models import CharacterData
+    from models import PlayerSearchData, RankRow
 
 logger: Logger = get_logger(__name__)
 
 
-def update_1D(event, days_before: int = 0):
+def _get_operational_snapshot_date() -> date:
     """
-    플레이어, 랭킹 업데이트
+    업데이트 스냅샷 날짜
+    KST 기준 현재 수집 데이터는 항상 어제 데이터로 저장
     """
 
-    today: date = misc.get_today(days_before + 1)
+    return misc.get_today(1)
+
+
+def _merge_rank_rows(
+    level_rows: list[RankRow], power_rows: list[RankRow]
+) -> tuple[list[str], dict[str, dict[str, Any]]]:
+    """레벨 랭킹과 전투력 랭킹 데이터를 이름 기준으로 병합"""
+
+    merged: dict[str, dict[str, Any]] = {}
+    ordered_keys: list[str] = []
+
+    def merge(row: RankRow, metric: str) -> None:
+        key: str = row.name.lower()
+
+        if key not in merged:
+            merged[key] = {
+                "name": row.name,
+                "level": None,
+                "power": None,
+                "level_rank": None,
+                "power_rank": None,
+            }
+            ordered_keys.append(key)
+
+        entry: dict = merged[key]
+
+        entry["name"] = row.name
+
+        if metric == "level":
+            entry["level"] = row.level
+            entry["level_rank"] = row.rank
+
+        elif metric == "power":
+            entry["power"] = row.power
+            entry["power_rank"] = row.rank
+
+    for row in level_rows:
+        merge(row, "level")
+
+    for row in power_rows:
+        merge(row, "power")
+
+    return ordered_keys, merged
+
+
+def _update_rank_phase(snapshot_date: date) -> None:
+    level_rows: list[RankRow] = gri.get_current_level_rank_rows()
+    power_rows: list[RankRow] = gri.get_current_power_rank_rows()
 
     logger.info(
-        "update_1D start: " f"action={event.get('action')} " f"target_date={today}"
+        "update_1D rank phase start: "
+        f"target_date={snapshot_date} "
+        f"level_rank_count={len(level_rows)} "
+        f"power_rank_count={len(power_rows)}"
     )
 
-    # 플레이어 업데이트
-    try:
-        players = rp.get_registered_players()
+    # 레벨 랭킹과 전투력 랭킹 데이터를 이름 기준으로 병합
+    ordered_keys, merged_rows = _merge_rank_rows(level_rows, power_rows)
 
-        logger.info("update_1D player phase start: " f"count={len(players)}")
+    names: list[str] = [str(merged_rows[key]["name"]) for key in ordered_keys]
 
-        for idx, player in enumerate(players, start=1):
-            logger.debug(
-                "update_1D player update progress: "
-                f"{idx}/{len(players)} "
-                f"uuid={player.get('uuid')} "
-                f"name={player.get('name')}"
-            )
+    resolved_profiles: dict[str, dict[str, str]] = misc.get_profiles_from_mc(names)
 
-            update_player(event, player["uuid"], player["name"])
+    for key in ordered_keys:
+        entry: dict[str, Any] = merged_rows[key]
+        raw_name = str(entry["name"])
 
-            # 쓰레드로 업데이트
-            # t = threading.Thread(target=update_player, args=(event, player["name"], player["id"]))
-            # t.start()
-            # t.join()
+        real_name, uuid = resolved_profiles.get(raw_name, (None, None))
 
-            # 10 players/sec: 1000 players -> 100 sec
-            # time.sleep(0.1)
+        if not uuid or not real_name:
+            raise ValueError(f"failed to resolve uuid from rank name: {raw_name}")
 
-        logger.info("update_1D player phase complete")
+        if dm.manager.get_user_metadata(uuid) is None:
+            rp.register_player(uuid, real_name)
 
-    except Exception:
-        logger.exception("update_1D player phase failed")
-
-        sm.send_log(5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc())
-
-    # 랭커 등록, 업데이트
-    try:
-        level_rank_data: list[CharacterData] = gri.get_current_rank_data(metric="level")
-        power_rank_data: list[CharacterData] = gri.get_current_rank_data(metric="power")
-
-        logger.info(
-            "update_1D rank phase start: "
-            f"level_rank_count={len(level_rank_data)} "
-            f"power_rank_count={len(power_rank_data)}"
+        dm.manager.put_daily_snapshot(
+            uuid=uuid,
+            snapshot_date=snapshot_date,
+            name=real_name,
+            level=entry.get("level"),
+            power=entry.get("power"),
+            level_rank=entry.get("level_rank"),
+            power_rank=entry.get("power_rank"),
         )
 
-        level_rank_map: dict[str, Decimal] = {
-            character.uuid: Decimal(rank)
-            for rank, character in enumerate(level_rank_data, start=1)
-        }
-        power_rank_map: dict[str, Decimal] = {
-            character.uuid: Decimal(rank)
-            for rank, character in enumerate(power_rank_data, start=1)
-        }
-
-        character_map: dict[str, CharacterData] = {}
-        ordered_uuids: list[str] = []
-
-        for character in level_rank_data + power_rank_data:
-            if character.uuid in character_map:
-                continue
-
-            character_map[character.uuid] = character
-            ordered_uuids.append(character.uuid)
-
-        failed_list: list[str] = []
-        for uuid in ordered_uuids:
-            try:
-                character: CharacterData = character_map[uuid]
-                snapshot = dm.manager.get_user_snapshot(uuid, today)
-                name = misc.get_name_from_uuid(uuid)
-
-                if name is None:
-                    name = snapshot.get("Name", uuid) if snapshot else uuid
-
-                snapshot_level = (
-                    snapshot.get("Level") if snapshot and "Level" in snapshot else None
-                )
-                snapshot_power = (
-                    snapshot.get("Power") if snapshot and "Power" in snapshot else None
-                )
-
-                level = (
-                    snapshot_level
-                    if snapshot_level is not None
-                    else getattr(character, "level", Decimal(0))
-                )
-                power = (
-                    snapshot_power
-                    if snapshot_power is not None
-                    else getattr(character, "power", Decimal(0))
-                )
-
-                dm.manager.put_daily_snapshot(
-                    uuid=uuid,
-                    snapshot_date=today,
-                    name=name,
-                    level=level,
-                    power=power,
-                    level_rank=level_rank_map.get(uuid),
-                    power_rank=power_rank_map.get(uuid),
-                )
-
-            except Exception:
-                logger.exception(
-                    "update_1D rank write failed (first pass): "
-                    f"uuid={uuid} "
-                    f"level_rank={level_rank_map.get(uuid)} "
-                    f"power_rank={power_rank_map.get(uuid)}"
-                )
-
-                failed_list.append(uuid)
-
-        if failed_list:
-
-            logger.warning(
-                "update_1D retrying failed rank writes: " f"count={len(failed_list)}"
-            )
-
-            for uuid in failed_list:
-                try:
-                    character = character_map[uuid]
-                    snapshot = dm.manager.get_user_snapshot(uuid, today)
-                    name = misc.get_name_from_uuid(uuid)
-
-                    if name is None:
-                        name = snapshot.get("Name", uuid) if snapshot else uuid
-
-                    snapshot_level = (
-                        snapshot.get("Level")
-                        if snapshot and "Level" in snapshot
-                        else None
-                    )
-                    snapshot_power = (
-                        snapshot.get("Power")
-                        if snapshot and "Power" in snapshot
-                        else None
-                    )
-
-                    level = (
-                        snapshot_level
-                        if snapshot_level is not None
-                        else getattr(character, "level", Decimal(0))
-                    )
-                    power = (
-                        snapshot_power
-                        if snapshot_power is not None
-                        else getattr(character, "power", Decimal(0))
-                    )
-
-                    dm.manager.put_daily_snapshot(
-                        uuid=uuid,
-                        snapshot_date=today,
-                        name=name,
-                        level=level,
-                        power=power,
-                        level_rank=level_rank_map.get(uuid),
-                        power_rank=power_rank_map.get(uuid),
-                    )
-
-                except Exception:
-
-                    logger.exception(
-                        "update_1D rank write failed (retry): "
-                        f"uuid={uuid} "
-                        f"level_rank={level_rank_map.get(uuid)} "
-                        f"power_rank={power_rank_map.get(uuid)}"
-                    )
-
-                    sm.send_log(
-                        5,
-                        event,
-                        f"랭킹 데이터 업데이트 실패: {uuid}" + traceback.format_exc(),
-                    )
-
-        logger.info("update_1D rank phase complete")
-
-    except Exception:
-        logger.exception("update_1D rank phase failed")
-
-        sm.send_log(5, event, "랭킹 데이터 업데이트 실패" + traceback.format_exc())
-
-    logger.info("update_1D complete")
-
-    sm.send_log(4, event, "데이터 업데이트 완료")
+    logger.info(
+        "update_1D rank phase complete: "
+        f"target_date={snapshot_date} "
+        f"merged_rows={len(ordered_keys)}"
+    )
 
 
-def update_player(event, uuid, name):
-    days_before = event.get("days_before", 0)
+def update_player(
+    uuid: str,
+    name: str,
+    snapshot_date: date | None = None,
+) -> None:
 
-    failed_list = []
-    today = misc.get_today(days_before + 1)
+    target_date: date = snapshot_date or _get_operational_snapshot_date()
 
     logger.debug(
         "update_player start: "
         f"uuid={uuid} "
         f"name={name} "
-        f"days_before={days_before} "
-        f"target_date={today}"
+        f"target_date={target_date}"
     )
 
+    data: PlayerSearchData = gci.get_current_character_data_by_name(name)
+    snapshot: dict[str, Any] | None = dm.manager.get_user_snapshot(uuid, target_date)
+
+    dm.manager.put_daily_snapshot(
+        uuid=uuid,
+        snapshot_date=target_date,
+        name=data.name,
+        level=data.level,
+        power=data.power,
+        level_rank=snapshot.get("level_rank") if snapshot else None,
+        power_rank=snapshot.get("power_rank") if snapshot else None,
+    )
+
+    logger.debug("update_player success: " f"uuid={uuid} " f"name={name}")
+
+
+def _update_player_phase(snapshot_date: date) -> None:
+    players: list[dict[str, str]] = rp.get_registered_players()
+
+    logger.info(
+        "update_1D player phase start: "
+        f"target_date={snapshot_date} "
+        f"count={len(players)}"
+    )
+
+    for idx, player in enumerate(players, start=1):
+        uuid: str = player["uuid"]
+        name: str = player["name"]
+
+        logger.debug(
+            "update_1D player update progress: "
+            f"{idx}/{len(players)} "
+            f"uuid={uuid} "
+            f"name={name}"
+        )
+
+        update_player(uuid, name, snapshot_date=snapshot_date)
+
+    logger.info("update_1D player phase complete")
+
+
+def _run_update_pipeline(event: dict[str, Any], snapshot_date: date) -> None:
+    logger.info(
+        "update_1D start: "
+        f"action={event.get('action')} "
+        f"target_date={snapshot_date}"
+    )
+
+    # 랭킹 업데이트
     try:
-        data = gci.get_current_character_data(uuid, days_before + 1)
-
-        dm.manager.put_daily_snapshot(
-            uuid=uuid,
-            snapshot_date=today,
-            name=name,
-            level=data.level,
-            power=data.power,
-        )
-
-        dm.manager.put_user_metadata(
-            uuid=uuid,
-            name=name,
-        )
-
-        logger.debug("update_player success: " f"uuid={uuid} " f"level={data.level}")
+        _update_rank_phase(snapshot_date)
 
     except Exception:
+        logger.exception("update_1D rank phase failed")
+        sm.send_log(5, event, "랭킹 데이터 업데이트 실패" + traceback.format_exc())
 
-        logger.exception(
-            "update_player failed (first pass): " f"uuid={uuid} " f"name={name}"
-        )
+    # 랭킹 단계에서 신규 등록된 플레이어가 포함되도록 재조회 후 플레이어 업데이트
+    try:
+        _update_player_phase(snapshot_date)
 
-        failed_list.append(name)
+    except Exception:
+        logger.exception("update_1D player phase failed")
+        sm.send_log(5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc())
 
-    if failed_list:
-        try:
-            data = gci.get_current_character_data(uuid, days_before + 1)
+    logger.info(
+        "update_1D complete: "
+        f"action={event.get('action')} "
+        f"target_date={snapshot_date}"
+    )
 
-            dm.manager.put_daily_snapshot(
-                uuid=uuid,
-                snapshot_date=today,
-                name=name,
-                level=data.level,
-                power=data.power,
-            )
+    sm.send_log(4, event, "데이터 업데이트 완료")
 
-            dm.manager.put_user_metadata(
-                uuid=uuid,
-                name=name,
-            )
 
-            logger.info("update_player retry success: " f"uuid={uuid} " f"name={name}")
+def update_1D(event: dict[str, Any]) -> None:
+    """
+    정기 업데이트
+    항상 KST 기준 어제 날짜 스냅샷으로 저장
+    """
 
-        except Exception:
+    event_copy: dict[str, Any] = dict(event)
 
-            logger.exception(
-                "update_player failed (retry): " f"uuid={uuid} " f"name={name}"
-            )
+    snapshot_date: date = _get_operational_snapshot_date()
 
-            sm.send_log(
-                5, event, f"{name} 데이터 업데이트 실패" + traceback.format_exc()
-            )
+    _run_update_pipeline(event_copy, snapshot_date)
+
+
+def update_1D_backfill(event: dict[str, Any], snapshot_date: date) -> None:
+    """
+    개발용 과거 날짜 저장
+    현재 수집 데이터를 지정된 날짜 스냅샷으로 저장
+    """
+
+    event_copy: dict[str, Any] = dict(event)
+    event_copy.setdefault("action", "update_1D_backfill")
+
+    logger.info(
+        "update_1D_backfill start: "
+        f"target_date={snapshot_date} "
+        f"source=current_crawled_data"
+    )
+
+    _run_update_pipeline(event_copy, snapshot_date)
 
 
 if __name__ == "__main__":
     update_1D({"action": "update_1D"})
-    pass

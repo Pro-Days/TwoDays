@@ -4,6 +4,7 @@ import datetime
 import os
 import platform
 import threading
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import data_manager
@@ -19,7 +20,7 @@ import pandas as pd
 import register_player
 import requests
 from log_utils import get_logger
-from models import CharacterData
+from models import CharacterData, RankRow
 from PIL import Image, ImageDraw, ImageFont
 
 if TYPE_CHECKING:
@@ -171,7 +172,9 @@ def get_rank_data(
         raise ValueError(f"unsupported rank metric: {metric}")
 
     if not rows:
-        logger.warning("get_rank_data no rows: " f"date={target_date} " f"metric={metric}")
+        logger.warning(
+            "get_rank_data no rows: " f"date={target_date} " f"metric={metric}"
+        )
         return []
 
     rank_data: list[CharacterData] = []
@@ -238,6 +241,56 @@ def get_current_rank_data(
         f"metric={metric}"
     )
     return result
+
+
+def _to_current_rank_rows(
+    start: int = 1, end: int = 100, metric: str = "level"
+) -> list[RankRow]:
+    """
+    업데이트 파이프라인용 현재 랭킹 원시 행 반환
+
+    현재 구현은 기존 UUID 기반 current rank 계산을 어댑터로 감싼다.
+    향후 실제 크롤링으로 내부만 교체
+    """
+
+    rank_data: list[CharacterData] = get_current_rank_data(
+        start=start, end=end, metric=metric
+    )
+    rows: list[RankRow] = []
+
+    for idx, row in enumerate(rank_data, start=start):
+        name: str = misc.get_name_from_uuid(row.uuid) or row.uuid
+        rows.append(
+            RankRow(
+                name=name,
+                rank=Decimal(idx),
+                level=row.level if metric == "level" else None,
+                power=row.power if metric == "power" else None,
+                metric=metric,
+            )
+        )
+
+    logger.info(
+        "_to_current_rank_rows complete: "
+        f"start={start} "
+        f"end={end} "
+        f"metric={metric} "
+        f"returned={len(rows)}"
+    )
+
+    return rows
+
+
+def get_current_level_rank_rows(start: int = 1, end: int = 100) -> list[RankRow]:
+    """현재 레벨 랭킹 raw rows 반환 (업데이트 파이프라인용)"""
+
+    return _to_current_rank_rows(start=start, end=end, metric="level")
+
+
+def get_current_power_rank_rows(start: int = 1, end: int = 100) -> list[RankRow]:
+    """현재 전투력 랭킹 raw rows 반환 (업데이트 파이프라인용)"""
+
+    return _to_current_rank_rows(start=start, end=end, metric="power")
 
 
 def get_rank_info(start: int, end: int, target_date: datetime.date):

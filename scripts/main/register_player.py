@@ -37,12 +37,7 @@ def get_registered_players() -> list[dict]:
 
     items: list[dict] = data_manager.manager.scan_all_user_metadata()
 
-    if not items:
-        logger.info("get_registered_players: no users found")
-
-        return []
-
-    players = [
+    players: list[dict[str, str]] = [
         {
             "uuid": data_manager.manager.uuid_from_user_pk(item["PK"]),
             "name": item["Name"],
