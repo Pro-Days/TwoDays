@@ -135,6 +135,7 @@ def get_rank_data(
                 uuid=data_manager.manager.uuid_from_user_pk(pk),
                 level=item["Level"],
                 date=target_date,
+                power=item["Power"],
             )
         )
 

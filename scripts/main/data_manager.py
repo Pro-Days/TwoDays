@@ -276,8 +276,6 @@ class SingleTableDataManager:
         self,
         uuid: str,
         name: str,
-        current_level: Decimal,
-        current_power: Decimal,
         extra: dict[str, Any] | None = None,
     ) -> None:
         item: dict[str, Any] = {
@@ -285,8 +283,6 @@ class SingleTableDataManager:
             "SK": "METADATA",
             "Name": name,
             "Name_Lower": name.lower(),
-            "CurrentLevel": current_level,
-            "CurrentPower": current_power,
         }
 
         if extra:

@@ -44,6 +44,22 @@ plt.rcParams["font.family"] = prop.get_name()
 matplotlib.use("Agg")
 
 
+def _estimate_power(uuid: str, level: Decimal) -> Decimal:
+    """
+    임시 전투력 계산식
+    레벨 기반 성장 + UUID 기반 편차를 조합해 결정적으로 계산한다.
+    """
+
+    seed = sum(ord(c) for c in uuid)
+    level_f = float(level)
+
+    base_power = (level_f**3) * 18 + (level_f**2) * 140 + level_f * 700
+    uuid_bias = 0.9 + ((seed % 31) / 100)
+    level_band_bias = 0.96 + ((int(level_f * 10) + seed) % 9) / 100
+
+    return Decimal(round(base_power * uuid_bias * level_band_bias))
+
+
 def get_current_character_data(uuid: str, days_before=0) -> CharacterData:
     """
     최신 캐릭터 정보 가져오기
@@ -76,11 +92,14 @@ def get_current_character_data(uuid: str, days_before=0) -> CharacterData:
         )
         character_data.level = min(character_data.level, Decimal(200.0))
 
+    character_data.power = _estimate_power(uuid=uuid, level=character_data.level)
+
     logger.debug(
         "get_current_character_data complete: "
         f"uuid={uuid} "
         f"date={character_data.date} "
         f"level={character_data.level}",
+        f"power={character_data.power}",
     )
 
     return character_data
@@ -691,7 +710,15 @@ def get_character_data(
             continue
 
         date = datetime.datetime.strptime(sk.removeprefix("SNAP#"), "%Y-%m-%d").date()
-        data.append(CharacterData(uuid=uuid, level=item["Level"], date=date))
+
+        data.append(
+            CharacterData(
+                uuid=uuid,
+                level=item["Level"],
+                date=date,
+                power=item["Power"],
+            )
+        )
 
     # 당일 데이터라면 실시간으로 레벨 정보 가져와서 추가
     if target_date == misc.get_today() and (not data or data[-1].date != target_date):

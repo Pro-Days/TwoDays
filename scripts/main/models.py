@@ -10,3 +10,4 @@ class CharacterData:
     uuid: str
     level: Decimal
     date: datetime.date
+    power: Decimal = Decimal(0)

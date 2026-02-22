@@ -175,24 +175,17 @@ def update_player(event, uuid, name):
     try:
         data = gci.get_current_character_data(uuid, days_before + 1)
 
-        metadata = dm.manager.get_user_metadata(uuid)
-        current_power = (
-            metadata.get("CurrentPower", Decimal(0)) if metadata else Decimal(0)
-        )
-
         dm.manager.put_daily_snapshot(
             uuid=uuid,
             snapshot_date=today,
             name=name,
             level=data.level,
-            power=current_power,
+            power=data.power,
         )
 
         dm.manager.put_user_metadata(
             uuid=uuid,
             name=name,
-            current_level=data.level,
-            current_power=current_power,
         )
 
         logger.debug("update_player success: " f"uuid={uuid} " f"level={data.level}")
@@ -209,25 +202,17 @@ def update_player(event, uuid, name):
         try:
             data = gci.get_current_character_data(uuid, days_before + 1)
 
-            metadata = dm.manager.get_user_metadata(uuid)
-
-            current_power = (
-                metadata.get("CurrentPower", Decimal(0)) if metadata else Decimal(0)
-            )
-
             dm.manager.put_daily_snapshot(
                 uuid=uuid,
                 snapshot_date=today,
                 name=name,
                 level=data.level,
-                power=current_power,
+                power=data.power,
             )
 
             dm.manager.put_user_metadata(
                 uuid=uuid,
                 name=name,
-                current_level=data.level,
-                current_power=current_power,
             )
 
             logger.info("update_player retry success: " f"uuid={uuid} " f"name={name}")

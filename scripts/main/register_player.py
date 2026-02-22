@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import data_manager
@@ -20,21 +19,15 @@ def register_player(uuid: str, name: str) -> None:
     logger.info("register_player start: " f"uuid={uuid} " f"name={name}")
 
     prev = data_manager.manager.get_user_metadata(uuid)
-    current_power = prev.get("CurrentPower", Decimal(0)) if prev else Decimal(0)
-    current_level = prev.get("CurrentLevel", Decimal(1)) if prev else Decimal(1)
 
     data_manager.manager.put_user_metadata(
         uuid=uuid,
         name=name,
-        current_level=current_level,
-        current_power=current_power,
     )
     logger.info(
         "register_player saved metadata: "
         f"uuid={uuid} "
         f"name={name} "
-        f"level={current_level} "
-        f"power={current_power} "
         f"existed={prev is not None}"
     )
 
