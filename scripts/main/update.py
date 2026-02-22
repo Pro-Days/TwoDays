@@ -89,13 +89,17 @@ def _update_rank_phase(snapshot_date: date) -> None:
 
     names: list[str] = [str(merged_rows[key]["name"]) for key in ordered_keys]
 
+    # TODO: 이름으로 프로필 조회하는 부분 개선 - METADATA 조회를 우선
+
     resolved_profiles: dict[str, dict[str, str]] = misc.get_profiles_from_mc(names)
 
     for key in ordered_keys:
         entry: dict[str, Any] = merged_rows[key]
         raw_name = str(entry["name"])
 
-        real_name, uuid = resolved_profiles.get(raw_name, (None, None))
+        profile: dict[str, str] | None = resolved_profiles.get(raw_name)
+        real_name: str = profile["name"] if profile else raw_name
+        uuid: str | None = profile.get("uuid") if profile else None
 
         if not uuid or not real_name:
             raise ValueError(f"failed to resolve uuid from rank name: {raw_name}")
@@ -240,4 +244,6 @@ def update_1D_backfill(event: dict[str, Any], snapshot_date: date) -> None:
 
 
 if __name__ == "__main__":
-    update_1D({"action": "update_1D"})
+    update_1D_backfill(
+        {"action": "update_1D"}, snapshot_date=_get_operational_snapshot_date()
+    )
