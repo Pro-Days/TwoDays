@@ -104,7 +104,7 @@ def get_profile_from_name(name: str) -> tuple[str | None, str | None]:
     metadata = data_manager.manager.find_user_metadata_by_name(name)
 
     if metadata:
-        logger.debug("profile found in metadata cache: " f"name={name}")
+        logger.info(f"profile lookup source=metadata: name={name}")
 
         real_name = metadata.get("Name")
         pk = metadata.get("PK")
@@ -114,14 +114,19 @@ def get_profile_from_name(name: str) -> tuple[str | None, str | None]:
 
     else:
         # 닉네임이 등록되어있지 않다면
-        logger.debug(
-            "profile not in metadata cache, querying Mojang API: " f"name={name}"
-        )
+        logger.info(f"profile lookup source=mojang: name={name}")
 
         api = mojang.API(retry_on_ratelimit=True, ratelimit_sleep_time=1)
 
-        real_name: str | None = api.get_username(name)
         uuid: str | None = api.get_uuid(name)
+        real_name: str | None = api.get_username(uuid) if uuid else None
+
+        logger.info(
+            "mojang profile lookup result: "
+            f"input={name} "
+            f"resolved_name={real_name} "
+            f"uuid={uuid}"
+        )
 
     if not uuid or not real_name:
         logger.warning("failed to resolve profile: " f"name={name}")
