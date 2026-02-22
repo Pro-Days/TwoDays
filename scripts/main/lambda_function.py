@@ -12,6 +12,8 @@ try:
 except ImportError:
     pass
 
+from typing import TYPE_CHECKING
+
 import get_character_info as gci
 import get_level_distribution as gld
 import get_rank_info as gri
@@ -19,6 +21,13 @@ import misc
 import register_player as rp
 import send_msg as sm
 import update
+from log_utils import get_logger, setup_logging, summarize_event, truncate_text
+
+if TYPE_CHECKING:
+    from logging import Logger
+
+setup_logging()
+logger: Logger = get_logger(__name__)
 
 ADMIN_ID: str | None = os.getenv("DISCORD_ADMIN_ID")
 if ADMIN_ID is None:
@@ -26,22 +35,33 @@ if ADMIN_ID is None:
 
 
 def lambda_handler(event, context) -> dict:
-    print(f"start!\nevent: {event}")
+    logger.info("lambda_handler start: " f"{summarize_event(event)}")
 
     # 전체 코드 실행 후 오류가 발생하면 로그에 출력하고 400 반환
     try:
-        return command_handler(event)
+        result = command_handler(event)
 
-    except:
-        traceback.print_exc()
+        logger.info(
+            "lambda_handler success: "
+            f"statusCode={result.get('statusCode') if isinstance(result, dict) else None}"
+        )
+
+        return result
+
+    except Exception:
+        logger.exception("lambda_handler failed: " f"{summarize_event(event)}")
+
         sm.send(event, "오류가 발생했습니다.", log_type=3, error=traceback.format_exc())
+
         return {"statusCode": 400, "body": json.dumps(traceback.format_exc())}
 
 
 def command_handler(event) -> dict:
+    logger.debug(f"command_handler input event={summarize_event(event)}")
 
     # 업데이트 커맨드
     if event.get("action", None) == "update_1D":
+        logger.info("handling update action: " f"{event.get('action')}")
         update.update_1D(event)
 
         return {
@@ -53,7 +73,11 @@ def command_handler(event) -> dict:
     cmd: str = body["data"]["name"]
     options: list[dict[str, str]] = body["data"].get("options", [])
 
-    print(f"command: {cmd}, options: {options}")
+    logger.info(
+        "discord command received: "
+        f"cmd={cmd} "
+        f"options={truncate_text(options, 1000)}"
+    )
 
     # 어드민 커맨드
     if body["member"]["user"]["id"] == ADMIN_ID:
@@ -96,6 +120,8 @@ def command_handler(event) -> dict:
         return cmd_register(event, options)
 
     else:
+        logger.warning("unhandled command: " f"{cmd}")
+
         sm.send(
             event, "오류가 발생했습니다.", log_type=3, error=f"unhandled command: {cmd}"
         )
@@ -132,12 +158,18 @@ def _parse_date(day_expression: str | None) -> datetime.date | None:
             today = today
 
     except:
+        logger.warning("failed to parse date expression: " f"{day_expression}")
+
         return None
+
+    logger.debug(f"parsed date expression={day_expression} -> {today}")
 
     return today
 
 
 def cmd_ranking(event: dict, options: list[dict]) -> dict:
+    logger.debug(f"cmd_ranking options={truncate_text(options, 1000)}")
+
     range_str: str = "1..10"
     date_expression: str | None = None
     period: str | None = None
@@ -184,12 +216,27 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
     # 랭킹 정보 가져오기
     # 기간이 입력되지 않았다면 해당 날짜의 랭킹 정보 가져오기
     if period is None:
+        logger.info(
+            "fetching rank info: "
+            f"start={rank_start} "
+            f"end={rank_end} "
+            f"date={target_date}"
+        )
+
         msg, image_path = gri.get_rank_info(rank_start, rank_end, target_date)
 
     # 기간이 입력되었다면 랭킹 변화량 정보 가져오기
     else:
         if not period.isdigit() or int(period) < 1:
             return sm.send(event, "기간은 1 이상의 숫자로 입력해주세요.")
+
+        logger.info(
+            "fetching rank history: "
+            f"start={rank_start} "
+            f"end={rank_end} "
+            f"period={period} "
+            f"date={target_date}"
+        )
 
         msg, image_path = gri.get_rank_history(
             rank_start, rank_end, int(period), target_date
@@ -203,6 +250,8 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
 
 
 def cmd_search(event: dict, options: list[dict]) -> dict:
+    logger.debug(f"cmd_search options={truncate_text(options, 1000)}")
+
     # 랭킹 또는 레벨 검색인지 확인
     _type = options[0]["name"]
 
@@ -225,6 +274,13 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
         return sm.send(event, "닉네임을 입력해주세요.")
 
     real_name, uuid = misc.get_profile_from_name(name)
+    logger.info(
+        "search resolved profile: "
+        f"input={name} "
+        f"resolved_name={real_name} "
+        f"uuid={uuid} "
+        f"type={_type}"
+    )
 
     if uuid is None or real_name is None:
         return sm.send(
@@ -239,6 +295,11 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
     # name이 등록되어있지 않다면 등록하기
     register_msg: str = ""
     if not rp.is_registered(uuid):
+
+        logger.info(
+            "auto-registering user during search: " f"uuid={uuid} " f"name={real_name}"
+        )
+
         rp.register_player(uuid, real_name)
         register_msg = (
             f"등록되어있지 않은 플레이어네요. {real_name}님을 등록했어요.\n\n"
@@ -256,12 +317,26 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
 
     # 레벨 검색이라면 캐릭터 정보 가져오기
     if _type == "레벨":
+        logger.info(
+            "running level search: "
+            f"uuid={uuid} "
+            f"period={period_int} "
+            f"date={target_date}"
+        )
+
         msg, image_path = gci.get_character_info(
             uuid, real_name, period_int, target_date
         )
 
     # 랭킹 검색이라면 랭킹 변화량 정보 가져오기
     elif _type == "랭킹":
+        logger.info(
+            "running rank search: "
+            f"uuid={uuid} "
+            f"period={period_int} "
+            f"date={target_date}"
+        )
+
         msg, image_path = gci.get_charater_rank_history(
             uuid, name, period_int, target_date
         )
@@ -275,6 +350,8 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
 
 
 def cmd_user_distribution(event: dict, options: list[dict]) -> dict:
+    logger.debug(f"cmd_user_distribution options={truncate_text(options, 1000)}")
+
     date: str = "-1"
     for i in options:
         if i["name"] == "날짜":
@@ -295,10 +372,14 @@ def cmd_user_distribution(event: dict, options: list[dict]) -> dict:
 
     msg, image_path = gld.get_level_distribution(target_date)
 
+    logger.info(f"user distribution generated for date={target_date}")
+
     return sm.send(event, msg, image=image_path)
 
 
 def cmd_register(event: dict, options: list[dict]) -> dict:
+    logger.debug(f"cmd_register options={truncate_text(options, 1000)}")
+
     name: str | None = None
     for i in options:
 
@@ -315,6 +396,8 @@ def cmd_register(event: dict, options: list[dict]) -> dict:
         )
 
     rp.register_player(uuid, real_name)
+
+    logger.info("player registered by command: " f"uuid={uuid} " f"name={real_name}")
 
     return sm.send(event, f"{real_name}님을 등록했어요.\n\n")
 

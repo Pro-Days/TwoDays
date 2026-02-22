@@ -2,6 +2,7 @@ import os
 from datetime import date
 from decimal import Decimal
 from enum import Enum
+from logging import Logger
 from typing import Any
 
 try:
@@ -13,6 +14,7 @@ except ImportError:
 
 import boto3
 from boto3.dynamodb.conditions import Attr, ConditionBase, Key
+from log_utils import get_logger
 
 # .env 파일에서 환경 변수 로드
 AWS_REGION: str = os.getenv("AWS_REGION", "ap-northeast-2")
@@ -20,6 +22,7 @@ AWS_ACCESS_KEY: str | None = os.getenv("AWS_ACCESS_KEY", None)
 AWS_SECRET_ACCESS_KEY: str | None = os.getenv("AWS_SECRET_ACCESS_KEY", None)
 
 SINGLE_TABLE_NAME: str = os.getenv("SINGLE_TABLE_NAME", "").strip()
+logger: Logger = get_logger(__name__)
 
 
 class GSIName(str, Enum):
@@ -41,6 +44,12 @@ def _build_session() -> boto3.Session:
         session_kwargs["aws_access_key_id"] = AWS_ACCESS_KEY
         session_kwargs["aws_secret_access_key"] = AWS_SECRET_ACCESS_KEY
 
+    logger.info(
+        "creating boto3 session: region=%s explicit_credentials=%s",
+        AWS_REGION,
+        bool(AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY),
+    )
+
     return boto3.Session(**session_kwargs)
 
 
@@ -57,6 +66,8 @@ class SingleTableDataManager:
     def __init__(self) -> None:
         # 테이블 초기화
         self.table = dynamodb.Table(SINGLE_TABLE_NAME)  # type: ignore
+
+        logger.info(f"SingleTableDataManager initialized: table={SINGLE_TABLE_NAME}")
 
     @staticmethod
     def user_pk(uuid: str) -> str:
@@ -75,6 +86,13 @@ class SingleTableDataManager:
         return pk.removeprefix("USER#")
 
     def _put_item(self, item: dict[str, Any]) -> None:
+        logger.debug(
+            f"dynamodb put_item: "
+            f"PK={item.get('PK')} "
+            f"SK={item.get('SK')} "
+            f"keys={sorted(item.keys())}"
+        )
+
         self.table.put_item(Item=item)
 
     def _query(
@@ -106,7 +124,30 @@ class SingleTableDataManager:
         if exclusive_start_key is not None:
             query_params["ExclusiveStartKey"] = exclusive_start_key
 
-        response = self.table.query(**query_params)
+        logger.debug(
+            f"dynamodb query: "
+            f"index={query_params.get('IndexName')} "
+            f"scan_index_forward={scan_index_forward} "
+            f"limit={limit} "
+            f"projection_expression={projection_expression} "
+            f"filter_expression={filter_expression} "
+            f"exclusive_start_key={exclusive_start_key}"
+        )
+
+        try:
+            response = self.table.query(**query_params)
+
+        except Exception:
+            logger.exception(
+                "dynamodb query failed: " f"index={query_params.get('IndexName')}"
+            )
+            raise
+
+        logger.debug(
+            f"dynamodb query result: "
+            f"items={len(response.get('Items', []))} "
+            f"has_lek={'LastEvaluatedKey' in response}"
+        )
         return response.get("Items", []), response.get("LastEvaluatedKey")
 
     def _query_all(
@@ -133,9 +174,17 @@ class SingleTableDataManager:
             )
             items.extend(page_items)
 
+            logger.debug(
+                "dynamodb query_all page fetched: "
+                f"page_items={len(page_items)} "
+                f"total_items={len(items)} "
+                f"has_next={bool(last_evaluated_key)}",
+            )
+
             if not last_evaluated_key:
                 break
 
+        logger.debug("dynamodb query_all complete: " f"total_items={len(items)}")
         return items
 
     def _scan(
@@ -161,7 +210,28 @@ class SingleTableDataManager:
         if exclusive_start_key is not None:
             scan_params["ExclusiveStartKey"] = exclusive_start_key
 
-        response = self.table.scan(**scan_params)
+        logger.debug(
+            f"dynamodb scan: "
+            f"index={scan_params.get('IndexName')} "
+            f"limit={limit} "
+            f"projection_expression={projection_expression} "
+            f"has_filter={filter_expression is not None} "
+            f"has_esk={exclusive_start_key is not None}",
+        )
+
+        try:
+            response = self.table.scan(**scan_params)
+
+        except Exception:
+            logger.exception(
+                "dynamodb scan failed: " f"index={scan_params.get('IndexName')}"
+            )
+            raise
+        logger.debug(
+            f"dynamodb scan result: "
+            f"items={len(response.get('Items', []))} "
+            f"has_lek={'LastEvaluatedKey' in response}",
+        )
         return response.get("Items", []), response.get("LastEvaluatedKey")
 
     def _scan_all(
@@ -183,10 +253,17 @@ class SingleTableDataManager:
                 exclusive_start_key=last_evaluated_key,
             )
             items.extend(page_items)
+            logger.debug(
+                f"dynamodb scan_all page fetched: "
+                f"page_items={len(page_items)} "
+                f"total_items={len(items)} "
+                f"has_next={bool(last_evaluated_key)}",
+            )
 
             if not last_evaluated_key:
                 break
 
+        logger.debug("dynamodb scan_all complete: total_items=%s", len(items))
         return items
 
     # -----------------------------

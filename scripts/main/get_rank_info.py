@@ -2,6 +2,7 @@ import datetime
 import os
 import platform
 import threading
+from typing import TYPE_CHECKING
 
 import data_manager
 import get_character_info as gci
@@ -15,9 +16,16 @@ import misc
 import pandas as pd
 import register_player
 import requests
+from log_utils import get_logger
 from models import CharacterData
 from PIL import Image, ImageDraw, ImageFont
 
+if TYPE_CHECKING:
+    from logging import Logger
+
+logger: Logger = get_logger(__name__)
+
+# 그래프 스타일과 폰트 설정
 plt.style.use("seaborn-v0_8-pastel")
 if platform.system() == "Linux":
     font_path = "/opt/NanumSquareRoundEB.ttf"
@@ -35,11 +43,14 @@ def download_image(url: str, num: int, list_name: list[str]) -> None:
     플레이어 머리 이미지 다운로드
     """
 
+    logger.debug("download_image start: " f"idx={num} " f"url={url}")
+
     response: requests.Response = requests.get(url)
 
-    os_name = platform.system()
+    os_name: str = platform.system()
     if os_name == "Linux":
         head_path = misc.convert_path(f"\\tmp\\player_heads\\player{num}.png")
+
     else:
         head_path = misc.convert_path(f"assets\\player_heads\\player{num}.png")
 
@@ -48,10 +59,22 @@ def download_image(url: str, num: int, list_name: list[str]) -> None:
 
     list_name[num] = head_path
 
+    logger.debug(
+        "download_image complete: "
+        f"idx={num} "
+        f"path={head_path} "
+        f"status={response.status_code}"
+    )
+
 
 def _get_official_level_rows(
     target_date: datetime.date, limit: int = 100
 ) -> list[dict]:
+
+    logger.debug(
+        "_get_official_level_rows start: " f"date={target_date} " f"limit={limit}"
+    )
+
     rows: list[dict] = []
     last_evaluated_key = None
 
@@ -66,8 +89,18 @@ def _get_official_level_rows(
             break
 
         rows.extend(page)
+
+        logger.debug(
+            "_get_official_level_rows page fetched: "
+            f"page_items={len(page)} "
+            f"total={len(rows)} "
+            f"has_next={bool(last_evaluated_key)}"
+        )
+
         if not last_evaluated_key:
             break
+
+    logger.debug("_get_official_level_rows complete: " f"returned={len(rows[:limit])}")
 
     return rows[:limit]
 
@@ -79,8 +112,13 @@ def get_rank_data(
     특정 날짜의 랭킹 데이터를 가져오는 함수
     """
 
+    logger.info(
+        "get_rank_data start: " f"date={target_date} " f"start={start} " f"end={end}"
+    )
+
     rows: list[dict] = _get_official_level_rows(target_date, limit=end)
     if not rows:
+        logger.warning("get_rank_data no rows: " f"date={target_date}")
         return []
 
     rank_data: list[CharacterData] = []
@@ -98,7 +136,13 @@ def get_rank_data(
             )
         )
 
-    return rank_data[start - 1 : end]
+    result = rank_data[start - 1 : end]
+
+    logger.info(
+        "get_rank_data complete: " f"date={target_date} " f"returned={len(result)}"
+    )
+
+    return result
 
 
 def get_current_rank_data(start: int = 1, end: int = 100) -> list[CharacterData]:
@@ -106,6 +150,8 @@ def get_current_rank_data(start: int = 1, end: int = 100) -> list[CharacterData]
     현재 랭킹 데이터를 가져오는 함수
     등록되지 않은 플레이어는 등록시킴
     """
+
+    logger.info("get_current_rank_data start: " f"start={start} " f"end={end}")
 
     players: list[dict] = register_player.get_registered_players()
 
@@ -115,16 +161,35 @@ def get_current_rank_data(start: int = 1, end: int = 100) -> list[CharacterData]
 
     rank_data.sort(key=lambda x: x.level, reverse=True)
 
-    return rank_data[start - 1 : end]
+    result = rank_data[start - 1 : end]
+    logger.info(
+        "get_current_rank_data complete: "
+        f"players={len(players)} "
+        f"returned={len(result)}"
+    )
+    return result
 
 
 def get_rank_info(start: int, end: int, target_date: datetime.date):
+
+    logger.info(
+        "get_rank_info start: " f"start={start} " f"end={end} " f"date={target_date}"
+    )
+
     if target_date == misc.get_today():
         current_data: list[CharacterData] = get_current_rank_data(start, end)
     else:
         current_data: list[CharacterData] = get_rank_data(target_date, start, end)
 
     if not current_data:
+
+        logger.warning(
+            "get_rank_info no data: "
+            f"start={start} "
+            f"end={end} "
+            f"date={target_date}"
+        )
+
         return None, None
 
     rank_count = min(end - start + 1, len(current_data))
@@ -419,12 +484,29 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
 
     msg = f"{text_day} {start}~{end}위 캐릭터 랭킹을 보여드릴게요."
 
+    logger.info(
+        "get_rank_info complete: "
+        f"start={start} "
+        f"end={end} "
+        f"date={target_date} "
+        f"image={image_path}"
+    )
+
     return msg, image_path
 
 
 def get_rank_history(
     start: int, end: int, period: int, target_date: datetime.date
 ) -> tuple:
+
+    logger.info(
+        "get_rank_history start: "
+        f"start={start} "
+        f"end={end} "
+        f"period={period} "
+        f"date={target_date}"
+    )
+
     today = misc.get_today()
     current_data: list[CharacterData] = (
         get_current_rank_data() if target_date == today else []
@@ -454,6 +536,13 @@ def get_rank_history(
             )
 
     if not data:
+        logger.warning(
+            "get_rank_history no data: "
+            f"start={start} "
+            f"end={end} "
+            f"period={period} "
+            f"date={target_date}"
+        )
         return None, None
 
     # 실제 데이터로 기간 계산
@@ -699,6 +788,17 @@ def get_rank_history(
     plt.close()
 
     msg = f"{period}일 동안의 {start}~{end}위 랭킹 히스토리를 보여드릴게요."
+
+    logger.info(
+        "get_rank_history complete: "
+        f"start={start} "
+        f"end={end} "
+        f"period={period} "
+        f"target_date={target_date} "
+        f"image={image_path} "
+        f"rows={len(data)}"
+    )
+
     return msg, image_path
 
 

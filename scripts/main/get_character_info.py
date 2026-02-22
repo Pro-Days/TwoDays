@@ -5,6 +5,7 @@ import math
 import platform
 import random
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import data_manager as dm
 import get_rank_info as gri
@@ -16,13 +17,19 @@ import matplotlib.ticker as ticker
 import misc
 import numpy as np
 import pandas as pd
+from log_utils import get_logger
 from models import CharacterData
+
+if TYPE_CHECKING:
+    from logging import Logger
+
+logger: Logger = get_logger(__name__)
 
 # 스타일 설정
 plt.style.use("seaborn-v0_8-pastel")
 
 # 폰트 설정
-# todo: 폰트 라이센스 확인하고 변경하기
+# TODO: 폰트 라이센스 확인하고 변경하기
 if platform.system() == "Linux":
     font_path: str = "/opt/NanumSquareRoundEB.ttf"
 else:
@@ -69,6 +76,13 @@ def get_current_character_data(uuid: str, days_before=0) -> CharacterData:
         )
         character_data.level = min(character_data.level, Decimal(200.0))
 
+    logger.debug(
+        "get_current_character_data complete: "
+        f"uuid={uuid} "
+        f"date={character_data.date} "
+        f"level={character_data.level}",
+    )
+
     return character_data
 
 
@@ -77,9 +91,19 @@ def get_character_info(uuid: str, name: str, period: int, target_date: datetime.
     캐릭터 정보 이미지 생성 및 메시지 반환
     """
 
+    logger.info(
+        "get_character_info start: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"period={period} "
+        f"date={target_date}"
+    )
+
     data: list[CharacterData] = get_character_data(uuid, period, target_date)
 
     if not data:
+        logger.warning("get_character_info no data: " f"uuid={uuid} name={name}")
+
         return (
             f"{name}님의 캐릭터 정보가 없어요. 다시 확인해주세요.",
             None,
@@ -358,6 +382,14 @@ def get_character_info(uuid: str, name: str, period: int, target_date: datetime.
 
     msg = f"{text_day} {name}님의 레벨은 {current_level:.2f}이고, {text_changed}{text_exp}{text_rank}"
 
+    logger.info(
+        "get_character_info complete: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"points={len(data)} "
+        f"image={image_path}"
+    )
+
     return msg, image_path
 
 
@@ -384,6 +416,14 @@ def calc_exp_change(l0: float, l1: float, period: int) -> tuple[float, int, int]
 def get_charater_rank_history(
     uuid: str, name: str, period: int, target_date: datetime.date
 ):
+    logger.info(
+        "get_charater_rank_history start: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"period={period} "
+        f"date={target_date}"
+    )
+
     today = misc.get_today()
     current_data: list[CharacterData] = (
         gri.get_current_rank_data() if target_date == today else []
@@ -404,7 +444,9 @@ def get_charater_rank_history(
         if not isinstance(sk, str) or not sk.startswith("SNAP#"):
             continue
 
-        date_value = datetime.datetime.strptime(sk.removeprefix("SNAP#"), "%Y-%m-%d").date()
+        date_value = datetime.datetime.strptime(
+            sk.removeprefix("SNAP#"), "%Y-%m-%d"
+        ).date()
         rank = item.get("Level_Rank")
         if rank is None:
             continue
@@ -445,6 +487,13 @@ def get_charater_rank_history(
         )
 
     if not data:
+        logger.warning(
+            "get_charater_rank_history no data: "
+            f"uuid={uuid} "
+            f"name={name} "
+            f"date={target_date}"
+        )
+
         return f"{target_date_text} {name}님의 랭킹 정보가 없어요.", None
 
     # 실제 데이터로 기간 계산
@@ -452,9 +501,7 @@ def get_charater_rank_history(
 
     # 기간이 1이라면 (등록 직후 데이터가 없을 때)
     if period == 1:
-        text_day: str = (
-            "지금" if target_date == today else target_date_text
-        )
+        text_day: str = "지금" if target_date == today else target_date_text
         cur_rank = data[0]["rank"]
         text_rank: str = (
             f"{name}님의 랭킹은 {f'{cur_rank}위에요.' if cur_rank else '순위에 등록되어있지 않아요.'}"
@@ -580,6 +627,14 @@ def get_charater_rank_history(
 
     msg: str = f"{period}일 동안의 {name}님의 랭킹 변화를 보여드릴게요."
 
+    logger.info(
+        "get_charater_rank_history complete: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"period={period} "
+        f"image={image_path}"
+    )
+
     return msg, image_path
 
 
@@ -610,6 +665,13 @@ def get_character_data(
     특정 기간 동안의 캐릭터 정보 가져오기
     """
 
+    logger.debug(
+        "get_character_data start: "
+        f"uuid={uuid} "
+        f"period={period} "
+        f"target_date={target_date}"
+    )
+
     # 시작 날짜 계산
     start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
 
@@ -635,6 +697,13 @@ def get_character_data(
     if target_date == misc.get_today() and (not data or data[-1].date != target_date):
         today_data: CharacterData = get_current_character_data(uuid=uuid)
         data.append(today_data)
+
+    logger.debug(
+        "get_character_data complete: "
+        f"uuid={uuid} "
+        f"points={len(data)} "
+        f"target_date={target_date}"
+    )
 
     return data
 
@@ -690,7 +759,9 @@ def get_similar_character_avg(
         return []
 
     today = misc.get_today()
-    base_date = today - datetime.timedelta(days=1) if target_date == today else target_date
+    base_date = (
+        today - datetime.timedelta(days=1) if target_date == today else target_date
+    )
     base_rows = levels_by_date.get(base_date, [])
     if not base_rows:
         return []
@@ -719,7 +790,9 @@ def get_similar_character_avg(
         if not selected_levels:
             continue
 
-        avg_level = Decimal(round(float(sum(selected_levels) / len(selected_levels)), 4))
+        avg_level = Decimal(
+            round(float(sum(selected_levels) / len(selected_levels)), 4)
+        )
         data.append(
             CharacterData(
                 uuid="sim",

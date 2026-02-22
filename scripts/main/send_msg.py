@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from typing import Any
 
 try:
     from dotenv import load_dotenv  # type: ignore[import-not-found]
@@ -9,21 +10,75 @@ try:
 except ImportError:
     pass
 
+from typing import TYPE_CHECKING
+
 import misc
 import requests
+from log_utils import get_logger, truncate_text
+
+if TYPE_CHECKING:
+    from logging import Logger
+
+logger: Logger = get_logger(__name__)
 
 LOG_CHANNEL_ID: str | None = os.getenv("DISCORD_LOG_CHANNEL_ID")
 ADMIN_ID: str | None = os.getenv("DISCORD_ADMIN_ID")
 DISCORD_TOKEN: str | None = os.getenv("DISCORD_TOKEN")
+DISCORD_APP_ID: str | None = os.getenv("DISCORD_APP_ID")
 
 if not LOG_CHANNEL_ID or not ADMIN_ID or not DISCORD_TOKEN:
-    print(LOG_CHANNEL_ID is not None, ADMIN_ID is not None, DISCORD_TOKEN is not None)
+    logger.error(
+        "missing discord env vars: "
+        f"LOG_CHANNEL_ID={LOG_CHANNEL_ID} "
+        f"ADMIN_ID={ADMIN_ID} "
+        f"DISCORD_TOKEN={DISCORD_TOKEN}"
+    )
+
     raise ValueError(
         "DISCORD_LOG_CHANNEL_ID, DISCORD_ADMIN_ID, and DISCORD_TOKEN must be set in environment variables."
     )
 
 
+def _safe_response_body(response: requests.Response) -> Any:
+    try:
+        return response.json()
+    except Exception:
+        return truncate_text(response.text, 500)
+
+
+def _build_fields(embed_json: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {"name": key, "value": value, "inline": False}
+        for key, value in embed_json.items()
+        if value is not None
+    ]
+
+
+def _command_text(body: dict[str, Any]) -> str | None:
+    data = body.get("data", {})
+    cmd_name = data.get("name")
+
+    if cmd_name is None:
+        return None
+
+    if "options" in data:
+        return f"{cmd_name}\n{data['options']}"
+
+    return str(cmd_name)
+
+
+def _message_preview(msg: str) -> str:
+    return truncate_text(msg.replace("\n", "\\n"), 300)
+
+
 def send(event, msg, image=None, log_type=1, error=None):
+    logger.info(
+        "send start: "
+        f"log_type={log_type} "
+        f"image={bool(image)} "
+        f"msg_preview={_message_preview(str(msg))}"
+    )
+
     body = json.loads(event["body"])
     interaction_token = body.get("token")
 
@@ -33,40 +88,51 @@ def send(event, msg, image=None, log_type=1, error=None):
         with open(image, "rb") as f:
             file_data = f.read()
 
-        url = f"https://discord.com/api/v10/webhooks/{os.getenv('DISCORD_APP_ID')}/{interaction_token}"
+        url = (
+            f"https://discord.com/api/v10/webhooks/{DISCORD_APP_ID}/{interaction_token}"
+        )
         multipart_data = {
             "payload_json": (None, json.dumps(payload), "application/json"),
             "file": (image, file_data, "application/octet-stream"),
         }
 
         response = requests.post(url, files=multipart_data)
+        response_body = _safe_response_body(response)
 
-        print(f"메시지 전송 완료: {response.json()}, {msg.replace('\n', '\\n')}")
+        logger.info(
+            "discord message sent (multipart): "
+            f"status={response.status_code} "
+            f"response={truncate_text(response_body, 600)} "
+            f"msg_preview={_message_preview(str(msg))}"
+        )
 
-        send_log(log_type, event, msg if error == None else error, image)
+        send_log(log_type, event, msg if error is None else error, image)
 
         return {
             "statusCode": 200,
             "body": json.dumps(
-                {"message": "메시지 전송 성공", "response": response.json(), "msg": msg}
+                {"message": "메시지 전송 성공", "response": response_body, "msg": msg}
             ),
         }
 
-    # 이미지 없음
-    url = f"https://discord.com/api/v10/webhooks/{os.getenv('DISCORD_APP_ID', None)}/{interaction_token}/messages/@original"
-
+    url = f"https://discord.com/api/v10/webhooks/{DISCORD_APP_ID}/{interaction_token}/messages/@original"
     headers = {"Content-Type": "application/json"}
-
     response = requests.patch(url, headers=headers, data=json.dumps(payload))
+    response_body = _safe_response_body(response)
 
-    print(f"메시지 전송 완료: {response.json()}, {msg.replace('\n', '\\n')}")
+    logger.info(
+        "discord message sent (patch): "
+        f"status={response.status_code} "
+        f"response={truncate_text(response_body, 600)} "
+        f"msg_preview={_message_preview(str(msg))}"
+    )
 
-    send_log(log_type, event, msg if error == None else error)
+    send_log(log_type, event, msg if error is None else error)
 
     return {
         "statusCode": 200,
         "body": json.dumps(
-            {"message": "메시지 전송 성공", "response": response.json(), "msg": msg}
+            {"message": "메시지 전송 성공", "response": response_body, "msg": msg}
         ),
     }
 
@@ -82,6 +148,13 @@ def send_log(log_type, event, msg="", image=None):
     # TODO: enum
     """
 
+    logger.debug(
+        "send_log start: "
+        f"log_type={log_type} "
+        f"image={bool(image)} "
+        f"msg_preview={_message_preview(str(msg))}"
+    )
+
     now = f"<t:{int(time.time())}:f>"
 
     if log_type in [1, 2, 3]:
@@ -96,202 +169,106 @@ def send_log(log_type, event, msg="", image=None):
 
         guild_name = misc.get_guild_name(guild_id)
         channel_name = body["channel"]["name"]
+        cmd_text = _command_text(body)
+        is_server_command = "0" in command_type
 
-        if (log_type == 1) or (log_type == 2):
+        common_embed = {
+            "time": now,
+            "type": "서버" if is_server_command else "유저",
+            "server": (
+                f"{guild_name} ({guild_id})" if is_server_command else f"{guild_id}"
+            ),
+            "channel": (
+                f"{channel_name} ({channel_id})"
+                if is_server_command
+                else f"{channel_id}"
+            ),
+            "author": f"{member_name} - {member_username} ({member_id})",
+            "cmd": cmd_text,
+        }
 
-            if "0" in command_type:
-                embed_json = {
-                    "time": now,
-                    "type": "서버",
-                    "server": f"{guild_name} ({guild_id})",
-                    "channel": f"{channel_name} ({channel_id})",
-                    "author": f"{member_name} - {member_username} ({member_id})",
-                    "cmd": (
-                        f"{body["data"]["name"]}\n{body['data']['options']}"
-                        if "options" in body["data"]
-                        else body["data"]["name"]
-                    ),
-                    "msg": msg,
-                }
-            else:
-                embed_json = {
-                    "time": now,
-                    "type": "유저",
-                    "server": f"{guild_id}",
-                    "channel": f"{channel_id}",
-                    "author": f"{member_name} - {member_username} ({member_id})",
-                    "cmd": (
-                        f"{body["data"]["name"]}\n{body['data']['options']}"
-                        if "options" in body["data"]
-                        else body["data"]["name"]
-                    ),
-                    "msg": msg,
-                }
+        if log_type in [1, 2]:
+            embed_json = {**common_embed, "msg": msg}
 
             if log_type == 1:
                 title = "투데이즈 명령어 로그"
                 color = 3447003
-
-            else:  # 2
+            else:
                 title = "투데이즈 관리자 명령어 로그"
                 color = 10181046
 
-            fields = []
-            for key, value in embed_json.items():
-                if value != None:
-                    fields.append(
-                        {
-                            "name": key,
-                            "value": value,
-                            "inline": False,
-                        }
-                    )
+            fields = _build_fields(embed_json)
 
-        elif log_type == 3:
-            if "0" in command_type:
-                embed_json = {
-                    "time": now,
-                    "type": "서버",
-                    "server": f"{guild_name} ({guild_id})",
-                    "channel": f"{channel_name} ({channel_id})",
-                    "author": f"{member_name} - {member_username} ({member_id})",
-                    "cmd": (
-                        f"{body["data"]["name"]}\n{body['data']['options']}"
-                        if "options" in body["data"]
-                        else body["data"]["name"]
-                    ),
-                    "error": msg,
-                }
-            else:
-                embed_json = {
-                    "time": now,
-                    "type": "유저",
-                    "server": f"{guild_id}",
-                    "channel": f"{channel_id}",
-                    "author": f"{member_name} - {member_username} ({member_id})",
-                    "cmd": (
-                        f"{body["data"]["name"]}\n{body['data']['options']}"
-                        if "options" in body["data"]
-                        else body["data"]["name"]
-                    ),
-                    "error": msg,
-                }
-
+        else:  # 3
+            embed_json = {**common_embed, "error": msg}
             title = "투데이즈 명령어 에러 로그"
             color = 15548997
-
-            fields = []
-            for key, value in embed_json.items():
-                if value != None:
-                    fields.append(
-                        {
-                            "name": key,
-                            "value": value,
-                            "inline": False,
-                        }
-                    )
-
-        else:
-            return
+            fields = _build_fields(embed_json)
 
     else:
         if log_type == 4:
-            embed_json = {
-                "time": now,
-                "cmd": event["action"],
-            }
-
+            embed_json = {"time": now, "cmd": event["action"]}
             title = "투데이즈 데이터 업데이트 로그"
             color = 3447003
-
-            fields = []
-            for key, value in embed_json.items():
-                if value != None:
-                    fields.append(
-                        {
-                            "name": key,
-                            "value": value,
-                            "inline": False,
-                        }
-                    )
+            fields = _build_fields(embed_json)
 
         elif log_type == 5:
-            embed_json = {
-                "time": now,
-                "cmd": event["action"],
-                "error": msg,
-            }
-
+            embed_json = {"time": now, "cmd": event["action"], "error": msg}
             title = "투데이즈 데이터 업데이트 에러 로그"
             color = 15548997
-
-            fields = []
-            for key, value in embed_json.items():
-                if value != None:
-                    fields.append(
-                        {
-                            "name": key,
-                            "value": value,
-                            "inline": False,
-                        }
-                    )
+            fields = _build_fields(embed_json)
 
         elif log_type == 6:
-            embed_json = {
-                "time": now,
-                "cmd": event["action"],
-                "user-type": msg,
-            }
-
+            embed_json = {"time": now, "cmd": event["action"], "user-type": msg}
             title = "투데이즈 플레이어 등록 / 업데이트 로그"
             color = 3447003
-
-            fields = []
-            for key, value in embed_json.items():
-                if value != None:
-                    fields.append(
-                        {
-                            "name": key,
-                            "value": value,
-                            "inline": False,
-                        }
-                    )
+            fields = _build_fields(embed_json)
 
         else:
+
+            logger.warning("send_log ignored unknown " f"log_type={log_type}")
+
             return
 
-    # 로그 전송
     payload = {
         "content": "" if log_type in [1, 2, 4] else f"<@{ADMIN_ID}>",
         "embeds": [{"title": title, "color": color, "fields": fields}],
     }
 
     url = f"https://discord.com/api/v10/channels/{LOG_CHANNEL_ID}/messages"
-
     headers = {
         "Authorization": f"Bot {DISCORD_TOKEN}",
         "Content-Type": "application/json",
     }
 
     response = requests.post(url, headers=headers, data=json.dumps(payload))
+    response_body = _safe_response_body(response)
 
-    # 이미지 전송
+    logger.info(
+        "discord log sent: "
+        f"type={log_type} "
+        f"status={response.status_code} "
+        f"response={truncate_text(response_body, 600)}"
+    )
+
     if image:
         with open(image, "rb") as f:
             file_data = f.read()
 
-        payload = {
-            "content": "",
-        }
+        payload = {"content": ""}
         headers = {"Authorization": f"Bot {DISCORD_TOKEN}"}
-
-        url = f"https://discord.com/api/v10/channels/{LOG_CHANNEL_ID}/messages"
-
         multipart_data = {
             "payload_json": (None, json.dumps(payload), "application/json"),
             "file": (image, file_data, "application/octet-stream"),
         }
 
         response = requests.post(url, headers=headers, files=multipart_data)
+        response_body = _safe_response_body(response)
 
-    print(f"로그 전송 완료: {response.json()}, {msg.replace('\n', '\\n')}")
+        logger.info(
+            "discord log image sent: "
+            f"type={log_type} "
+            f"status={response.status_code} "
+            f"response={truncate_text(response_body, 600)} "
+            f"image={image}"
+        )

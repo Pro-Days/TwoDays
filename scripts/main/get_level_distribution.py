@@ -1,5 +1,6 @@
 import datetime
 import platform
+from typing import TYPE_CHECKING
 
 import data_manager
 import matplotlib
@@ -7,8 +8,16 @@ import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import misc
+from log_utils import get_logger
 
+if TYPE_CHECKING:
+    from logging import Logger
+
+logger: Logger = get_logger(__name__)
+
+# 그래프 스타일과 폰트 설정
 plt.style.use("seaborn-v0_8-pastel")
+
 if platform.system() == "Linux":
     font_path = "/opt/NanumSquareRoundEB.ttf"
 else:
@@ -21,6 +30,10 @@ matplotlib.use("Agg")
 
 
 def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
+    """주어진 날짜에 등록된 플레이어들의 레벨 분포를 히스토그램으로 그려서 이미지로 저장하고, 메시지와 이미지 경로를 반환"""
+
+    logger.info("get_level_distribution start: " f"target_date={target_date}")
+
     data: list[float] = []
     last_evaluated_key = None
     while True:
@@ -33,6 +46,14 @@ def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
             break
 
         data.extend([float(item["Level"]) for item in temp_data if "Level" in item])
+
+        logger.debug(
+            "get_level_distribution page fetched: "
+            f"page_items={len(temp_data)} "
+            f"total_levels={len(data)} "
+            f"has_next={bool(last_evaluated_key)}"
+        )
+
         if not last_evaluated_key:
             break
 
@@ -69,6 +90,14 @@ def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
     plt.close()
 
     msg = f"{target_date.strftime('%Y년 %m월 %d일')} 기준 등록된 플레이어의 레벨 분포를 보여드릴게요.\n부캐릭터를 포함해서 총 {len(data)}개의 캐릭터가 등록되어있어요.\n이 이미지는 서버의 모든 플레이어의 정보를 포함하지 않아요."
+
+    logger.info(
+        "get_level_distribution complete: "
+        f"target_date={target_date} "
+        f"count={len(data)} "
+        f"image_path={image_path}"
+    )
+
     return msg, image_path
 
 
