@@ -24,10 +24,21 @@ jobs:
           python -m pip install --upgrade pip
           rm -rf build/main scripts/main/deployment_main.zip
           mkdir -p build/main
-          pip install -r requirements.main.txt -t build/main
+          pip install --no-cache-dir -r requirements.main.txt -t build/main
           cp scripts/main/*.py build/main/
-          find build/main -type d -name '__pycache__' -prune -exec rm -rf {} +
+          find build/main -type d -name '__pycache__' -prune -exec rm -rf {} + || true
+          find build/main -type d -name 'tests' -prune -exec rm -rf {} + || true
+          find build/main -type d -name 'test' -prune -exec rm -rf {} + || true
+          find build/main -type d -name 'testing' -prune -exec rm -rf {} + || true
+          find build/main -type d -name '*.dist-info' -prune -exec rm -rf {} + || true
+          find build/main -type d -name '*.egg-info' -prune -exec rm -rf {} + || true
           find build/main -type f -name '*.pyc' -delete
+          find build/main -type f -name '*.pyo' -delete
+          find build/main -type f -name '*.so' -exec strip -s {} \; || true
+          echo "Unzipped package size:"
+          du -sh build/main
+          echo "Top package sizes:"
+          du -sh build/main/* | sort -hr | head -20
           cd build/main && zip -r ../../scripts/main/deployment_main.zip .
 
       - name: deploy to develop
