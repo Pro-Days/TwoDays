@@ -571,7 +571,7 @@ def get_current_character_data(
         "get_current_character_data complete: "
         f"uuid={uuid} "
         f"date={character_data.date} "
-        f"level={character_data.level}",
+        f"level={character_data.level} "
         f"power={character_data.power}",
     )
 
