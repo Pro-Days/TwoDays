@@ -534,14 +534,18 @@ def _estimate_power(uuid: str, level: Decimal) -> Decimal:
     return Decimal(round(base_power * uuid_bias * level_band_bias))
 
 
-def get_current_character_data(uuid: str, days_before=0) -> CharacterData:
+def get_current_character_data(
+    uuid: str,
+    target_date: datetime.date | None = None,
+) -> CharacterData:
     """
     최신 캐릭터 정보 가져오기
     오픈 이전에는 임의로 생성해서 반환
+    target_date가 주어지면 해당 날짜 기준 데이터로 계산
     """
 
     # 날짜 계산
-    today: datetime.date = misc.get_today(days_before)
+    today: datetime.date = target_date if target_date is not None else misc.get_today()
     base_date: datetime.date = datetime.date(2026, 2, 1)
 
     delta_days: int = (today - base_date).days
@@ -563,7 +567,9 @@ def get_current_character_data(uuid: str, days_before=0) -> CharacterData:
     return character_data
 
 
-def get_current_character_data_by_name(name: str) -> PlayerSearchData:
+def get_current_character_data_by_name(
+    name: str, target_date: datetime.date | None = None
+) -> PlayerSearchData:
     """
     플레이어 검색 기반 최신 캐릭터 정보 가져오기 (이름 기반)
 
@@ -571,7 +577,11 @@ def get_current_character_data_by_name(name: str) -> PlayerSearchData:
     실제 크롤링 로직으로 교체되더라도 update.py 인터페이스는 유지
     """
 
-    logger.info("get_current_character_data_by_name start: " f"name={name}")
+    logger.info(
+        "get_current_character_data_by_name start: "
+        f"name={name} "
+        f"target_date={target_date}"
+    )
 
     real_name, uuid = misc.get_profile_from_name(name)
 
@@ -581,7 +591,7 @@ def get_current_character_data_by_name(name: str) -> PlayerSearchData:
         )
         raise ValueError(f"failed to resolve profile from name: {name}")
 
-    data: CharacterData = get_current_character_data(uuid)
+    data: CharacterData = get_current_character_data(uuid, target_date=target_date)
 
     result = PlayerSearchData(
         name=real_name,
@@ -594,6 +604,7 @@ def get_current_character_data_by_name(name: str) -> PlayerSearchData:
         f"input={name} "
         f"resolved_name={result.name} "
         f"uuid={uuid} "
+        f"target_date={target_date} "
         f"level={result.level} "
         f"power={result.power}"
     )

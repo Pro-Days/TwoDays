@@ -206,7 +206,10 @@ def get_rank_data(
 
 
 def get_current_rank_data(
-    start: int = 1, end: int = 100, metric: str = "level"
+    start: int = 1,
+    end: int = 100,
+    metric: str = "level",
+    target_date: datetime.date | None = None,
 ) -> list[CharacterData]:
     """
     현재 랭킹 데이터를 가져오는 함수
@@ -217,13 +220,15 @@ def get_current_rank_data(
         "get_current_rank_data start: "
         f"start={start} "
         f"end={end} "
-        f"metric={metric}"
+        f"metric={metric} "
+        f"target_date={target_date}"
     )
 
     players: list[dict] = register_player.get_registered_players()
 
     rank_data: list[CharacterData] = [
-        gci.get_current_character_data(player["uuid"]) for player in players
+        gci.get_current_character_data(player["uuid"], target_date=target_date)
+        for player in players
     ]
 
     if metric == "level":
@@ -238,13 +243,17 @@ def get_current_rank_data(
         "get_current_rank_data complete: "
         f"players={len(players)} "
         f"returned={len(result)} "
-        f"metric={metric}"
+        f"metric={metric} "
+        f"target_date={target_date}"
     )
     return result
 
 
 def _to_current_rank_rows(
-    start: int = 1, end: int = 100, metric: str = "level"
+    start: int = 1,
+    end: int = 100,
+    metric: str = "level",
+    target_date: datetime.date | None = None,
 ) -> list[RankRow]:
     """
     업데이트 파이프라인용 현재 랭킹 원시 행 반환
@@ -254,7 +263,7 @@ def _to_current_rank_rows(
     """
 
     rank_data: list[CharacterData] = get_current_rank_data(
-        start=start, end=end, metric=metric
+        start=start, end=end, metric=metric, target_date=target_date
     )
     rows: list[RankRow] = []
 
@@ -275,22 +284,31 @@ def _to_current_rank_rows(
         f"start={start} "
         f"end={end} "
         f"metric={metric} "
+        f"target_date={target_date} "
         f"returned={len(rows)}"
     )
 
     return rows
 
 
-def get_current_level_rank_rows(start: int = 1, end: int = 100) -> list[RankRow]:
+def get_current_level_rank_rows(
+    start: int = 1, end: int = 100, target_date: datetime.date | None = None
+) -> list[RankRow]:
     """현재 레벨 랭킹 raw rows 반환 (업데이트 파이프라인용)"""
 
-    return _to_current_rank_rows(start=start, end=end, metric="level")
+    return _to_current_rank_rows(
+        start=start, end=end, metric="level", target_date=target_date
+    )
 
 
-def get_current_power_rank_rows(start: int = 1, end: int = 100) -> list[RankRow]:
+def get_current_power_rank_rows(
+    start: int = 1, end: int = 100, target_date: datetime.date | None = None
+) -> list[RankRow]:
     """현재 전투력 랭킹 raw rows 반환 (업데이트 파이프라인용)"""
 
-    return _to_current_rank_rows(start=start, end=end, metric="power")
+    return _to_current_rank_rows(
+        start=start, end=end, metric="power", target_date=target_date
+    )
 
 
 def get_rank_info(start: int, end: int, target_date: datetime.date):

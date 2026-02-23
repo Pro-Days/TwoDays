@@ -74,8 +74,12 @@ def _merge_rank_rows(
 
 
 def _update_rank_phase(snapshot_date: date) -> None:
-    level_rows: list[RankRow] = gri.get_current_level_rank_rows()
-    power_rows: list[RankRow] = gri.get_current_power_rank_rows()
+    level_rows: list[RankRow] = gri.get_current_level_rank_rows(
+        target_date=snapshot_date
+    )
+    power_rows: list[RankRow] = gri.get_current_power_rank_rows(
+        target_date=snapshot_date
+    )
 
     logger.info(
         "update_1D rank phase start: "
@@ -139,7 +143,9 @@ def update_player(
         f"target_date={target_date}"
     )
 
-    data: PlayerSearchData = gci.get_current_character_data_by_name(name)
+    data: PlayerSearchData = gci.get_current_character_data_by_name(
+        name, target_date=target_date
+    )
     snapshot: dict[str, Any] | None = dm.manager.get_user_snapshot(uuid, target_date)
 
     dm.manager.put_daily_snapshot(
@@ -148,8 +154,8 @@ def update_player(
         name=data.name,
         level=data.level,
         power=data.power,
-        level_rank=snapshot.get("level_rank") if snapshot else None,
-        power_rank=snapshot.get("power_rank") if snapshot else None,
+        level_rank=snapshot.get("Level_Rank") if snapshot else None,
+        power_rank=snapshot.get("Power_Rank") if snapshot else None,
     )
 
     logger.debug("update_player success: " f"uuid={uuid} " f"name={name}")
@@ -228,7 +234,7 @@ def update_1D(event: dict[str, Any]) -> None:
 def update_1D_backfill(event: dict[str, Any], snapshot_date: date) -> None:
     """
     개발용 과거 날짜 저장
-    현재 수집 데이터를 지정된 날짜 스냅샷으로 저장
+    특정 날짜의 스냅샷을 저장하려는 경우 사용
     """
 
     event_copy: dict[str, Any] = dict(event)
