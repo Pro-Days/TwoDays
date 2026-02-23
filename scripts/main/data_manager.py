@@ -35,6 +35,7 @@ class GSIName(str, Enum):
     INTERNAL_LEVEL = "GSI_Internal_Level"
     INTERNAL_POWER = "GSI_Internal_Power"
     FIND_USER_BY_NAME = "GSI_Find_User_By_Name"
+    ALL_METADATA = "GSI_All_Metadata"
 
 
 def _build_session() -> boto3.Session:
@@ -310,8 +311,19 @@ class SingleTableDataManager:
 
         return items[0] if items else None
 
-    def scan_all_user_metadata(self) -> list[dict[str, Any]]:
-        return self._scan_all(filter_expression=Attr("SK").eq("METADATA"))
+    def query_all_user_metadata(self) -> list[dict[str, Any]]:
+        """
+        메타데이터 전용 GSI로 전체 등록 유저 메타데이터 조회.
+
+        GSI_All_Metadata
+        - PK: SK (METADATA)
+        - SK: Name_Lower
+        """
+
+        return self._query_all(
+            key_condition=Key("SK").eq("METADATA"),
+            index_name=GSIName.ALL_METADATA,
+        )
 
     def put_daily_snapshot(
         self,

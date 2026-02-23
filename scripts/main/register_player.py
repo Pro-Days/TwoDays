@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import data_manager
 from log_utils import get_logger
+from misc import get_profiles_from_mc
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -35,7 +36,7 @@ def register_player(uuid: str, name: str) -> None:
 def get_registered_players() -> list[dict]:
     logger.debug("get_registered_players start")
 
-    items: list[dict] = data_manager.manager.scan_all_user_metadata()
+    items: list[dict] = data_manager.manager.query_all_user_metadata()
 
     players: list[dict[str, str]] = [
         {
@@ -60,7 +61,12 @@ def is_registered(uuid: str) -> bool:
 
 
 if __name__ == "__main__":
-    # print(register_player("asdf123", 1))
+    for i in range(10):
+        names: list[str] = [f"steve{j:02d}" for j in range(i * 10, (i + 1) * 10)]
+        profiles: dict[str, dict[str, str]] = get_profiles_from_mc(names=names)
+        for name, profile in profiles.items():
+            print(register_player(profile["uuid"], profile["name"]))
+
     # print(get_registered_players())
     # print(is_registered("prodays123"))
     pass

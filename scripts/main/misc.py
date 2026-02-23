@@ -233,7 +233,9 @@ def get_exp_data() -> list[int]:
 if __name__ == "__main__":
     # print(get_guild_list())
     # print(get_max_id())
-    print(get_profiles_from_mc(names=["prodays", "prodays2"]))
+    for i in range(10):
+        names: list[str] = [f"steve{j:03d}" for j in range(i * 10, (i + 1) * 10)]
+        print(get_profiles_from_mc(names=names))
     # print(get_main_slot("prodays"))
     # print(get_today_from_input("12일전"))
     # print(get_name(id=1))
