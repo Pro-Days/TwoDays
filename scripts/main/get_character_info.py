@@ -506,6 +506,7 @@ def _estimate_level(uuid: str, delta_days: int) -> Decimal:
     random.seed(uuid[5:])
     min_speed: float = 0.7
     speed: float = min_speed + random.random() * (1 - min_speed)
+    random.random()
 
     level: float = LEVEL_START
 
@@ -514,12 +515,14 @@ def _estimate_level(uuid: str, delta_days: int) -> Decimal:
         if remaining <= 0:
             break
 
+        total_gain: float = 0.0
         for __ in range(20):
-            gain: float = (
-                10 / ((level + 5) ** 0.9) * speed * (random.uniform(0.85, 1.15))
-            )
+            gain: float = 10 / ((level + 5) ** 0.9) * speed
 
-            level = min(LEVEL_MAX, level + gain)
+            total_gain += gain
+
+        total_gain *= random.uniform(0.7, 1.3)
+        level = min(LEVEL_MAX, level + total_gain)
 
         # print(f"Day {_+1}: Level={level:.4f}")
 
