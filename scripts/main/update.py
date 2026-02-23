@@ -22,13 +22,13 @@ if TYPE_CHECKING:
 logger: Logger = get_logger(__name__)
 
 
-def _get_operational_snapshot_date() -> date:
+def _get_operational_snapshot_date(days_before: int = 0) -> date:
     """
     업데이트 스냅샷 날짜
     KST 기준 현재 수집 데이터는 항상 어제 데이터로 저장
     """
 
-    return misc.get_today(1)
+    return misc.get_today(days_before + 1)
 
 
 def _merge_rank_rows(
@@ -93,17 +93,39 @@ def _update_rank_phase(snapshot_date: date) -> None:
 
     names: list[str] = [str(merged_rows[key]["name"]) for key in ordered_keys]
 
-    # TODO: 이름으로 프로필 조회하는 부분 개선 - METADATA 조회를 우선
+    resolved_profiles: dict[str, dict[str, str]] = {}
+    unresolved_names: list[str] = []
 
-    resolved_profiles: dict[str, dict[str, str]] = misc.get_profiles_from_mc(names)
+    for raw_name in names:
+        metadata: dict[str, str] | None = dm.manager.find_user_metadata_by_name(
+            raw_name
+        )
+
+        if not metadata:
+            unresolved_names.append(raw_name)
+            continue
+
+        real_name: str = metadata["Name"]
+        pk: str = metadata["PK"]
+        uuid: str = dm.manager.uuid_from_user_pk(pk)
+
+        if not real_name or not uuid:
+            unresolved_names.append(raw_name)
+            continue
+
+        resolved_profiles[raw_name] = {"uuid": uuid, "name": real_name}
+
+    if unresolved_names:
+        resolved_profiles.update(misc.get_profiles_from_mc(unresolved_names))
 
     for key in ordered_keys:
         entry: dict[str, Any] = merged_rows[key]
         raw_name = str(entry["name"])
 
         profile: dict[str, str] | None = resolved_profiles.get(raw_name)
-        real_name: str = profile["name"] if profile else raw_name
-        uuid: str | None = profile.get("uuid") if profile else None
+
+        real_name = profile["name"] if profile else raw_name
+        uuid: str = profile["uuid"] if profile else ""
 
         if not uuid or not real_name:
             raise ValueError(f"failed to resolve uuid from rank name: {raw_name}")
@@ -251,5 +273,5 @@ def update_1D_backfill(event: dict[str, Any], snapshot_date: date) -> None:
 
 if __name__ == "__main__":
     update_1D_backfill(
-        {"action": "update_1D"}, snapshot_date=_get_operational_snapshot_date()
+        {"action": "update_1D"}, snapshot_date=_get_operational_snapshot_date(1)
     )
