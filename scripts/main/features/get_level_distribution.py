@@ -3,17 +3,21 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING
 
-import data_manager
-from chart_io import save_and_close_chart
-from chart_style import apply_default_chart_style, setup_agg_backend
-from time_utils import get_today
+import scripts.main.infrastructure.persistence.data_manager as data_manager
+from scripts.main.shared.chart.chart_io import save_and_close_chart
+from scripts.main.shared.chart.chart_style import (
+    apply_default_chart_style,
+    setup_agg_backend,
+)
+from scripts.main.shared.utils.time_utils import get_today
 
 setup_agg_backend()
 
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from log_utils import get_logger
+
+from scripts.main.shared.utils.log_utils import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger

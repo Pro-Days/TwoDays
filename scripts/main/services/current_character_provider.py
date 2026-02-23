@@ -5,10 +5,12 @@ import random
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from log_utils import get_logger
-from minecraft_profile_service import get_profile_from_name
-from models import CharacterData, PlayerSearchData
-from time_utils import get_today
+from scripts.main.domain.models import CharacterData, PlayerSearchData
+from scripts.main.integrations.minecraft.minecraft_profile_service import (
+    get_profile_from_name,
+)
+from scripts.main.shared.utils.log_utils import get_logger
+from scripts.main.shared.utils.time_utils import get_today
 
 if TYPE_CHECKING:
     from logging import Logger

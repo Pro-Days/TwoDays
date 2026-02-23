@@ -5,8 +5,8 @@ import time
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any
 
-import discord_admin_api as daa
-from log_utils import get_logger
+import scripts.main.integrations.discord.discord_admin_api as daa
+from scripts.main.shared.utils.log_utils import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger

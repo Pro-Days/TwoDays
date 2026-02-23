@@ -16,7 +16,8 @@ except ImportError:
 
 import boto3
 from boto3.dynamodb.conditions import Attr, ConditionBase, Key
-from log_utils import get_logger
+
+from scripts.main.shared.utils.log_utils import get_logger
 
 # .env 파일에서 환경 변수 로드
 AWS_REGION: str = os.getenv("AWS_REGION", "ap-northeast-2")

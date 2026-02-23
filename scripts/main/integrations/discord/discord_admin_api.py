@@ -4,7 +4,8 @@ import os
 from typing import TYPE_CHECKING
 
 import requests
-from log_utils import get_logger
+
+from scripts.main.shared.utils.log_utils import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger

@@ -4,19 +4,21 @@ import traceback
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
-import current_character_provider as ccp
-import data_manager as dm
-import get_rank_info as gri
-import register_player as rp
-import send_msg as sm
-from log_utils import get_logger, truncate_text
-from minecraft_profile_service import get_profiles_from_mc
-from time_utils import get_today
+import scripts.main.features.get_rank_info as gri
+import scripts.main.features.register_player as rp
+import scripts.main.infrastructure.persistence.data_manager as dm
+import scripts.main.integrations.discord.send_msg as sm
+import scripts.main.services.current_character_provider as ccp
+from scripts.main.integrations.minecraft.minecraft_profile_service import (
+    get_profiles_from_mc,
+)
+from scripts.main.shared.utils.log_utils import get_logger, truncate_text
+from scripts.main.shared.utils.time_utils import get_today
 
 if TYPE_CHECKING:
     from logging import Logger
 
-    from models import PlayerSearchData, RankRow
+    from scripts.main.domain.models import PlayerSearchData, RankRow
 
 logger: Logger = get_logger(__name__)
 

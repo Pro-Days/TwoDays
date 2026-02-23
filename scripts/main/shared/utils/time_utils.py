@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 from typing import TYPE_CHECKING
 
-from log_utils import get_logger
+from scripts.main.shared.utils.log_utils import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger

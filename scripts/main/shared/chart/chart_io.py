@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import platform
 
-from path_utils import convert_path
+from scripts.main.shared.utils.path_utils import convert_path
 
 
 def get_chart_image_path(filename: str = "image.png") -> str:

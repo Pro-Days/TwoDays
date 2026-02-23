@@ -7,12 +7,17 @@ import threading
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-import current_character_provider as ccp
-import data_manager
-from chart_io import get_chart_image_path
-from chart_style import apply_default_chart_style, setup_agg_backend
-from minecraft_profile_service import get_name_from_uuid
-from path_utils import convert_path
+import scripts.main.infrastructure.persistence.data_manager as data_manager
+import scripts.main.services.current_character_provider as ccp
+from scripts.main.integrations.minecraft.minecraft_profile_service import (
+    get_name_from_uuid,
+)
+from scripts.main.shared.chart.chart_io import get_chart_image_path
+from scripts.main.shared.chart.chart_style import (
+    apply_default_chart_style,
+    setup_agg_backend,
+)
+from scripts.main.shared.utils.path_utils import convert_path
 
 # 차트 환경 설정을 공통 모듈로 위임해 다른 차트 모듈과 동작을 맞춤
 setup_agg_backend()
@@ -23,12 +28,13 @@ import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import pandas as pd
-import register_player
 import requests
-from log_utils import get_logger
-from models import CharacterData, MetricRankEntry, RankRow
 from PIL import Image, ImageDraw, ImageFont
-from time_utils import get_today
+
+import scripts.main.features.register_player as register_player
+from scripts.main.domain.models import CharacterData, MetricRankEntry, RankRow
+from scripts.main.shared.utils.log_utils import get_logger
+from scripts.main.shared.utils.time_utils import get_today
 
 if TYPE_CHECKING:
     from logging import Logger

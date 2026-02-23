@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import data_manager
 import mojang
-from log_utils import get_logger
+
+import scripts.main.infrastructure.persistence.data_manager as data_manager
+from scripts.main.shared.utils.log_utils import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger

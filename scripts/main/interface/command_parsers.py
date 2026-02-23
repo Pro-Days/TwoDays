@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 from dataclasses import dataclass
 
-from time_utils import get_today
+from scripts.main.shared.utils.time_utils import get_today
 
 
 @dataclass

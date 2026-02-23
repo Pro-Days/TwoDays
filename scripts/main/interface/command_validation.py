@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from time_utils import get_today
+from scripts.main.shared.utils.time_utils import get_today
 
 DATE_INPUT_INVALID_MESSAGE: str = (
     "날짜 입력이 올바르지 않습니다: YYYY-MM-DD, MM-DD, DD, -n "

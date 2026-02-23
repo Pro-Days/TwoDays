@@ -14,17 +14,22 @@ except ImportError:
 
 from typing import TYPE_CHECKING
 
-import command_parsers as cp
-import command_validation as cv
-import discord_admin_api as daa
-import get_character_info as gci
-import get_level_distribution as gld
-import get_rank_info as gri
-import minecraft_profile_service as mps
-import register_player as rp
-import send_msg as sm
-import update
-from log_utils import get_logger, setup_logging, summarize_event, truncate_text
+import scripts.main.features.get_character_info as gci
+import scripts.main.features.get_level_distribution as gld
+import scripts.main.features.get_rank_info as gri
+import scripts.main.features.register_player as rp
+import scripts.main.integrations.discord.discord_admin_api as daa
+import scripts.main.integrations.discord.send_msg as sm
+import scripts.main.integrations.minecraft.minecraft_profile_service as mps
+import scripts.main.interface.command_parsers as cp
+import scripts.main.interface.command_validation as cv
+import scripts.main.jobs.update as update
+from scripts.main.shared.utils.log_utils import (
+    get_logger,
+    setup_logging,
+    summarize_event,
+    truncate_text,
+)
 
 if TYPE_CHECKING:
     from logging import Logger

@@ -4,11 +4,14 @@ import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-import data_manager as dm
-import get_rank_info as gri
-from chart_io import save_and_close_chart
-from chart_style import apply_default_chart_style, setup_agg_backend
-from current_character_provider import get_current_character_data
+import scripts.main.features.get_rank_info as gri
+import scripts.main.infrastructure.persistence.data_manager as dm
+from scripts.main.services.current_character_provider import get_current_character_data
+from scripts.main.shared.chart.chart_io import save_and_close_chart
+from scripts.main.shared.chart.chart_style import (
+    apply_default_chart_style,
+    setup_agg_backend,
+)
 
 # 차트 환경 초기화를 공통화해 렌더링 모듈 간 설정 차이를 줄임
 setup_agg_backend()
@@ -19,10 +22,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
-from game_progression import get_exp_data
-from log_utils import get_logger
-from models import CharacterData, MetricRankEntry
-from time_utils import get_today
+
+from scripts.main.domain.game_progression import get_exp_data
+from scripts.main.domain.models import CharacterData, MetricRankEntry
+from scripts.main.shared.utils.log_utils import get_logger
+from scripts.main.shared.utils.time_utils import get_today
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -478,258 +482,6 @@ def _render_rank_history_chart(
     return _save_and_close_chart(dpi=250)
 
 
-def get_character_level_info(
-    uuid: str, name: str, period: int, target_date: datetime.date
-) -> tuple[str, str | None]:
-    """캐릭터 정보 이미지 생성 및 메시지 반환"""
-
-    logger.info(
-        "get_character_level_info start: "
-        f"uuid={uuid} "
-        f"name={name} "
-        f"period={period} "
-        f"date={target_date}"
-    )
-
-    data: list[CharacterData] = get_character_data(uuid, period, target_date)
-
-    if not data:
-        logger.warning("get_character_level_info no data: " f"uuid={uuid} name={name}")
-
-        return (
-            f"{name}님의 캐릭터 정보가 없어요. 다시 확인해주세요.",
-            None,
-        )
-
-    # 실제 데이터로 기간 계산
-    period_new: int = len(data)
-
-    text_day: str = (
-        "지금" if target_date == get_today() else target_date.strftime("%Y년 %m월 %d일")
-    )
-
-    rank: int | None = _find_rank_position(uuid, target_date, metric="level")
-    text_rank: str = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
-
-    # 기간이 1이라면 (등록 직후 데이터가 없을 때)
-    if period_new == 1:
-        return (
-            f"{text_day} {name}님의 레벨은 {data[0].level}이에요." + text_rank,
-            None,
-        )
-
-    # 기간이 1보다 크다면 그래프 생성
-
-    # 레이블 설정
-    labels: dict[str, str] = {"default": f"{name}의 캐릭터 레벨"}
-
-    # 그래프에 표시할 추가 시리즈 설정
-    extra_series: list[dict] = []
-
-    df: pd.DataFrame = _to_time_series_df(data)
-
-    y_min: float = df["level"].min()
-    y_max: float = df["level"].max()
-    y_range: float = y_max - y_min
-
-    # 전체 평균
-    all_character_avg: list[CharacterData] = get_all_character_avg(
-        period_new, target_date
-    )
-    df_avg: pd.DataFrame = pd.DataFrame(all_character_avg)
-    display_avg: bool = len(df_avg) > 1 and not (
-        (df_avg["level"].max() < y_min - y_range / 10)
-        or (df_avg["level"].min() > y_max + y_range / 3)
-    )
-
-    if display_avg:
-        df_avg: pd.DataFrame = _to_time_series_df(all_character_avg)
-        labels["avg"] = "등록된 전체 캐릭터의 평균 레벨"
-
-        extra_series.append(
-            {
-                "df": df_avg,
-                "value_col": "level",
-                "color": "C2",
-                "label": labels["avg"],
-            }
-        )
-
-    # 유사 레벨 평균
-    similar_character_avg: list[CharacterData] = get_similar_character_avg(
-        period_new,
-        target_date,
-        # 당일 데이터라면 전날 레벨, 아니라면 그 날 레벨 사용
-        float(data[-2 if target_date == get_today() else -1].level),
-    )
-    df_sim: pd.DataFrame = pd.DataFrame(similar_character_avg)
-    display_sim: bool = len(df_sim) > 1 and not (
-        (df_sim["level"].max() < y_min - y_range / 10)
-        or (df_sim["level"].min() > y_max + y_range / 3)
-    )
-
-    if display_sim:
-        df_sim: pd.DataFrame = _to_time_series_df(similar_character_avg)
-        labels["sim"] = "유사한 레벨의 캐릭터의 평균 레벨"
-
-        extra_series.append(
-            {
-                "df": df_sim,
-                "value_col": "level",
-                "color": "C3",
-                "label": labels["sim"],
-            }
-        )
-
-    image_path: str = _render_metric_history_chart(
-        df=df,
-        value_col="level",
-        period=period_new,
-        main_label=labels["default"],
-        main_color="C0",
-        fill_color="#A0DEFF",
-        fill_alpha=1,
-        point_label_formatter=_format_level_point_label,
-        extra_series=extra_series,
-    )
-
-    current_level = df["level"].iat[-1]
-    l0 = df["level"].iat[0]
-    l1 = df["level"].iat[-1]
-    level_change: float = l1 - l0  # type: ignore
-
-    exp_avg, next_lvup, max_lv_day = calc_exp_change(float(l0), float(l1), period_new)  # type: ignore
-
-    text_changed: str = (
-        f"{period_new}일간 총 {level_change:.2f}레벨, 매일 평균 {level_change / period_new:.2%} 상승하셨어요!"  # type: ignore
-    )
-    text_rank: str = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
-    text_exp: str = (
-        (
-            f"\n일일 평균 획득 경험치는 {int(exp_avg)}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요."
-        )
-        if next_lvup > 0
-        else f"\n일일 평균 획득 경험치는 {int(exp_avg)}이에요."
-    )
-
-    msg: str = (
-        f"{text_day} {name}님의 레벨은 {current_level:.2f}이고, {text_changed}{text_exp}{text_rank}"
-    )
-
-    logger.info(
-        "get_character_info complete: "
-        f"uuid={uuid} "
-        f"name={name} "
-        f"points={len(data)} "
-        f"image={image_path}"
-    )
-
-    return msg, image_path
-
-
-def get_character_power_info(
-    uuid: str, name: str, period: int, target_date: datetime.date
-) -> tuple[str, str | None]:
-    """캐릭터 전투력 정보 이미지 생성 및 메시지 반환"""
-    # TODO: 레벨 정보와 중복되는 부분이 많음. 공통화할 수 있는 부분은 공통화하기
-
-    logger.info(
-        "get_character_power_info start: "
-        f"uuid={uuid} "
-        f"name={name} "
-        f"period={period} "
-        f"date={target_date}"
-    )
-
-    data: list[CharacterData] = get_character_data(uuid, period, target_date)
-
-    if not data:
-        logger.warning("get_character_power_info no data: " f"uuid={uuid} name={name}")
-
-        return f"{name}님의 캐릭터 정보가 없어요. 다시 확인해주세요.", None
-
-    period_new: int = len(data)
-    text_day: str = (
-        "지금" if target_date == get_today() else target_date.strftime("%Y년 %m월 %d일")
-    )
-
-    rank: int | None = _find_rank_position(uuid, target_date, metric="power")
-    text_rank: str = f"\n전투력 랭킹은 {rank}위에요." if rank is not None else ""
-
-    # 기간이 1이라면 (등록 직후 데이터가 없을 때)
-    if period_new == 1:
-        return (
-            f"{text_day} {name}님의 전투력은 {int(data[0].power):,}이에요." + text_rank,
-            None,
-        )
-
-    df: pd.DataFrame = _to_time_series_df(data)
-
-    image_path: str = _render_metric_history_chart(
-        df=df,
-        value_col="power",
-        period=period_new,
-        main_label=f"{name}의 전투력",
-        main_color="C1",
-        fill_color="#FFE6A7",
-        fill_alpha=0.9,
-        point_label_formatter=_format_power_point_label,
-        extra_series=None,
-    )
-
-    current_power: int = df["power"].iat[-1]  # type: ignore
-    power_change: float = df["power"].iat[-1] - df["power"].iat[0]  # type: ignore
-    avg_daily_change: float = power_change / period_new  # type: ignore
-
-    text_changed: str = (
-        f"{period_new}일간 총 {int(round(power_change)):+,}, "  # type: ignore
-        f"매일 평균 {int(round(avg_daily_change)):+,} 변동했어요."  # type: ignore
-    )
-    msg: str = (
-        f"{text_day} {name}님의 전투력은 {current_power:,}이고, {text_changed}{text_rank}"
-    )
-
-    logger.info(
-        "get_character_power_info complete: "
-        f"uuid={uuid} "
-        f"name={name} "
-        f"points={len(data)} "
-        f"image={image_path}"
-    )
-
-    return msg, image_path
-
-
-def calc_exp_change(l0: float, l1: float, period: int) -> tuple[float, int, int]:
-    """
-    레벨 변화량과 기간을 기반으로
-    평균 경험치 변화량, 다음 레벨업까지 필요한 일수, 최대 레벨업까지 필요한 일수
-    를 계산하는 함수
-    """
-
-    exps: list[int] = get_exp_data()
-
-    exp = 0
-    for i in range(int(l0), int(l1)):
-        exp += exps[i]
-
-    exp += int((l1 % 1) * exps[int(l1)])
-    exp -= int((l0 % 1) * exps[int(l0)])
-
-    exp_mean: float = exp / period
-
-    if exp_mean <= 0:
-        return exp_mean, 0, 0
-
-    next_lvup: int = int(exps[int(l1)] * (1 - (l1 % 1)) / exp_mean) + 1
-
-    max_exp: float = sum([i for i in exps[int(l1) :]]) + exps[int(l1)] * (1 - (l1 % 1))
-
-    max_day: int = int(max_exp / exp_mean) + 1
-
-    return exp_mean, next_lvup, max_day
-
-
 def _get_character_rank_history_data(
     uuid: str,
     period: int,
@@ -811,6 +563,428 @@ def _get_character_rank_history_data(
     return data
 
 
+def _get_internal_level_rows(target_date: datetime.date) -> list[dict]:
+    rows: list[dict] = []
+    last_evaluated_key = None
+
+    while True:
+        page, last_evaluated_key = dm.manager.get_internal_level_page(
+            snapshot_date=target_date,
+            page_size=200,
+            exclusive_start_key=last_evaluated_key,
+        )
+        if not page:
+            break
+
+        rows.extend(page)
+        if not last_evaluated_key:
+            break
+
+    return rows
+
+
+def _calc_exp_change(l0: float, l1: float, period: int) -> tuple[float, int, int]:
+    """
+    레벨 변화량과 기간을 기반으로
+    평균 경험치 변화량, 다음 레벨업까지 필요한 일수, 최대 레벨업까지 필요한 일수
+    를 계산하는 함수
+    """
+
+    exps: list[int] = get_exp_data()
+
+    exp = 0
+    for i in range(int(l0), int(l1)):
+        exp += exps[i]
+
+    exp += int((l1 % 1) * exps[int(l1)])
+    exp -= int((l0 % 1) * exps[int(l0)])
+
+    exp_mean: float = exp / period
+
+    if exp_mean <= 0:
+        return exp_mean, 0, 0
+
+    next_lvup: int = int(exps[int(l1)] * (1 - (l1 % 1)) / exp_mean) + 1
+
+    max_exp: float = sum([i for i in exps[int(l1) :]]) + exps[int(l1)] * (1 - (l1 % 1))
+
+    max_day: int = int(max_exp / exp_mean) + 1
+
+    return exp_mean, next_lvup, max_day
+
+
+def _get_similar_character_avg(
+    period: int, target_date: datetime.date, level: float
+) -> list[CharacterData]:
+    data: list[CharacterData] = []
+
+    start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
+
+    levels_by_date: dict[datetime.date, list[tuple[str, Decimal]]] = {}
+    for d in range(period):
+        date_value = start_date + datetime.timedelta(days=d)
+        rows = _get_internal_level_rows(date_value)
+
+        normalized: list[tuple[str, Decimal]] = []
+        for row in rows:
+            pk = row.get("PK")
+            if not isinstance(pk, str) or "Level" not in row:
+                continue
+            normalized.append((dm.manager.uuid_from_user_pk(pk), row["Level"]))
+
+        if normalized:
+            levels_by_date[date_value] = normalized
+
+    if not levels_by_date:
+        return []
+
+    today: datetime.date = get_today()
+    base_date = (
+        today - datetime.timedelta(days=1) if target_date == today else target_date
+    )
+    base_rows = levels_by_date.get(base_date, [])
+    if not base_rows:
+        return []
+
+    MAX_LEVEL_RANGE = 10
+    MIN_CHARACTER_COUNT = 10
+    characters: set[str] = set()
+    for level_range in range(1, MAX_LEVEL_RANGE + 1):
+        characters = {
+            uuid
+            for uuid, item_level in base_rows
+            if abs(float(item_level) - level) <= level_range
+        }
+        if len(characters) >= MIN_CHARACTER_COUNT:
+            break
+
+    if not characters:
+        return []
+
+    for date_value in sorted(levels_by_date):
+        selected_levels = [
+            item_level
+            for uuid, item_level in levels_by_date[date_value]
+            if uuid in characters
+        ]
+        if not selected_levels:
+            continue
+
+        avg_level = Decimal(
+            round(float(sum(selected_levels) / len(selected_levels)), 4)
+        )
+        data.append(
+            CharacterData(
+                uuid="sim",
+                level=avg_level,
+                date=date_value,
+            )
+        )
+
+    return data
+
+
+def _get_all_character_avg(
+    period: int, target_date: datetime.date
+) -> list[CharacterData]:
+    data: list[CharacterData] = []
+
+    start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
+    for d in range(period):
+        date_value = start_date + datetime.timedelta(days=d)
+        rows = _get_internal_level_rows(date_value)
+        levels = [row["Level"] for row in rows if "Level" in row]
+        if not levels:
+            continue
+
+        avg_level = Decimal(round(float(sum(levels) / len(levels)), 4))
+        data.append(
+            CharacterData(
+                uuid="avg",
+                level=avg_level,
+                date=date_value,
+            )
+        )
+
+    return data
+
+
+def _get_character_data(
+    uuid: str, period: int, target_date: datetime.date
+) -> list[CharacterData]:
+    """
+    특정 기간 동안의 캐릭터 정보 가져오기
+    """
+
+    logger.debug(
+        "get_character_data start: "
+        f"uuid={uuid} "
+        f"period={period} "
+        f"target_date={target_date}"
+    )
+
+    # 시작 날짜 계산
+    start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
+
+    db_data, _ = dm.manager.get_user_snapshot_history(
+        uuid=uuid,
+        start_date=start_date,
+        end_date=target_date,
+    )
+
+    data: list[CharacterData] = []
+
+    for item in sorted(db_data, key=lambda row: row.get("SK", "")):
+        sk: str = item["SK"]
+
+        date: datetime.date = dm.manager.date_from_snapshot_sk(sk)
+
+        data.append(
+            CharacterData(
+                uuid=uuid,
+                level=item["Level"],
+                date=date,
+                power=item["Power"],
+            )
+        )
+
+    # 당일 데이터라면 실시간으로 레벨 정보 가져와서 추가
+    if target_date == get_today() and (not data or data[-1].date != target_date):
+        today_data: CharacterData = get_current_character_data(uuid=uuid)
+        data.append(today_data)
+
+    logger.debug(
+        "get_character_data complete: "
+        f"uuid={uuid} "
+        f"points={len(data)} "
+        f"target_date={target_date}"
+    )
+
+    return data
+
+
+def get_character_level_info(
+    uuid: str, name: str, period: int, target_date: datetime.date
+) -> tuple[str, str | None]:
+    """캐릭터 정보 이미지 생성 및 메시지 반환"""
+
+    logger.info(
+        "get_character_level_info start: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"period={period} "
+        f"date={target_date}"
+    )
+
+    data: list[CharacterData] = _get_character_data(uuid, period, target_date)
+
+    if not data:
+        logger.warning("get_character_level_info no data: " f"uuid={uuid} name={name}")
+
+        return (
+            f"{name}님의 캐릭터 정보가 없어요. 다시 확인해주세요.",
+            None,
+        )
+
+    # 실제 데이터로 기간 계산
+    period_new: int = len(data)
+
+    text_day: str = (
+        "지금" if target_date == get_today() else target_date.strftime("%Y년 %m월 %d일")
+    )
+
+    rank: int | None = _find_rank_position(uuid, target_date, metric="level")
+    text_rank: str = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
+
+    # 기간이 1이라면 (등록 직후 데이터가 없을 때)
+    if period_new == 1:
+        return (
+            f"{text_day} {name}님의 레벨은 {data[0].level}이에요." + text_rank,
+            None,
+        )
+
+    # 기간이 1보다 크다면 그래프 생성
+
+    # 레이블 설정
+    labels: dict[str, str] = {"default": f"{name}의 캐릭터 레벨"}
+
+    # 그래프에 표시할 추가 시리즈 설정
+    extra_series: list[dict] = []
+
+    df: pd.DataFrame = _to_time_series_df(data)
+
+    y_min: float = df["level"].min()
+    y_max: float = df["level"].max()
+    y_range: float = y_max - y_min
+
+    # 전체 평균
+    all_character_avg: list[CharacterData] = _get_all_character_avg(
+        period_new, target_date
+    )
+    df_avg: pd.DataFrame = pd.DataFrame(all_character_avg)
+    display_avg: bool = len(df_avg) > 1 and not (
+        (df_avg["level"].max() < y_min - y_range / 10)
+        or (df_avg["level"].min() > y_max + y_range / 3)
+    )
+
+    if display_avg:
+        df_avg: pd.DataFrame = _to_time_series_df(all_character_avg)
+        labels["avg"] = "등록된 전체 캐릭터의 평균 레벨"
+
+        extra_series.append(
+            {
+                "df": df_avg,
+                "value_col": "level",
+                "color": "C2",
+                "label": labels["avg"],
+            }
+        )
+
+    # 유사 레벨 평균
+    similar_character_avg: list[CharacterData] = _get_similar_character_avg(
+        period_new,
+        target_date,
+        # 당일 데이터라면 전날 레벨, 아니라면 그 날 레벨 사용
+        float(data[-2 if target_date == get_today() else -1].level),
+    )
+    df_sim: pd.DataFrame = pd.DataFrame(similar_character_avg)
+    display_sim: bool = len(df_sim) > 1 and not (
+        (df_sim["level"].max() < y_min - y_range / 10)
+        or (df_sim["level"].min() > y_max + y_range / 3)
+    )
+
+    if display_sim:
+        df_sim: pd.DataFrame = _to_time_series_df(similar_character_avg)
+        labels["sim"] = "유사한 레벨의 캐릭터의 평균 레벨"
+
+        extra_series.append(
+            {
+                "df": df_sim,
+                "value_col": "level",
+                "color": "C3",
+                "label": labels["sim"],
+            }
+        )
+
+    image_path: str = _render_metric_history_chart(
+        df=df,
+        value_col="level",
+        period=period_new,
+        main_label=labels["default"],
+        main_color="C0",
+        fill_color="#A0DEFF",
+        fill_alpha=1,
+        point_label_formatter=_format_level_point_label,
+        extra_series=extra_series,
+    )
+
+    current_level = df["level"].iat[-1]
+    l0 = df["level"].iat[0]
+    l1 = df["level"].iat[-1]
+    level_change: float = l1 - l0  # type: ignore
+
+    exp_avg, next_lvup, max_lv_day = _calc_exp_change(float(l0), float(l1), period_new)  # type: ignore
+
+    text_changed: str = (
+        f"{period_new}일간 총 {level_change:.2f}레벨, 매일 평균 {level_change / period_new:.2%} 상승하셨어요!"  # type: ignore
+    )
+    text_rank: str = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
+    text_exp: str = (
+        (
+            f"\n일일 평균 획득 경험치는 {int(exp_avg)}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요."
+        )
+        if next_lvup > 0
+        else f"\n일일 평균 획득 경험치는 {int(exp_avg)}이에요."
+    )
+
+    msg: str = (
+        f"{text_day} {name}님의 레벨은 {current_level:.2f}이고, {text_changed}{text_exp}{text_rank}"
+    )
+
+    logger.info(
+        "get_character_info complete: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"points={len(data)} "
+        f"image={image_path}"
+    )
+
+    return msg, image_path
+
+
+def get_character_power_info(
+    uuid: str, name: str, period: int, target_date: datetime.date
+) -> tuple[str, str | None]:
+    """캐릭터 전투력 정보 이미지 생성 및 메시지 반환"""
+    # TODO: 레벨 정보와 중복되는 부분이 많음. 공통화할 수 있는 부분은 공통화하기
+
+    logger.info(
+        "get_character_power_info start: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"period={period} "
+        f"date={target_date}"
+    )
+
+    data: list[CharacterData] = _get_character_data(uuid, period, target_date)
+
+    if not data:
+        logger.warning("get_character_power_info no data: " f"uuid={uuid} name={name}")
+
+        return f"{name}님의 캐릭터 정보가 없어요. 다시 확인해주세요.", None
+
+    period_new: int = len(data)
+    text_day: str = (
+        "지금" if target_date == get_today() else target_date.strftime("%Y년 %m월 %d일")
+    )
+
+    rank: int | None = _find_rank_position(uuid, target_date, metric="power")
+    text_rank: str = f"\n전투력 랭킹은 {rank}위에요." if rank is not None else ""
+
+    # 기간이 1이라면 (등록 직후 데이터가 없을 때)
+    if period_new == 1:
+        return (
+            f"{text_day} {name}님의 전투력은 {int(data[0].power):,}이에요." + text_rank,
+            None,
+        )
+
+    df: pd.DataFrame = _to_time_series_df(data)
+
+    image_path: str = _render_metric_history_chart(
+        df=df,
+        value_col="power",
+        period=period_new,
+        main_label=f"{name}의 전투력",
+        main_color="C0",
+        fill_color="#A0DEFF",
+        fill_alpha=0.9,
+        point_label_formatter=_format_power_point_label,
+        extra_series=None,
+    )
+
+    current_power: int = df["power"].iat[-1]  # type: ignore
+    power_change: float = df["power"].iat[-1] - df["power"].iat[0]  # type: ignore
+    avg_daily_change: float = power_change / period_new  # type: ignore
+
+    text_changed: str = (
+        f"{period_new}일간 총 {int(round(power_change)):+,}, "  # type: ignore
+        f"매일 평균 {int(round(avg_daily_change)):+,} 변동했어요."  # type: ignore
+    )
+    msg: str = (
+        f"{text_day} {name}님의 전투력은 {current_power:,}이고, {text_changed}{text_rank}"
+    )
+
+    logger.info(
+        "get_character_power_info complete: "
+        f"uuid={uuid} "
+        f"name={name} "
+        f"points={len(data)} "
+        f"image={image_path}"
+    )
+
+    return msg, image_path
+
+
 def get_character_rank_history(
     uuid: str,
     name: str,
@@ -880,176 +1054,6 @@ def get_character_rank_history(
     )
 
     return msg, image_path
-
-
-def _get_internal_level_rows(target_date: datetime.date) -> list[dict]:
-    rows: list[dict] = []
-    last_evaluated_key = None
-
-    while True:
-        page, last_evaluated_key = dm.manager.get_internal_level_page(
-            snapshot_date=target_date,
-            page_size=200,
-            exclusive_start_key=last_evaluated_key,
-        )
-        if not page:
-            break
-
-        rows.extend(page)
-        if not last_evaluated_key:
-            break
-
-    return rows
-
-
-def get_character_data(
-    uuid: str, period: int, target_date: datetime.date
-) -> list[CharacterData]:
-    """
-    특정 기간 동안의 캐릭터 정보 가져오기
-    """
-
-    logger.debug(
-        "get_character_data start: "
-        f"uuid={uuid} "
-        f"period={period} "
-        f"target_date={target_date}"
-    )
-
-    # 시작 날짜 계산
-    start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
-
-    db_data, _ = dm.manager.get_user_snapshot_history(
-        uuid=uuid,
-        start_date=start_date,
-        end_date=target_date,
-    )
-
-    data: list[CharacterData] = []
-
-    for item in sorted(db_data, key=lambda row: row.get("SK", "")):
-        sk: str = item["SK"]
-
-        date: datetime.date = dm.manager.date_from_snapshot_sk(sk)
-
-        data.append(
-            CharacterData(
-                uuid=uuid,
-                level=item["Level"],
-                date=date,
-                power=item["Power"],
-            )
-        )
-
-    # 당일 데이터라면 실시간으로 레벨 정보 가져와서 추가
-    if target_date == get_today() and (not data or data[-1].date != target_date):
-        today_data: CharacterData = get_current_character_data(uuid=uuid)
-        data.append(today_data)
-
-    logger.debug(
-        "get_character_data complete: "
-        f"uuid={uuid} "
-        f"points={len(data)} "
-        f"target_date={target_date}"
-    )
-
-    return data
-
-
-def get_all_character_avg(
-    period: int, target_date: datetime.date
-) -> list[CharacterData]:
-    data: list[CharacterData] = []
-
-    start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
-    for d in range(period):
-        date_value = start_date + datetime.timedelta(days=d)
-        rows = _get_internal_level_rows(date_value)
-        levels = [row["Level"] for row in rows if "Level" in row]
-        if not levels:
-            continue
-
-        avg_level = Decimal(round(float(sum(levels) / len(levels)), 4))
-        data.append(
-            CharacterData(
-                uuid="avg",
-                level=avg_level,
-                date=date_value,
-            )
-        )
-
-    return data
-
-
-def get_similar_character_avg(
-    period: int, target_date: datetime.date, level: float
-) -> list[CharacterData]:
-    data: list[CharacterData] = []
-
-    start_date: datetime.date = target_date - datetime.timedelta(days=period - 1)
-
-    levels_by_date: dict[datetime.date, list[tuple[str, Decimal]]] = {}
-    for d in range(period):
-        date_value = start_date + datetime.timedelta(days=d)
-        rows = _get_internal_level_rows(date_value)
-
-        normalized: list[tuple[str, Decimal]] = []
-        for row in rows:
-            pk = row.get("PK")
-            if not isinstance(pk, str) or "Level" not in row:
-                continue
-            normalized.append((dm.manager.uuid_from_user_pk(pk), row["Level"]))
-
-        if normalized:
-            levels_by_date[date_value] = normalized
-
-    if not levels_by_date:
-        return []
-
-    today: datetime.date = get_today()
-    base_date = (
-        today - datetime.timedelta(days=1) if target_date == today else target_date
-    )
-    base_rows = levels_by_date.get(base_date, [])
-    if not base_rows:
-        return []
-
-    MAX_LEVEL_RANGE = 10
-    MIN_CHARACTER_COUNT = 10
-    characters: set[str] = set()
-    for level_range in range(1, MAX_LEVEL_RANGE + 1):
-        characters = {
-            uuid
-            for uuid, item_level in base_rows
-            if abs(float(item_level) - level) <= level_range
-        }
-        if len(characters) >= MIN_CHARACTER_COUNT:
-            break
-
-    if not characters:
-        return []
-
-    for date_value in sorted(levels_by_date):
-        selected_levels = [
-            item_level
-            for uuid, item_level in levels_by_date[date_value]
-            if uuid in characters
-        ]
-        if not selected_levels:
-            continue
-
-        avg_level = Decimal(
-            round(float(sum(selected_levels) / len(selected_levels)), 4)
-        )
-        data.append(
-            CharacterData(
-                uuid="sim",
-                level=avg_level,
-                date=date_value,
-            )
-        )
-
-    return data
 
 
 if __name__ == "__main__":

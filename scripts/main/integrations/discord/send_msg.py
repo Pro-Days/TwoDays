@@ -12,15 +12,19 @@ except ImportError:
     pass
 
 import requests
-from discord_client import (
+
+from scripts.main.integrations.discord.discord_client import (
     DISCORD_HTTP_TIMEOUT,
     DiscordHttpResult,
     patch_json,
     post_json,
     post_multipart,
 )
-from discord_log_formatter import LogType, build_log_payload
-from log_utils import get_logger, truncate_text
+from scripts.main.integrations.discord.discord_log_formatter import (
+    LogType,
+    build_log_payload,
+)
+from scripts.main.shared.utils.log_utils import get_logger, truncate_text
 
 if TYPE_CHECKING:
     from logging import Logger

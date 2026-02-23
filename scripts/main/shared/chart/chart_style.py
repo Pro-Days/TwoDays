@@ -3,7 +3,8 @@ from __future__ import annotations
 import platform
 
 import matplotlib
-from path_utils import convert_path
+
+from scripts.main.shared.utils.path_utils import convert_path
 
 
 def setup_agg_backend() -> None:

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import data_manager
-from log_utils import get_logger
-from minecraft_profile_service import get_profiles_from_mc
+import scripts.main.infrastructure.persistence.data_manager as data_manager
+from scripts.main.integrations.minecraft.minecraft_profile_service import (
+    get_profiles_from_mc,
+)
+from scripts.main.shared.utils.log_utils import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger
