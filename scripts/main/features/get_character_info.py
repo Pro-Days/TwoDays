@@ -1,3 +1,5 @@
+"""캐릭터 정보/히스토리 조회와 차트 생성을 담당한다."""
+
 from __future__ import annotations
 
 import datetime
@@ -413,21 +415,16 @@ def _render_rank_history_chart(
     """랭킹 히스토리 그래프를 생성하는 공통 함수"""
 
     plt.figure(figsize=(10, 4))
-
-    x_new, y_smooth = _compute_smooth_curve(df, "rank")
+    rank_df: pd.DataFrame = df[df["rank"].notna()].reset_index(drop=True)
+    if rank_df.empty:
+        raise ValueError("rank history chart requires at least one rank point")
 
     # 기간에 따라 마커 스타일을 다르게 설정
     MARKER_THRESHOLD: int = 50
 
     plt.plot(
-        df["date"].iloc[0] + pd.to_timedelta(x_new, unit="D"),
-        y_smooth,
-        color="C0",
-    )
-
-    plt.plot(
-        df["date"][df["rank"].notna()],
-        df["rank"][df["rank"].notna()],
+        rank_df["date"],
+        rank_df["rank"],
         color="C0",
         marker="o" if period <= MARKER_THRESHOLD else ".",
         label=label,
@@ -435,41 +432,51 @@ def _render_rank_history_chart(
     )
 
     ylim: tuple[float, float] = (
-        min(df["rank"].max() + 5, 102),
-        max(df["rank"].min() - 5, -1),
+        min(rank_df["rank"].max() + 5, 102),
+        max(rank_df["rank"].min() - 5, -1),
     )
     plt.ylim(ylim)
 
-    _fill_smoothed_area(
-        start_date=df["date"].iloc[0],
-        x_new=x_new,
-        y_smooth=y_smooth,
-        segment_count=len(df) - 1,
-        color="#A0DEFF",
-        alpha=1,
-        baseline=101,
-    )
+    if len(rank_df) >= 2:
+        x_new, y_smooth = _compute_smooth_curve(rank_df, "rank")
+
+        plt.plot(
+            rank_df["date"].iloc[0] + pd.to_timedelta(x_new, unit="D"),
+            y_smooth,
+            color="C0",
+        )
+
+        _fill_smoothed_area(
+            start_date=rank_df["date"].iloc[0],
+            x_new=x_new,
+            y_smooth=y_smooth,
+            segment_count=len(rank_df) - 1,
+            color="#A0DEFF",
+            alpha=1,
+            baseline=101,
+        )
 
     ax: Axes = plt.gca()
-    tick_indices: list[int] = _configure_date_axis(ax, df, max_ticks=8)
+    _configure_date_axis(ax, df, max_ticks=8)
+    tick_indices: list[int] = _build_tick_indices(len(rank_df), max_ticks=8)
 
     for i in tick_indices:
         plt.annotate(
-            _format_rank_point_label(df, i),
-            (df["date"].iloc[i], df["rank"].iloc[i]),
+            _format_rank_point_label(rank_df, i),
+            (rank_df["date"].iloc[i], rank_df["rank"].iloc[i]),
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
         )
 
     # 최고 랭킹에 텍스트 추가
-    rank_min: int = df["rank"].min()
-    best_idx: int = int(df["rank"].idxmin())
+    rank_min: int = int(rank_df["rank"].min())
+    best_idx: int = int(rank_df["rank"].idxmin())
 
     if best_idx not in tick_indices:
         plt.annotate(
-            f"{int(rank_min)}위",
-            (df["date"].iloc[best_idx], rank_min),
+            f"{rank_min}위",
+            (rank_df["date"].iloc[best_idx], rank_min),
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
@@ -1017,6 +1024,17 @@ def get_character_rank_history(
     if not data:
         logger.warning(
             "_get_character_rank_history no data: "
+            f"uuid={uuid} "
+            f"name={name} "
+            f"date={target_date} "
+            f"metric={metric}"
+        )
+
+        return f"{target_date_text} {name}님의 {rank_title} 정보가 없어요.", None
+
+    if not any(row.get("rank") is not None for row in data):
+        logger.warning(
+            "_get_character_rank_history no ranked points: "
             f"uuid={uuid} "
             f"name={name} "
             f"date={target_date} "

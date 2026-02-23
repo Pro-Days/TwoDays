@@ -1,3 +1,5 @@
+"""일일 업데이트 파이프라인과 단계별 실패 집계를 담당한다."""
+
 from __future__ import annotations
 
 import traceback
@@ -21,6 +23,18 @@ if TYPE_CHECKING:
     from scripts.main.domain.models import PlayerSearchData, RankRow
 
 logger: Logger = get_logger(__name__)
+
+
+def _safe_send_update_log(log_type: sm.LogType, event: dict[str, Any], message: str) -> None:
+    try:
+        sm.send_log(log_type, event, message)
+
+    except Exception:
+        logger.exception(
+            "update log send failed: "
+            f"log_type={log_type} "
+            f"message={truncate_text(message, 300)}"
+        )
 
 
 def _new_phase_result(phase: str, total: int = 0) -> dict[str, Any]:
@@ -407,7 +421,7 @@ def _run_update_pipeline(
         )
 
         if send_discord_log:
-            sm.send_log(
+            _safe_send_update_log(
                 sm.LogType.UPDATE_ERROR,
                 event,
                 "랭킹 데이터 업데이트 실패\n" + phase_error,
@@ -428,7 +442,7 @@ def _run_update_pipeline(
         )
 
         if send_discord_log:
-            sm.send_log(
+            _safe_send_update_log(
                 sm.LogType.UPDATE_ERROR,
                 event,
                 "플레이어 데이터 업데이트 실패\n" + phase_error,
@@ -449,9 +463,9 @@ def _run_update_pipeline(
 
     if send_discord_log:
         if result["ok"]:
-            sm.send_log(sm.LogType.UPDATE, event, "데이터 업데이트 완료")
+            _safe_send_update_log(sm.LogType.UPDATE, event, "데이터 업데이트 완료")
         else:
-            sm.send_log(sm.LogType.UPDATE_ERROR, event, result_message)
+            _safe_send_update_log(sm.LogType.UPDATE_ERROR, event, result_message)
 
     return result
 

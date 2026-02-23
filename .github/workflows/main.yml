@@ -26,6 +26,8 @@ jobs:
           mkdir -p build/main
           pip install --no-cache-dir -r requirements.main.txt -t build/main
           cp scripts/main/*.py build/main/
+          mkdir -p build/main/scripts
+          cp -r scripts/main build/main/scripts/
           find build/main -type d -name '__pycache__' -prune -exec rm -rf {} + || true
           find build/main -type d -name 'tests' -prune -exec rm -rf {} + || true
           find build/main -type d -name 'test' -prune -exec rm -rf {} + || true

@@ -1,3 +1,5 @@
+"""메인 Lambda 엔트리포인트와 디스코드 명령 라우팅을 담당한다."""
+
 from __future__ import annotations
 
 import datetime

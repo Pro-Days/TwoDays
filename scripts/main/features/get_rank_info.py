@@ -1,8 +1,11 @@
+"""랭킹 조회와 랭킹 차트/이미지 생성을 담당한다."""
+
 from __future__ import annotations
 
 import datetime
 import os
 import platform
+import tempfile
 import threading
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -44,35 +47,35 @@ logger: Logger = get_logger(__name__)
 apply_default_chart_style(plt, fm)
 
 
-def download_image(url: str, num: int, list_name: list[str]) -> None:
+def download_image(
+    url: str, num: int, list_name: list[str | None], output_dir: str
+) -> None:
     """
     플레이어 머리 이미지 다운로드
     """
 
     logger.debug("download_image start: " f"idx={num} " f"url={url}")
 
-    # 타임아웃 설정: 연결 시도 3초, 응답 대기 10초
-    response: requests.Response = requests.get(url, timeout=(3, 10))
-    response.raise_for_status()
+    try:
+        response: requests.Response = requests.get(url, timeout=(3, 10))
+        response.raise_for_status()
 
-    os_name: str = platform.system()
-    if os_name == "Linux":
-        head_path: str = convert_path(f"\\tmp\\player_heads\\player{num}.png")
+        head_path: str = os.path.join(output_dir, f"player{num}.png")
+        with open(head_path, "wb") as file:
+            file.write(response.content)
 
-    else:
-        head_path: str = convert_path(f"assets\\player_heads\\player{num}.png")
+        list_name[num] = head_path
 
-    with open(head_path, "wb") as file:
-        file.write(response.content)
+        logger.debug(
+            "download_image complete: "
+            f"idx={num} "
+            f"path={head_path} "
+            f"status={response.status_code}"
+        )
 
-    list_name[num] = head_path
-
-    logger.debug(
-        "download_image complete: "
-        f"idx={num} "
-        f"path={head_path} "
-        f"status={response.status_code}"
-    )
+    except Exception:
+        list_name[num] = None
+        logger.exception("download_image failed: " f"idx={num} " f"url={url}")
 
 
 def _get_official_level_rows(
@@ -395,17 +398,13 @@ def get_rank_info(
             data["Change"].append(diff)
 
     # 랭킹에 해당하는 플레이어의 머리 이미지 다운로드
-    avatar_images: list[str] = [""] * rank_count
+    avatar_images: list[str | None] = [None] * rank_count
 
     os_name: str = platform.system()
-    if os_name == "Linux":
-        head_path: str = convert_path(f"\\tmp\\player_heads\\player.png")
-
-    else:
-        head_path = convert_path(f"assets\\player_heads\\player.png")
-
-    if not os.path.exists(os.path.dirname(head_path)):
-        os.makedirs(os.path.dirname(head_path))
+    avatar_dir: str = tempfile.mkdtemp(
+        prefix="twodays_rank_heads_",
+        dir="/tmp" if os_name == "Linux" else None,
+    )
 
     # rank_count개의 스레드 생성
     threads: list[threading.Thread] = []
@@ -413,7 +412,7 @@ def get_rank_info(
         url: str = f"https://mineskin.eu/helm/{data['Name'][i]}/100.png"
         thread = threading.Thread(
             target=download_image,
-            args=(url, i, avatar_images),
+            args=(url, i, avatar_images, avatar_dir),
         )
         threads.append(thread)
         thread.start()
@@ -499,9 +498,33 @@ def get_rank_info(
         )
         x_offset += header_widths[0]
 
-        avatar_image = Image.open(avatar_images[i])
-        avatar_image = avatar_image.resize((avatar_size, avatar_size))
-        rank_info_image.paste(avatar_image, (x_offset + 12, y_offset + 12))
+        avatar_path: str | None = avatar_images[i]
+        if avatar_path and os.path.exists(avatar_path):
+            try:
+                with Image.open(avatar_path) as avatar_image:
+                    avatar_image = avatar_image.resize((avatar_size, avatar_size))
+                    rank_info_image.paste(avatar_image, (x_offset + 12, y_offset + 12))
+
+            except Exception:
+                logger.exception(
+                    "avatar image load failed: "
+                    f"rank={row['Rank']} "
+                    f"name={row['Name']} "
+                    f"path={avatar_path}"
+                )
+                draw.rectangle(
+                    [(x_offset + 12, y_offset + 12), (x_offset + 92, y_offset + 92)],
+                    outline=gray,
+                    width=2,
+                )
+
+        else:
+            draw.rectangle(
+                [(x_offset + 12, y_offset + 12), (x_offset + 92, y_offset + 92)],
+                outline=gray,
+                width=2,
+            )
+
         draw.text((x_offset + 124, text_y_offset), row["Name"], fill="black", font=font)
         x_offset += header_widths[1]
 

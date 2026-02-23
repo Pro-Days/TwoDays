@@ -1,3 +1,5 @@
+"""디스코드 인터랙션 이벤트를 검증하고 메인 Lambda로 전달한다."""
+
 import json
 import os
 import traceback
@@ -26,8 +28,11 @@ def lambda_handler(event, context):
 
         body: dict = json.loads(event["body"])
 
-        signature: str = event["headers"]["x-signature-ed25519"]
-        timestamp: str = event["headers"]["x-signature-timestamp"]
+        signature: str = event.get("headers", {}).get("x-signature-ed25519", "")
+        timestamp: str = event.get("headers", {}).get("x-signature-timestamp", "")
+
+        if not signature or not timestamp:
+            return {"statusCode": 401, "body": json.dumps("missing request signature")}
 
         # 키 검증
         verify_key = VerifyKey(bytes.fromhex(PUBLIC_KEY))
@@ -55,11 +60,17 @@ def lambda_handler(event, context):
             lambda_service = boto3.client(
                 service_name="lambda", region_name="ap-northeast-2"
             )
-            functionName: str = "TA_DEV-lambda_main"
+            function_name: str | None = os.getenv("MAIN_LAMBDA_FUNCTION_NAME")
+
+            if not function_name:
+                return {
+                    "statusCode": 500,
+                    "body": json.dumps("main lambda function name not resolved"),
+                }
 
             # 람다 함수 호출 (비동기)
             lambda_service.invoke(
-                FunctionName=functionName,
+                FunctionName=function_name,
                 InvocationType="Event",
                 Payload=json.dumps(event),
             )
