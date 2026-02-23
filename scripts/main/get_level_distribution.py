@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING
 
 import data_manager
 import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
@@ -27,8 +30,6 @@ else:
 fm.fontManager.addfont(font_path)
 prop = fm.FontProperties(fname=font_path)
 plt.rcParams["font.family"] = prop.get_name()
-
-matplotlib.use("Agg")
 
 
 def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:

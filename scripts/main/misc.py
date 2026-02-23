@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING
 
 import data_manager
 import mojang
-import numpy as np
 import requests
 from log_utils import get_logger
 
@@ -23,6 +22,8 @@ if TYPE_CHECKING:
     from logging import Logger
 
 logger: Logger = get_logger(__name__)
+
+HTTP_TIMEOUT = (3, 10)
 
 
 def convert_path(path: str) -> str:
@@ -46,7 +47,11 @@ def convert_path(path: str) -> str:
 def get_ip() -> str:
     logger.info("requesting public IP address")
 
-    response: requests.Response = requests.get("https://api64.ipify.org?format=json")
+    response: requests.Response = requests.get(
+        "https://api64.ipify.org?format=json",
+        timeout=HTTP_TIMEOUT,
+    )
+    response.raise_for_status()
 
     logger.debug(f"get_ip response_status={response.status_code}")
 
@@ -62,7 +67,12 @@ def get_guild_name(guild_id: str) -> str:
 
     headers = {"Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"}
 
-    response: requests.Response = requests.get(url, headers=headers)
+    response: requests.Response = requests.get(
+        url,
+        headers=headers,
+        timeout=HTTP_TIMEOUT,
+    )
+    response.raise_for_status()
 
     logger.debug(
         f"get_guild_name response_status={response.status_code} " f"guild_id={guild_id}"
@@ -80,7 +90,12 @@ def get_guild_list() -> list[dict[str, str]]:
 
     headers = {"Authorization": f"Bot {os.getenv('DISCORD_TOKEN')}"}
 
-    response: requests.Response = requests.get(url, headers=headers)
+    response: requests.Response = requests.get(
+        url,
+        headers=headers,
+        timeout=HTTP_TIMEOUT,
+    )
+    response.raise_for_status()
 
     logger.debug(f"get_guild_list response_status={response.status_code}")
 

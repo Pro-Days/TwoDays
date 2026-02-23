@@ -9,6 +9,10 @@ from typing import TYPE_CHECKING
 import data_manager as dm
 import get_rank_info as gri
 import matplotlib
+
+# Linux 환경에서는 'Agg' 백엔드를 사용하여 그래프를 파일로 저장할 때 화면이 필요하지 않도록 설정
+matplotlib.use("Agg")
+
 import matplotlib.dates as mdates
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
@@ -43,9 +47,6 @@ else:
 fm.fontManager.addfont(font_path)
 prop = fm.FontProperties(fname=font_path)
 plt.rcParams["font.family"] = prop.get_name()
-
-# 그래프 백엔드 설정 (서버 환경에서는 GUI 백엔드 대신 'Agg' 사용)
-matplotlib.use("Agg")
 
 
 def _find_rank_position(
@@ -902,7 +903,20 @@ def _get_character_rank_history_data(
     for item in history_items:
         sk: str = item["SK"]
         date_value: datetime.date = dm.manager.date_from_snapshot_sk(sk)
-        rank_by_date[date_value] = int(item[rank_field])
+        rank_value: Decimal | None = item.get(rank_field)
+
+        # 랭크 필드가 없는 경우는 건너뜀
+        if rank_value is None:
+            logger.debug(
+                "rank history snapshot missing rank field, skipping: "
+                f"uuid={uuid} "
+                f"metric={metric} "
+                f"date={date_value} "
+                f"field={rank_field}"
+            )
+            continue
+
+        rank_by_date[date_value] = int(rank_value)
 
     first_rank_date: datetime.date | None = min(rank_by_date) if rank_by_date else None
 

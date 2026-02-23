@@ -235,17 +235,24 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
         return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
 
     # 랭킹 범위 파싱
+    range_str = range_str.strip()
     range_list: list[str] = range_str.split("..")
-    rank_start, rank_end = map(int, range_list)
 
     # 랭킹 범위 입력이 올바르지 않다면
     if len(range_list) != 2:
         return sm.send(event, "랭킹 범위는 '시작..끝' 형식으로 입력해주세요.")
 
-    elif rank_start < 1 or rank_end > 100:
+    # 랭킹 범위 숫자 파싱
+    try:
+        rank_start, rank_end = map(int, range_list)
+
+    except (TypeError, ValueError):
         return sm.send(event, "랭킹 범위는 1~100 사이의 숫자로 입력해주세요.")
 
-    elif rank_start > rank_end:
+    if rank_start < 1 or rank_end > 100:
+        return sm.send(event, "랭킹 범위는 1~100 사이의 숫자로 입력해주세요.")
+
+    if rank_start > rank_end:
         return sm.send(event, "랭킹 범위는 시작이 끝보다 작거나 같아야 합니다.")
 
     # 랭킹 정보 가져오기

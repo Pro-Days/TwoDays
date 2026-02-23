@@ -10,6 +10,9 @@ from typing import TYPE_CHECKING
 import data_manager
 import get_character_info as gci
 import matplotlib
+
+matplotlib.use("Agg")
+
 import matplotlib.dates as mdates
 import matplotlib.font_manager as fm
 import matplotlib.patheffects as path_effects
@@ -38,8 +41,6 @@ fm.fontManager.addfont(font_path)
 prop = fm.FontProperties(fname=font_path)
 plt.rcParams["font.family"] = prop.get_name()
 
-matplotlib.use("Agg")
-
 
 def download_image(url: str, num: int, list_name: list[str]) -> None:
     """
@@ -48,7 +49,9 @@ def download_image(url: str, num: int, list_name: list[str]) -> None:
 
     logger.debug("download_image start: " f"idx={num} " f"url={url}")
 
-    response: requests.Response = requests.get(url)
+    # 타임아웃 설정: 연결 시도 3초, 응답 대기 10초
+    response: requests.Response = requests.get(url, timeout=(3, 10))
+    response.raise_for_status()
 
     os_name: str = platform.system()
     if os_name == "Linux":
