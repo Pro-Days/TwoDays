@@ -188,7 +188,7 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
 
     range_str: str = "1..10"
     date_expression: str | None = None
-    period: str | None = None
+    period: int | str | None = None
 
     # 옵션에서 입력값 가져오기
     for i in ranking_options:
@@ -246,7 +246,10 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
 
     # 기간이 입력되었다면 랭킹 변화량 정보 가져오기
     else:
-        if isinstance(period, str) and period.isdigit():
+        if isinstance(period, int):
+            period_int = period
+
+        elif isinstance(period, str) and period.isdigit():
             period_int = int(period)
 
         else:
@@ -285,10 +288,11 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
     _type = options[0]["name"]
 
     name: str | None = None
-    period: str | None = "7"
+    period: int | str | None = "7"
     today: str | None = None
 
-    for i in options[0]["options"]:
+    sub_options = options[0].get("options", [])
+    for i in sub_options:
         if i["name"] == "닉네임":
             name = i["value"]
 
@@ -317,7 +321,10 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
         )
 
     # period 확인
-    if isinstance(period, str) and period.isdigit():
+    if isinstance(period, int):
+        period_int = period
+
+    elif isinstance(period, str) and period.isdigit():
         period_int = int(period)
 
     elif period is None:
@@ -373,6 +380,32 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
 
         msg, image_path = gci.get_character_power_info(
             uuid, real_name, period_int, target_date
+        )
+
+    # 레벨 랭킹 검색이라면 레벨 랭킹 변화량 정보 가져오기
+    elif _type == "레벨 랭킹":
+        logger.info(
+            "running rank search: "
+            f"uuid={uuid} "
+            f"period={period_int} "
+            f"date={target_date}"
+        )
+
+        msg, image_path = gci.get_character_rank_history(
+            uuid, name, period_int, target_date, metric="level"
+        )
+
+    # 전투력 랭킹 검색이라면 전투력 랭킹 변화량 정보 가져오기
+    elif _type == "전투력 랭킹":
+        logger.info(
+            "running power rank search: "
+            f"uuid={uuid} "
+            f"period={period_int} "
+            f"date={target_date}"
+        )
+
+        msg, image_path = gci.get_character_rank_history(
+            uuid, name, period_int, target_date, metric="power"
         )
 
     else:
