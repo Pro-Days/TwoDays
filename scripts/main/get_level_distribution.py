@@ -91,7 +91,11 @@ def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
     plt.savefig(image_path, dpi=250, bbox_inches="tight")
     plt.close()
 
-    msg = f"{target_date.strftime('%Y년 %m월 %d일')} 기준 등록된 플레이어의 레벨 분포를 보여드릴게요.\n부캐릭터를 포함해서 총 {len(data)}개의 캐릭터가 등록되어있어요.\n이 이미지는 서버의 모든 플레이어의 정보를 포함하지 않아요."
+    msg = (
+        f"{target_date.strftime('%Y년 %m월 %d일')} 기준 등록된 플레이어의 레벨 분포를 보여드릴게요.\n"
+        f"투데이즈에는 총 {len(data)}명의 캐릭터가 등록되어있어요.\n"
+        "이 이미지는 서버의 모든 플레이어의 정보를 포함하지 않아요."
+    )
 
     logger.info(
         "get_level_distribution complete: "

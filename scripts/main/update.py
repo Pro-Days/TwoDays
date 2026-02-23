@@ -282,7 +282,7 @@ def update_1D_backfill(event: dict[str, Any], snapshot_date: date) -> None:
 
 if __name__ == "__main__":
 
-    for i in range(1, 24):
+    for i in range(1, 23):
         update_1D_backfill({"action": "update_1D"}, snapshot_date=date(2026, 2, i))
 
         print(f"Backfill complete for date: {date(2026, 2, i)}")
