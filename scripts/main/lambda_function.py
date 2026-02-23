@@ -14,10 +14,13 @@ except ImportError:
 
 from typing import TYPE_CHECKING
 
+import command_parsers as cp
+import command_validation as cv
+import discord_admin_api as daa
 import get_character_info as gci
 import get_level_distribution as gld
 import get_rank_info as gri
-import misc
+import minecraft_profile_service as mps
 import register_player as rp
 import send_msg as sm
 import update
@@ -39,7 +42,7 @@ def lambda_handler(event, context) -> dict:
 
     # 전체 코드 실행 후 오류가 발생하면 로그에 출력하고 400 반환
     try:
-        result = command_handler(event)
+        result: dict = command_handler(event)
 
         logger.info(
             "lambda_handler success: "
@@ -51,7 +54,12 @@ def lambda_handler(event, context) -> dict:
     except Exception:
         logger.exception("lambda_handler failed: " f"{summarize_event(event)}")
 
-        sm.send(event, "오류가 발생했습니다.", log_type=3, error=traceback.format_exc())
+        sm.send(
+            event,
+            "오류가 발생했습니다.",
+            log_type=sm.LogType.COMMAND_ERROR,
+            error=traceback.format_exc(),
+        )
 
         return {"statusCode": 400, "body": json.dumps(traceback.format_exc())}
 
@@ -59,6 +67,7 @@ def lambda_handler(event, context) -> dict:
 def command_handler(event) -> dict:
     logger.debug(f"command_handler input event={summarize_event(event)}")
 
+    # 스케줄러/운영 액션과 디스코드 인터랙션 이벤트를 같은 엔트리포인트에서 처리
     # 업데이트 커맨드
     if event.get("action", None) == "update_1D":
         logger.info("handling update action: " f"{event.get('action')}")
@@ -101,20 +110,27 @@ def command_handler(event) -> dict:
     # 어드민 커맨드
     if body["member"]["user"]["id"] == ADMIN_ID:
         # ip 주소
+        # TODO: 제거 고려
         if cmd == "ip":
-            ip: str = misc.get_ip()
+            ip: str = daa.get_ip()
 
-            return sm.send(event, f"아이피 주소: {ip}", log_type=2)
+            return sm.send(
+                event, f"아이피 주소: {ip}", log_type=sm.LogType.ADMIN_COMMAND
+            )
 
         # 등록된 유저 수
         elif cmd == "user_count":
             pl_list: list = rp.get_registered_players()
 
-            return sm.send(event, f"등록된 유저 수: {len(pl_list)}", log_type=2)
+            return sm.send(
+                event,
+                f"등록된 유저 수: {len(pl_list)}",
+                log_type=sm.LogType.ADMIN_COMMAND,
+            )
 
         # 설치된 서버 목록
         elif cmd == "server_list":
-            server_list: list[dict[str, str]] = misc.get_guild_list()
+            server_list: list[dict[str, str]] = daa.get_guild_list()
 
             msg: str = (
                 f"서버 수: {len(server_list)}\n서버 목록\n"
@@ -123,8 +139,9 @@ def command_handler(event) -> dict:
                 + "```"
             )
 
-            return sm.send(event, msg, log_type=2)
+            return sm.send(event, msg, log_type=sm.LogType.ADMIN_COMMAND)
 
+    # 실제 명령 구현은 아래 cmd_* 함수에서 처리
     # 일반 커맨드
     if cmd == "랭킹":
         return cmd_ranking(event, options)
@@ -142,48 +159,12 @@ def command_handler(event) -> dict:
         logger.warning("unhandled command: " f"{cmd}")
 
         sm.send(
-            event, "오류가 발생했습니다.", log_type=3, error=f"unhandled command: {cmd}"
+            event,
+            "오류가 발생했습니다.",
+            log_type=sm.LogType.COMMAND_ERROR,
+            error=f"unhandled command: {cmd}",
         )
         return {"statusCode": 400, "body": json.dumps(f"unhandled command: {cmd}")}
-
-
-def _parse_date(day_expression: str | None) -> datetime.date | None:
-    """
-    None: 날짜 입력이 올바르지 않음
-    YYYY-MM-DD, MM-DD, DD, -1, ...
-    """
-
-    try:
-        today: datetime.date = misc.get_today()
-
-        if day_expression:
-            if day_expression[0] == "-" and day_expression[1:].isdigit():
-                date = int(day_expression[1:])
-                today = today - datetime.timedelta(days=date)
-
-            else:
-                date_type: int = day_expression.count("-")
-                today_list: list[str] = str(today).split("-")
-
-                if date_type == 0:  # 날짜만
-                    day_expression = "-".join(today_list[:2]) + "-" + day_expression
-
-                if date_type == 1:
-                    day_expression = today_list[0] + "-" + day_expression
-
-                today = datetime.datetime.strptime(day_expression, "%Y-%m-%d").date()
-
-        else:
-            today = today
-
-    except:
-        logger.warning("failed to parse date expression: " f"{day_expression}")
-
-        return None
-
-    logger.debug(f"parsed date expression={day_expression} -> {today}")
-
-    return today
 
 
 def cmd_ranking(event: dict, options: list[dict]) -> dict:
@@ -207,7 +188,7 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
 
     range_str: str = "1..10"
     date_expression: str | None = None
-    period: int | str | None = None
+    period: int | None = None
 
     # 옵션에서 입력값 가져오기
     for i in ranking_options:
@@ -220,40 +201,32 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
         elif i["name"] == "기간":
             period = i["value"]
 
+    # 파싱과 정책 검증을 분리해 같은 파서를 다른 명령에서도 재사용
     # 날짜 불러오기
-    target_date: datetime.date | None = _parse_date(date_expression)
+    target_date: datetime.date | None = cp.parse_date_expression(date_expression)
+    date_error: str | None = cv.validate_target_date(target_date)
 
-    # 날짜 입력이 올바르지 않다면
-    if not target_date:
-        return sm.send(
-            event,
-            "날짜 입력이 올바르지 않습니다: YYYY-MM-DD, MM-DD, DD, -n (예시: 2025-12-31, 12-01, 05, -1, -20)",
-        )
+    if date_error:
+        return sm.send(event, date_error)
 
-    # 미래 날짜라면
-    elif target_date > misc.get_today():
-        return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
+    if target_date is None:
+        return sm.send(event, cv.DATE_INPUT_INVALID_MESSAGE)
 
-    # 랭킹 범위 파싱
-    range_str = range_str.strip()
-    range_list: list[str] = range_str.split("..")
-
-    # 랭킹 범위 입력이 올바르지 않다면
-    if len(range_list) != 2:
-        return sm.send(event, "랭킹 범위는 '시작..끝' 형식으로 입력해주세요.")
-
-    # 랭킹 범위 숫자 파싱
+    # 파서 에러 코드를 사용자 메시지로 변환하는 계층
     try:
-        rank_start, rank_end = map(int, range_list)
+        rank_start, rank_end = cp.parse_rank_range(range_str, min_rank=1, max_rank=100)
 
-    except (TypeError, ValueError):
-        return sm.send(event, "랭킹 범위는 1~100 사이의 숫자로 입력해주세요.")
+    except cp.OptionParseError as exc:
+        if exc.code == "invalid_format":
+            return sm.send(event, "랭킹 범위는 '시작..끝' 형식으로 입력해주세요.")
 
-    if rank_start < 1 or rank_end > 100:
-        return sm.send(event, "랭킹 범위는 1~100 사이의 숫자로 입력해주세요.")
+        if exc.code in {"invalid_number", "out_of_bounds"}:
+            return sm.send(event, "랭킹 범위는 1~100 사이의 숫자로 입력해주세요.")
 
-    if rank_start > rank_end:
-        return sm.send(event, "랭킹 범위는 시작이 끝보다 작거나 같아야 합니다.")
+        if exc.code == "invalid_order":
+            return sm.send(event, "랭킹 범위는 시작이 끝보다 작거나 같아야 합니다.")
+
+        return sm.send(event, "랭킹 범위는 '시작..끝' 형식으로 입력해주세요.")
 
     # 랭킹 정보 가져오기
     # 기간이 입력되지 않았다면 해당 날짜의 랭킹 정보 가져오기
@@ -272,16 +245,14 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
 
     # 기간이 입력되었다면 랭킹 변화량 정보 가져오기
     else:
-        if isinstance(period, int):
-            period_int = period
+        try:
+            period_int: int = cp.parse_positive_int_option(
+                period,
+                default=1,
+                min_value=1,
+            )
 
-        elif isinstance(period, str) and period.isdigit():
-            period_int = int(period)
-
-        else:
-            return sm.send(event, "기간은 1 이상의 숫자로 입력해주세요.")
-
-        if period_int < 1:
+        except cp.OptionParseError:
             return sm.send(event, "기간은 1 이상의 숫자로 입력해주세요.")
 
         logger.info(
@@ -314,7 +285,7 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
     _type = options[0]["name"]
 
     name: str | None = None
-    period: int | str | None = "7"
+    period: int | None = 7
     today: str | None = None
 
     sub_options = options[0].get("options", [])
@@ -332,7 +303,7 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
     if name is None:
         return sm.send(event, "닉네임을 입력해주세요.")
 
-    real_name, uuid = misc.get_profile_from_name(name)
+    real_name, uuid = mps.get_profile_from_name(name)
     logger.info(
         "search resolved profile: "
         f"input={name} "
@@ -346,17 +317,12 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
             event, f"플레이어 정보를 가져올 수 없습니다. 닉네임을 확인해주세요."
         )
 
+    # Discord 옵션 타입이 환경에 따라 int/str로 올 수 있어 공통 파서로 정규화
     # period 확인
-    if isinstance(period, int):
-        period_int = period
+    try:
+        period_int: int = cp.parse_positive_int_option(period, default=7, min_value=0)
 
-    elif isinstance(period, str) and period.isdigit():
-        period_int = int(period)
-
-    elif period is None:
-        period_int = 7
-
-    else:
+    except cp.OptionParseError:
         return sm.send(event, "기간은 숫자로 입력해주세요.")
 
     # name이 등록되어있지 않다면 등록하기
@@ -372,15 +338,14 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
             f"등록되어있지 않은 플레이어네요. {real_name}님을 등록했어요.\n\n"
         )
 
-    target_date: datetime.date | None = _parse_date(today)
-    if target_date is None:
-        return sm.send(
-            event,
-            "날짜 입력이 올바르지 않습니다: YYYY-MM-DD, MM-DD, DD, -n (예시: 2025-12-31, 12-01, 05, -1, -20)",
-        )
+    # 날짜 검증 정책은 검색 명령에서는 "오늘 허용"을 사용
+    target_date: datetime.date | None = cp.parse_date_expression(today)
+    date_error: str | None = cv.validate_target_date(target_date)
+    if date_error:
+        return sm.send(event, date_error)
 
-    elif target_date > misc.get_today():
-        return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
+    if target_date is None:
+        return sm.send(event, cv.DATE_INPUT_INVALID_MESSAGE)
 
     # 레벨 검색이라면 캐릭터 정보 가져오기
     if _type == "레벨":
@@ -450,18 +415,14 @@ def cmd_user_distribution(event: dict, options: list[dict]) -> dict:
         if i["name"] == "날짜":
             date = i["value"]
 
-    target_date: datetime.date | None = _parse_date(date)
+    # 유저분포는 "오늘 금지" 정책 사용
+    target_date: datetime.date | None = cp.parse_date_expression(date)
+    date_error: str | None = cv.validate_target_date(target_date, allow_today=False)
+    if date_error:
+        return sm.send(event, date_error)
+
     if target_date is None:
-        return sm.send(
-            event,
-            "날짜 입력이 올바르지 않습니다: YYYY-MM-DD, MM-DD, DD, -n (예시: 2025-12-31, 12-01, 05, -1, -20)",
-        )
-
-    elif target_date > misc.get_today():
-        return sm.send(event, "미래 날짜는 조회할 수 없습니다.")
-
-    elif target_date == misc.get_today():
-        return sm.send(event, "오늘 날짜는 조회할 수 없습니다.")
+        return sm.send(event, cv.DATE_INPUT_INVALID_MESSAGE)
 
     msg, image_path = gld.get_level_distribution(target_date)
 
@@ -482,7 +443,7 @@ def cmd_register(event: dict, options: list[dict]) -> dict:
     if name is None:
         return sm.send(event, "닉네임을 입력해주세요.")
 
-    real_name, uuid = misc.get_profile_from_name(name)
+    real_name, uuid = mps.get_profile_from_name(name)
     if uuid is None or real_name is None:
         return sm.send(
             event, f"플레이어 정보를 가져올 수 없습니다. 닉네임을 확인해주세요."

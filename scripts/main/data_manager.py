@@ -434,6 +434,7 @@ class SingleTableDataManager:
         exclusive_start_key: dict[str, Any] | None = None,
     ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
         """유저 스냅샷 조회"""
+        # TODO: limit 여부에 따라 query_all과 query 분기 처리
 
         key_condition: ConditionBase = Key("PK").eq(self.user_pk(uuid))
 

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import data_manager
 from log_utils import get_logger
-from misc import get_profiles_from_mc
+from minecraft_profile_service import get_profiles_from_mc
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -19,12 +19,13 @@ def register_player(uuid: str, name: str) -> None:
 
     logger.info("register_player start: " f"uuid={uuid} " f"name={name}")
 
-    prev = data_manager.manager.get_user_metadata(uuid)
+    prev: dict[str, Any] | None = data_manager.manager.get_user_metadata(uuid)
 
     data_manager.manager.put_user_metadata(
         uuid=uuid,
         name=name,
     )
+
     logger.info(
         "register_player saved metadata: "
         f"uuid={uuid} "
@@ -33,10 +34,10 @@ def register_player(uuid: str, name: str) -> None:
     )
 
 
-def get_registered_players() -> list[dict]:
+def get_registered_players() -> list[dict[str, str]]:
     logger.debug("get_registered_players start")
 
-    items: list[dict] = data_manager.manager.query_all_user_metadata()
+    items: list[dict[str, Any]] = data_manager.manager.query_all_user_metadata()
 
     players: list[dict[str, str]] = [
         {
@@ -53,7 +54,7 @@ def get_registered_players() -> list[dict]:
 
 
 def is_registered(uuid: str) -> bool:
-    registered = data_manager.manager.get_user_metadata(uuid) is not None
+    registered: bool = data_manager.manager.get_user_metadata(uuid) is not None
 
     logger.debug("is_registered: " f"uuid={uuid} " f"registered={registered}")
 

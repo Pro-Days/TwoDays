@@ -1,27 +1,28 @@
 from __future__ import annotations
 
 import datetime
-import platform
-import random
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import data_manager as dm
 import get_rank_info as gri
-import matplotlib
+from chart_io import save_and_close_chart
+from chart_style import apply_default_chart_style, setup_agg_backend
+from current_character_provider import get_current_character_data
 
-# Linux 환경에서는 'Agg' 백엔드를 사용하여 그래프를 파일로 저장할 때 화면이 필요하지 않도록 설정
-matplotlib.use("Agg")
+# 차트 환경 초기화를 공통화해 렌더링 모듈 간 설정 차이를 줄임
+setup_agg_backend()
 
 import matplotlib.dates as mdates
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-import misc
 import numpy as np
 import pandas as pd
+from game_progression import get_exp_data
 from log_utils import get_logger
-from models import CharacterData, MetricRankEntry, PlayerSearchData
+from models import CharacterData, MetricRankEntry
+from time_utils import get_today
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -33,20 +34,7 @@ if TYPE_CHECKING:
 logger: Logger = get_logger(__name__)
 
 
-# 스타일 설정
-plt.style.use("seaborn-v0_8-pastel")
-
-# 폰트 설정
-# TODO: 폰트 라이센스 확인하고 변경하기
-if platform.system() == "Linux":
-    font_path: str = "/opt/NanumSquareRoundEB.ttf"
-else:
-    font_path = misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf")
-
-# 폰트 등록
-fm.fontManager.addfont(font_path)
-prop = fm.FontProperties(fname=font_path)
-plt.rcParams["font.family"] = prop.get_name()
+apply_default_chart_style(plt, fm)
 
 
 def _find_rank_position(
@@ -56,7 +44,8 @@ def _find_rank_position(
 
     ranks: list[MetricRankEntry]
 
-    if target_date == misc.get_today():
+    # 오늘 데이터는 DB 스냅샷 대신 실시간 계산 랭킹을 사용
+    if target_date == get_today():
         ranks = gri.get_current_rank_data(metric=metric)
     else:
         ranks = gri.get_rank_data(target_date, metric=metric)
@@ -75,12 +64,7 @@ def _get_rank_title(metric: str) -> str:
 
 
 def _save_and_close_chart(dpi: int = 250) -> str:
-    image_path: str = "/tmp/image.png" if platform.system() == "Linux" else "image.png"
-
-    plt.savefig(image_path, dpi=dpi, bbox_inches="tight")
-    plt.close()
-
-    return image_path
+    return save_and_close_chart(plt, dpi=dpi, filename="image.png")
 
 
 def _build_tick_indices(point_count: int, max_ticks: int) -> list[int]:
@@ -88,6 +72,7 @@ def _build_tick_indices(point_count: int, max_ticks: int) -> list[int]:
 
     if point_count <= 0:
         return []
+
     if point_count == 1:
         return [0]
 
@@ -298,6 +283,7 @@ def _fill_smoothed_area(
 
         if baseline is None:
             plt.fill_between(xs, ys, color=color, alpha=alpha)
+
         else:
             plt.fill_between(xs, ys, baseline, color=color, alpha=alpha)
 
@@ -445,8 +431,8 @@ def _render_rank_history_chart(
     )
 
     ylim: tuple[float, float] = (
-        min(df["rank"].max() + 5, 102),  # type: ignore
-        max(df["rank"].min() - 5, -1),  # type: ignore
+        min(df["rank"].max() + 5, 102),
+        max(df["rank"].min() - 5, -1),
     )
     plt.ylim(ylim)
 
@@ -473,7 +459,7 @@ def _render_rank_history_chart(
         )
 
     # 최고 랭킹에 텍스트 추가
-    rank_min = df["rank"].min()
+    rank_min: int = df["rank"].min()
     best_idx: int = int(df["rank"].idxmin())
 
     if best_idx not in tick_indices:
@@ -490,138 +476,6 @@ def _render_rank_history_chart(
     plt.legend()
 
     return _save_and_close_chart(dpi=250)
-
-
-def _estimate_level(uuid: str, delta_days: int) -> Decimal:
-    """
-    임시 레벨 계산식
-    초반 급성장/후반 완만 성장 곡선에 UUID 기반 고정 편차를 반영해 결정적으로 계산
-    """
-
-    LEVEL_START: float = 1.0
-    LEVEL_MAX: float = 200.0
-
-    if delta_days <= 0:
-        return Decimal(f"{LEVEL_START:.4f}")
-
-    random.seed(uuid[5:])
-    min_speed: float = 0.7
-    speed: float = min_speed + random.random() * (1 - min_speed)
-    random.random()
-
-    level: float = LEVEL_START
-
-    for _ in range(delta_days):
-        remaining: float = max(0.0, LEVEL_MAX - level)
-        if remaining <= 0:
-            break
-
-        total_gain: float = 0.0
-        for __ in range(20):
-            gain: float = 10 / ((level + 5) ** 0.9) * speed
-
-            total_gain += gain
-
-        total_gain *= random.uniform(0.7, 1.3)
-        level = min(LEVEL_MAX, level + total_gain)
-
-        # print(f"Day {_+1}: Level={level:.4f}")
-
-    return Decimal(f"{level:.4f}")
-
-
-def _estimate_power(uuid: str, level: Decimal) -> Decimal:
-    """
-    임시 전투력 계산식
-    레벨 기반 성장 + UUID 기반 편차를 조합해 결정적으로 계산
-    """
-
-    seed: int = sum(ord(c) for c in uuid)
-    level_f: float = float(level)
-
-    base_power: float = (level_f**3) * 18 + (level_f**2) * 140 + level_f * 700
-    uuid_bias: float = 0.9 + ((seed % 31) / 100)
-    level_band_bias: float = 0.96 + ((int(level_f * 10) + seed) % 9) / 100
-
-    return Decimal(round(base_power * uuid_bias * level_band_bias))
-
-
-def get_current_character_data(
-    uuid: str,
-    target_date: datetime.date | None = None,
-) -> CharacterData:
-    """
-    최신 캐릭터 정보 가져오기
-    오픈 이전에는 임의로 생성해서 반환
-    target_date가 주어지면 해당 날짜 기준 데이터로 계산
-    """
-
-    # 날짜 계산
-    today: datetime.date = target_date if target_date is not None else misc.get_today()
-    base_date: datetime.date = datetime.date(2026, 2, 1)
-
-    delta_days: int = (today - base_date).days
-
-    character_data = CharacterData(uuid=uuid, level=Decimal(1.0), date=today)
-
-    character_data.level = _estimate_level(uuid=uuid, delta_days=delta_days)
-
-    character_data.power = _estimate_power(uuid=uuid, level=character_data.level)
-
-    logger.debug(
-        "get_current_character_data complete: "
-        f"uuid={uuid} "
-        f"date={character_data.date} "
-        f"level={character_data.level} "
-        f"power={character_data.power}",
-    )
-
-    return character_data
-
-
-def get_current_character_data_by_name(
-    name: str, target_date: datetime.date | None = None
-) -> PlayerSearchData:
-    """
-    플레이어 검색 기반 최신 캐릭터 정보 가져오기 (이름 기반)
-
-    현재는 임시로 이름 -> UUID -> 임의 데이터 생성 방식
-    실제 크롤링 로직으로 교체되더라도 update.py 인터페이스는 유지
-    """
-
-    logger.info(
-        "get_current_character_data_by_name start: "
-        f"name={name} "
-        f"target_date={target_date}"
-    )
-
-    real_name, uuid = misc.get_profile_from_name(name)
-
-    if not real_name or not uuid:
-        logger.warning(
-            "get_current_character_data_by_name failed to resolve: " f"name={name}"
-        )
-        raise ValueError(f"failed to resolve profile from name: {name}")
-
-    data: CharacterData = get_current_character_data(uuid, target_date=target_date)
-
-    result = PlayerSearchData(
-        name=real_name,
-        level=data.level,
-        power=data.power,
-    )
-
-    logger.info(
-        "get_current_character_data_by_name complete: "
-        f"input={name} "
-        f"resolved_name={result.name} "
-        f"uuid={uuid} "
-        f"target_date={target_date} "
-        f"level={result.level} "
-        f"power={result.power}"
-    )
-
-    return result
 
 
 def get_character_level_info(
@@ -651,9 +505,7 @@ def get_character_level_info(
     period_new: int = len(data)
 
     text_day: str = (
-        "지금"
-        if target_date == misc.get_today()
-        else target_date.strftime("%Y년 %m월 %d일")
+        "지금" if target_date == get_today() else target_date.strftime("%Y년 %m월 %d일")
     )
 
     rank: int | None = _find_rank_position(uuid, target_date, metric="level")
@@ -661,7 +513,6 @@ def get_character_level_info(
 
     # 기간이 1이라면 (등록 직후 데이터가 없을 때)
     if period_new == 1:
-
         return (
             f"{text_day} {name}님의 레벨은 {data[0].level}이에요." + text_rank,
             None,
@@ -694,6 +545,7 @@ def get_character_level_info(
     if display_avg:
         df_avg: pd.DataFrame = _to_time_series_df(all_character_avg)
         labels["avg"] = "등록된 전체 캐릭터의 평균 레벨"
+
         extra_series.append(
             {
                 "df": df_avg,
@@ -708,7 +560,7 @@ def get_character_level_info(
         period_new,
         target_date,
         # 당일 데이터라면 전날 레벨, 아니라면 그 날 레벨 사용
-        float(data[-2 if target_date == misc.get_today() else -1].level),
+        float(data[-2 if target_date == get_today() else -1].level),
     )
     df_sim: pd.DataFrame = pd.DataFrame(similar_character_avg)
     display_sim: bool = len(df_sim) > 1 and not (
@@ -719,6 +571,7 @@ def get_character_level_info(
     if display_sim:
         df_sim: pd.DataFrame = _to_time_series_df(similar_character_avg)
         labels["sim"] = "유사한 레벨의 캐릭터의 평균 레벨"
+
         extra_series.append(
             {
                 "df": df_sim,
@@ -743,7 +596,7 @@ def get_character_level_info(
     current_level = df["level"].iat[-1]
     l0 = df["level"].iat[0]
     l1 = df["level"].iat[-1]
-    level_change = l1 - l0  # type: ignore
+    level_change: float = l1 - l0  # type: ignore
 
     exp_avg, next_lvup, max_lv_day = calc_exp_change(float(l0), float(l1), period_new)  # type: ignore
 
@@ -751,7 +604,6 @@ def get_character_level_info(
         f"{period_new}일간 총 {level_change:.2f}레벨, 매일 평균 {level_change / period_new:.2%} 상승하셨어요!"  # type: ignore
     )
     text_rank: str = f"\n레벨 랭킹은 {rank}위에요." if rank is not None else ""
-    # exp_change, next_lvup, max_lv_day
     text_exp: str = (
         (
             f"\n일일 평균 획득 경험치는 {int(exp_avg)}이고, 약 {next_lvup}일 후에 레벨업을 할 것 같아요."
@@ -779,6 +631,7 @@ def get_character_power_info(
     uuid: str, name: str, period: int, target_date: datetime.date
 ) -> tuple[str, str | None]:
     """캐릭터 전투력 정보 이미지 생성 및 메시지 반환"""
+    # TODO: 레벨 정보와 중복되는 부분이 많음. 공통화할 수 있는 부분은 공통화하기
 
     logger.info(
         "get_character_power_info start: "
@@ -797,9 +650,7 @@ def get_character_power_info(
 
     period_new: int = len(data)
     text_day: str = (
-        "지금"
-        if target_date == misc.get_today()
-        else target_date.strftime("%Y년 %m월 %d일")
+        "지금" if target_date == get_today() else target_date.strftime("%Y년 %m월 %d일")
     )
 
     rank: int | None = _find_rank_position(uuid, target_date, metric="power")
@@ -814,7 +665,7 @@ def get_character_power_info(
 
     df: pd.DataFrame = _to_time_series_df(data)
 
-    image_path = _render_metric_history_chart(
+    image_path: str = _render_metric_history_chart(
         df=df,
         value_col="power",
         period=period_new,
@@ -826,15 +677,17 @@ def get_character_power_info(
         extra_series=None,
     )
 
-    current_power = df["power"].iat[-1]
-    power_change = df["power"].iat[-1] - df["power"].iat[0]  # type: ignore
-    avg_daily_change = power_change / period_new  # type: ignore
+    current_power: int = df["power"].iat[-1]  # type: ignore
+    power_change: float = df["power"].iat[-1] - df["power"].iat[0]  # type: ignore
+    avg_daily_change: float = power_change / period_new  # type: ignore
 
     text_changed: str = (
         f"{period_new}일간 총 {int(round(power_change)):+,}, "  # type: ignore
         f"매일 평균 {int(round(avg_daily_change)):+,} 변동했어요."  # type: ignore
     )
-    msg = f"{text_day} {name}님의 전투력은 {current_power:,}이고, {text_changed}{text_rank}"
+    msg: str = (
+        f"{text_day} {name}님의 전투력은 {current_power:,}이고, {text_changed}{text_rank}"
+    )
 
     logger.info(
         "get_character_power_info complete: "
@@ -854,11 +707,12 @@ def calc_exp_change(l0: float, l1: float, period: int) -> tuple[float, int, int]
     를 계산하는 함수
     """
 
-    exps: list[int] = misc.get_exp_data()
+    exps: list[int] = get_exp_data()
 
     exp = 0
     for i in range(int(l0), int(l1)):
         exp += exps[i]
+
     exp += int((l1 % 1) * exps[int(l1)])
     exp -= int((l0 % 1) * exps[int(l0)])
 
@@ -885,7 +739,7 @@ def _get_character_rank_history_data(
     """캐릭터의 랭킹 히스토리 데이터를 조회하여 반환"""
 
     rank_field: str = "Power_Rank" if metric == "power" else "Level_Rank"
-    today: datetime.date = misc.get_today()
+    today: datetime.date = get_today()
 
     current_data: list[MetricRankEntry] = (
         gri.get_current_rank_data(metric=metric) if target_date == today else []
@@ -976,7 +830,7 @@ def get_character_rank_history(
     )
 
     rank_title: str = _get_rank_title(metric)
-    today: datetime.date = misc.get_today()
+    today: datetime.date = get_today()
     target_date_text: str = target_date.strftime("%Y년 %m월 %d일")
 
     data: list[dict] = _get_character_rank_history_data(
@@ -1088,7 +942,7 @@ def get_character_data(
         )
 
     # 당일 데이터라면 실시간으로 레벨 정보 가져와서 추가
-    if target_date == misc.get_today() and (not data or data[-1].date != target_date):
+    if target_date == get_today() and (not data or data[-1].date != target_date):
         today_data: CharacterData = get_current_character_data(uuid=uuid)
         data.append(today_data)
 
@@ -1152,7 +1006,7 @@ def get_similar_character_avg(
     if not levels_by_date:
         return []
 
-    today = misc.get_today()
+    today: datetime.date = get_today()
     base_date = (
         today - datetime.timedelta(days=1) if target_date == today else target_date
     )
@@ -1200,7 +1054,7 @@ def get_similar_character_avg(
 
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-03-29", "%Y-%m-%d").date()
-    today = misc.get_today()
+    today = get_today()
 
     # print(
     #     get_character_rank_history(
@@ -1224,7 +1078,7 @@ if __name__ == "__main__":
     #         "ef45c670d0a0426693e1f00831319c32", target_date=today
     #     )
     # )
-    print(_estimate_level("ef45c670d0a0426693e1f00831319c32", 100))
+    # print(_estimate_level("ef45c670d0a0426693e1f00831319c32", 100))
     # print(get_similar_character_avg(7, today, 1))
 
     pass

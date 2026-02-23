@@ -11,6 +11,7 @@ class CharacterData:
     uuid: str
     level: Decimal
     date: datetime.date
+    # TOOD: 기본 값 제거
     power: Decimal = Decimal(0)
 
 

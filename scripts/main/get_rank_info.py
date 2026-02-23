@@ -7,39 +7,35 @@ import threading
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+import current_character_provider as ccp
 import data_manager
-import get_character_info as gci
-import matplotlib
+from chart_io import get_chart_image_path
+from chart_style import apply_default_chart_style, setup_agg_backend
+from minecraft_profile_service import get_name_from_uuid
+from path_utils import convert_path
 
-matplotlib.use("Agg")
+# 차트 환경 설정을 공통 모듈로 위임해 다른 차트 모듈과 동작을 맞춤
+setup_agg_backend()
 
 import matplotlib.dates as mdates
 import matplotlib.font_manager as fm
 import matplotlib.patheffects as path_effects
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-import misc
 import pandas as pd
 import register_player
 import requests
 from log_utils import get_logger
 from models import CharacterData, MetricRankEntry, RankRow
 from PIL import Image, ImageDraw, ImageFont
+from time_utils import get_today
 
 if TYPE_CHECKING:
     from logging import Logger
 
 logger: Logger = get_logger(__name__)
 
-# 그래프 스타일과 폰트 설정
-plt.style.use("seaborn-v0_8-pastel")
-if platform.system() == "Linux":
-    font_path = "/opt/NanumSquareRoundEB.ttf"
-else:
-    font_path = misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf")
-fm.fontManager.addfont(font_path)
-prop = fm.FontProperties(fname=font_path)
-plt.rcParams["font.family"] = prop.get_name()
+apply_default_chart_style(plt, fm)
 
 
 def download_image(url: str, num: int, list_name: list[str]) -> None:
@@ -55,10 +51,10 @@ def download_image(url: str, num: int, list_name: list[str]) -> None:
 
     os_name: str = platform.system()
     if os_name == "Linux":
-        head_path = misc.convert_path(f"\\tmp\\player_heads\\player{num}.png")
+        head_path: str = convert_path(f"\\tmp\\player_heads\\player{num}.png")
 
     else:
-        head_path = misc.convert_path(f"assets\\player_heads\\player{num}.png")
+        head_path: str = convert_path(f"assets\\player_heads\\player{num}.png")
 
     with open(head_path, "wb") as file:
         file.write(response.content)
@@ -225,8 +221,9 @@ def get_current_rank_data(
 
     players: list[dict] = register_player.get_registered_players()
 
+    # 현재 캐릭터 값 계산 책임을 별도 provider로 분리해 순환 의존을 제거
     current_characters: list[CharacterData] = [
-        gci.get_current_character_data(player["uuid"], target_date=target_date)
+        ccp.get_current_character_data(player["uuid"], target_date=target_date)
         for player in players
     ]
 
@@ -277,7 +274,10 @@ def _to_current_rank_rows(
     rows: list[RankRow] = []
 
     for idx, row in enumerate(rank_data, start=start):
-        name: str = misc.get_name_from_uuid(row.uuid) or row.uuid
+        name: str | None = get_name_from_uuid(row.uuid)
+        if name is None:
+            name = "알 수 없음"
+
         rows.append(
             RankRow(
                 name=name,
@@ -332,7 +332,7 @@ def get_rank_info(
         f"metric={metric}"
     )
 
-    if target_date == misc.get_today():
+    if target_date == get_today():
         current_data: list[MetricRankEntry] = get_current_rank_data(
             start, end, metric=metric
         )
@@ -368,7 +368,7 @@ def get_rank_info(
     # 실시간 랭킹 데이터를 가져와서 data에 추가
     for i in range(rank_count):
         uuid: str = current_data[i].uuid
-        name: str | None = misc.get_name_from_uuid(uuid=uuid)
+        name: str | None = get_name_from_uuid(uuid=uuid)
 
         if name is None:
             name = "알 수 없음"
@@ -393,9 +393,10 @@ def get_rank_info(
 
     os_name: str = platform.system()
     if os_name == "Linux":
-        head_path: str = misc.convert_path(f"\\tmp\\player_heads\\player.png")
+        head_path: str = convert_path(f"\\tmp\\player_heads\\player.png")
+
     else:
-        head_path = misc.convert_path(f"assets\\player_heads\\player.png")
+        head_path = convert_path(f"assets\\player_heads\\player.png")
 
     if not os.path.exists(os.path.dirname(head_path)):
         os.makedirs(os.path.dirname(head_path))
@@ -415,8 +416,10 @@ def get_rank_info(
     for thread in threads:
         thread.join()
 
-    header_text = ["순위", "닉네임", rank_metric_text, "변동"]
-    header_widths = [160, 560, 360, 240] if metric == "power" else [160, 580, 280, 240]
+    header_text: list[str] = ["순위", "닉네임", rank_metric_text, "변동"]
+    header_widths: list[int] = (
+        [160, 560, 360, 240] if metric == "power" else [160, 580, 280, 240]
+    )
 
     header_height = 100
     row_height = 100
@@ -428,8 +431,8 @@ def get_rank_info(
     aqua = (190, 230, 255)
     light_blue = (240, 245, 255)
 
-    rank_info_image = Image.new("RGB", (width, height), "white")
-    draw = ImageDraw.Draw(rank_info_image)
+    rank_info_image: Image.Image = Image.new("RGB", (width, height), "white")
+    draw: ImageDraw.ImageDraw = ImageDraw.Draw(rank_info_image)
 
     draw.rectangle(
         [(0, 0), (width, header_height)],
@@ -438,10 +441,12 @@ def get_rank_info(
     )
 
     if os_name == "Linux":
-        font = ImageFont.truetype("/opt/NanumSquareRoundEB.ttf", 40)
+        font: ImageFont.FreeTypeFont = ImageFont.truetype(
+            "/opt/NanumSquareRoundEB.ttf", 40
+        )
     else:
         font = ImageFont.truetype(
-            misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf"), 40
+            convert_path("assets\\fonts\\NanumSquareRoundEB.ttf"), 40
         )
 
     x_offset: int = -10
@@ -640,21 +645,17 @@ def get_rank_info(
     )
 
     # 이미지 저장
-    os_name = platform.system()
-    if os_name == "Linux":
-        image_path = "/tmp/image.png"
-    else:
-        image_path = "image.png"
+    image_path: str = get_chart_image_path("image.png")
 
     rank_info_image.save(image_path)
 
-    text_day = (
-        "지금"
-        if target_date == misc.get_today()
-        else target_date.strftime("%Y년 %m월 %d일")
+    text_day: str = (
+        "지금" if target_date == get_today() else target_date.strftime("%Y년 %m월 %d일")
     )
 
-    msg = f"{text_day} {start}~{end}위 캐릭터 {rank_metric_text} 랭킹을 보여드릴게요."
+    msg: str = (
+        f"{text_day} {start}~{end}위 캐릭터 {rank_metric_text} 랭킹을 보여드릴게요."
+    )
 
     logger.info(
         "get_rank_info complete: "
@@ -685,7 +686,7 @@ def get_rank_history(
         f"metric={metric}"
     )
 
-    today: datetime.date = misc.get_today()
+    today: datetime.date = get_today()
     current_data: list[MetricRankEntry] = (
         get_current_rank_data(metric=metric) if target_date == today else []
     )
@@ -785,7 +786,7 @@ def get_rank_history(
         group = df[df["uuid"] == player_uuid]
         color_idx: int = i % len(colors)
 
-        player_name = misc.get_name_from_uuid(uuid=player_uuid)
+        player_name: str | None = get_name_from_uuid(uuid=player_uuid)
 
         if player_name is None:
             continue
@@ -958,16 +959,12 @@ def get_rank_history(
     ax.spines["left"].set_visible(False)
     # ax.spines["bottom"].set_visible(False)
 
-    os_name = platform.system()
-    if os_name == "Linux":
-        image_path = "/tmp/image.png"
-    else:
-        image_path = "image.png"
+    image_path: str = get_chart_image_path("image.png")
     plt.savefig(image_path, dpi=200, bbox_inches="tight")
     plt.close()
 
     rank_metric_text: str = "전투력" if metric == "power" else "레벨"
-    msg = (
+    msg: str = (
         f"{period}일 동안의 {start}~{end}위 {rank_metric_text} 랭킹 히스토리를 "
         "보여드릴게요."
     )
@@ -988,8 +985,8 @@ def get_rank_history(
 
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-05-16", "%Y-%m-%d").date()
-    today = misc.get_today()
-    r = get_current_level_rank_rows()
+    today: datetime.date = get_today()
+    r: list[RankRow] = get_current_level_rank_rows()
 
     for row in r:
         if row.name == "ProDays":

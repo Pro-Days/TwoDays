@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import datetime
-import platform
 from typing import TYPE_CHECKING
 
 import data_manager
-import matplotlib
+from chart_io import save_and_close_chart
+from chart_style import apply_default_chart_style, setup_agg_backend
+from time_utils import get_today
 
-matplotlib.use("Agg")
+setup_agg_backend()
 
 import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-import misc
 from log_utils import get_logger
 
 if TYPE_CHECKING:
@@ -21,15 +21,7 @@ if TYPE_CHECKING:
 logger: Logger = get_logger(__name__)
 
 # 그래프 스타일과 폰트 설정
-plt.style.use("seaborn-v0_8-pastel")
-
-if platform.system() == "Linux":
-    font_path = "/opt/NanumSquareRoundEB.ttf"
-else:
-    font_path = misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf")
-fm.fontManager.addfont(font_path)
-prop = fm.FontProperties(fname=font_path)
-plt.rcParams["font.family"] = prop.get_name()
+apply_default_chart_style(plt, fm)
 
 
 def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
@@ -82,17 +74,12 @@ def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
 
     plt.grid(axis="y", alpha=0.3)
 
-    os_name = platform.system()
-    if os_name == "Linux":
-        image_path = "/tmp/level_distribution.png"
-    else:
-        image_path = misc.convert_path("image.png")
-
     plt.tight_layout()
-    plt.savefig(image_path, dpi=250, bbox_inches="tight")
-    plt.close()
+    image_path: str = save_and_close_chart(
+        plt, dpi=250, filename="level_distribution.png"
+    )
 
-    msg = (
+    msg: str = (
         f"{target_date.strftime('%Y년 %m월 %d일')} 기준 등록된 플레이어의 레벨 분포를 보여드릴게요.\n"
         f"투데이즈에는 총 {len(data)}명의 캐릭터가 등록되어있어요.\n"
         "이 이미지는 서버의 모든 플레이어의 정보를 포함하지 않아요."
@@ -110,7 +97,7 @@ def get_level_distribution(target_date: datetime.date) -> tuple[str, str]:
 
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-02-15", "%Y-%m-%d").date()
-    today = misc.get_today() - datetime.timedelta(days=1)
+    today: datetime.date = get_today() - datetime.timedelta(days=1)
 
     print(get_level_distribution(today))
     pass

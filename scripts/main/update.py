@@ -4,13 +4,14 @@ import traceback
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
+import current_character_provider as ccp
 import data_manager as dm
-import get_character_info as gci
 import get_rank_info as gri
-import misc
 import register_player as rp
 import send_msg as sm
 from log_utils import get_logger, truncate_text
+from minecraft_profile_service import get_profiles_from_mc
+from time_utils import get_today
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -127,7 +128,8 @@ def _get_operational_snapshot_date(days_before: int = 0) -> date:
     KST 기준 현재 수집 데이터는 항상 어제 데이터로 저장
     """
 
-    return misc.get_today(days_before + 1)
+    # KST 어제
+    return get_today(days_before + 1)
 
 
 def _merge_rank_rows(
@@ -228,7 +230,7 @@ def _update_rank_phase(snapshot_date: date) -> dict[str, Any]:
     # PK-UUID 매핑에도 없는 이름은 Mojang API로 조회 시도
     if unresolved_names:
         try:
-            resolved_profiles.update(misc.get_profiles_from_mc(unresolved_names))
+            resolved_profiles.update(get_profiles_from_mc(unresolved_names))
 
         except Exception:
             logger.exception("bulk profile lookup failed for unresolved rank names")
@@ -299,7 +301,7 @@ def update_player(
         f"target_date={target_date}"
     )
 
-    data: PlayerSearchData = gci.get_current_character_data_by_name(
+    data: PlayerSearchData = ccp.get_current_character_data_by_name(
         name, target_date=target_date
     )
     snapshot: dict[str, Any] | None = dm.manager.get_user_snapshot(uuid, target_date)
@@ -403,7 +405,11 @@ def _run_update_pipeline(
         )
 
         if send_discord_log:
-            sm.send_log(5, event, "랭킹 데이터 업데이트 실패\n" + phase_error)
+            sm.send_log(
+                sm.LogType.UPDATE_ERROR,
+                event,
+                "랭킹 데이터 업데이트 실패\n" + phase_error,
+            )
 
     # 랭킹 단계에서 신규 등록된 플레이어가 포함되도록 재조회 후 플레이어 업데이트
     try:
@@ -420,7 +426,11 @@ def _run_update_pipeline(
         )
 
         if send_discord_log:
-            sm.send_log(5, event, "플레이어 데이터 업데이트 실패\n" + phase_error)
+            sm.send_log(
+                sm.LogType.UPDATE_ERROR,
+                event,
+                "플레이어 데이터 업데이트 실패\n" + phase_error,
+            )
 
     # 전체 업데이트 상태 계산 및 업데이트
     _update_status_from_result(result)
@@ -437,9 +447,9 @@ def _run_update_pipeline(
 
     if send_discord_log:
         if result["ok"]:
-            sm.send_log(4, event, "데이터 업데이트 완료")
+            sm.send_log(sm.LogType.UPDATE, event, "데이터 업데이트 완료")
         else:
-            sm.send_log(5, event, result_message)
+            sm.send_log(sm.LogType.UPDATE_ERROR, event, result_message)
 
     return result
 
