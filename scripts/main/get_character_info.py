@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import math
 import platform
 import random
 from decimal import Decimal
@@ -28,6 +27,7 @@ if TYPE_CHECKING:
 
 
 logger: Logger = get_logger(__name__)
+
 
 # 스타일 설정
 plt.style.use("seaborn-v0_8-pastel")
@@ -494,28 +494,36 @@ def _render_rank_history_chart(
 def _estimate_level(uuid: str, delta_days: int) -> Decimal:
     """
     임시 레벨 계산식
-    UUID 기반 편차를 조합해 결정적으로 계산
+    초반 급성장/후반 완만 성장 곡선에 UUID 기반 고정 편차를 반영해 결정적으로 계산
     """
 
-    # 캐릭터마다 레벨업 속도에 약간의 변동을 주기 위해 시드 고정된 랜덤값 생성
-    random.seed(sum(ord(c) for c in uuid))
-    coef: float = random.uniform(0.3, 0.7)
+    LEVEL_START: float = 1.0
+    LEVEL_MAX: float = 200.0
 
-    level: Decimal = Decimal(1.0)
+    if delta_days <= 0:
+        return Decimal(f"{LEVEL_START:.4f}")
 
-    # 지난 날짜만큼 레벨업 시뮬레이션
+    random.seed(uuid[5:])
+    min_speed: float = 0.7
+    speed: float = min_speed + random.random() * (1 - min_speed)
+
+    level: float = LEVEL_START
+
     for _ in range(delta_days):
-        level += Decimal(
-            round(
-                Decimal(2.5)
-                * Decimal(coef + random.uniform(-0.3, 0.8))
-                * Decimal(math.cos((float(level) / 205) * math.pi / 2)),
-                4,
-            )
-        )
-        level = min(level, Decimal(200.0))
+        remaining: float = max(0.0, LEVEL_MAX - level)
+        if remaining <= 0:
+            break
 
-    return level
+        for __ in range(20):
+            gain: float = (
+                10 / ((level + 5) ** 0.9) * speed * (random.uniform(0.85, 1.15))
+            )
+
+            level = min(LEVEL_MAX, level + gain)
+
+        # print(f"Day {_+1}: Level={level:.4f}")
+
+    return Decimal(f"{level:.4f}")
 
 
 def _estimate_power(uuid: str, level: Decimal) -> Decimal:
@@ -1196,7 +1204,13 @@ if __name__ == "__main__":
     #         "ef45c670d0a0426693e1f00831319c32", "ProDays", 30, today
     #     )
     # )
-    # print(get_character_data("steve", 1, 7, today))
+    # print(get_character_data("ef45c670d0a0426693e1f00831319c32", 1, today))
+    # print(
+    #     get_current_character_data(
+    #         "ef45c670d0a0426693e1f00831319c32", target_date=today
+    #     )
+    # )
+    print(_estimate_level("ef45c670d0a0426693e1f00831319c32", 100))
     # print(get_similar_character_avg(7, today, 1))
 
     pass

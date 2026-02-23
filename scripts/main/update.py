@@ -208,7 +208,11 @@ def _update_player_phase(snapshot_date: date) -> None:
     logger.info("update_1D player phase complete")
 
 
-def _run_update_pipeline(event: dict[str, Any], snapshot_date: date) -> None:
+def _run_update_pipeline(
+    event: dict[str, Any],
+    snapshot_date: date,
+    send_discord_log: bool = True,
+) -> None:
     logger.info(
         "update_1D start: "
         f"action={event.get('action')} "
@@ -221,7 +225,8 @@ def _run_update_pipeline(event: dict[str, Any], snapshot_date: date) -> None:
 
     except Exception:
         logger.exception("update_1D rank phase failed")
-        sm.send_log(5, event, "랭킹 데이터 업데이트 실패" + traceback.format_exc())
+        if send_discord_log:
+            sm.send_log(5, event, "랭킹 데이터 업데이트 실패" + traceback.format_exc())
 
     # 랭킹 단계에서 신규 등록된 플레이어가 포함되도록 재조회 후 플레이어 업데이트
     try:
@@ -229,7 +234,10 @@ def _run_update_pipeline(event: dict[str, Any], snapshot_date: date) -> None:
 
     except Exception:
         logger.exception("update_1D player phase failed")
-        sm.send_log(5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc())
+        if send_discord_log:
+            sm.send_log(
+                5, event, "플레이어 데이터 업데이트 실패" + traceback.format_exc()
+            )
 
     logger.info(
         "update_1D complete: "
@@ -237,7 +245,8 @@ def _run_update_pipeline(event: dict[str, Any], snapshot_date: date) -> None:
         f"target_date={snapshot_date}"
     )
 
-    sm.send_log(4, event, "데이터 업데이트 완료")
+    if send_discord_log:
+        sm.send_log(4, event, "데이터 업데이트 완료")
 
 
 def update_1D(event: dict[str, Any]) -> None:
@@ -268,10 +277,12 @@ def update_1D_backfill(event: dict[str, Any], snapshot_date: date) -> None:
         f"source=current_crawled_data"
     )
 
-    _run_update_pipeline(event_copy, snapshot_date)
+    _run_update_pipeline(event_copy, snapshot_date, send_discord_log=False)
 
 
 if __name__ == "__main__":
-    update_1D_backfill(
-        {"action": "update_1D"}, snapshot_date=_get_operational_snapshot_date(1)
-    )
+
+    for i in range(1, 24):
+        update_1D_backfill({"action": "update_1D"}, snapshot_date=date(2026, 2, i))
+
+        print(f"Backfill complete for date: {date(2026, 2, i)}")

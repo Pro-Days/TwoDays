@@ -980,6 +980,11 @@ def get_rank_history(
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-05-16", "%Y-%m-%d").date()
     today = misc.get_today()
+    r = get_current_level_rank_rows()
+
+    for row in r:
+        if row.name == "ProDays":
+            print(row)
 
     # print(get_rank_history([1, 30], 10, today))
     # print(get_rank_info(1, 30, today))
