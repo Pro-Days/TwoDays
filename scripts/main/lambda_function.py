@@ -383,7 +383,7 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
         )
 
     # 레벨 랭킹 검색이라면 레벨 랭킹 변화량 정보 가져오기
-    elif _type == "레벨 랭킹":
+    elif _type == "레벨랭킹":
         logger.info(
             "running rank search: "
             f"uuid={uuid} "
@@ -396,7 +396,7 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
         )
 
     # 전투력 랭킹 검색이라면 전투력 랭킹 변화량 정보 가져오기
-    elif _type == "전투력 랭킹":
+    elif _type == "전투력랭킹":
         logger.info(
             "running power rank search: "
             f"uuid={uuid} "

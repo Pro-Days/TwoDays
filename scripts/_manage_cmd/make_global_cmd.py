@@ -166,8 +166,8 @@ def build_global_commands() -> list[dict[str, Any]]:
             "options": [
                 _search_subcommand("레벨", "레벨 히스토리"),
                 _search_subcommand("전투력", "전투력 히스토리"),
-                _search_subcommand("레벨 랭킹", "레벨 랭킹 히스토리"),
-                _search_subcommand("전투력 랭킹", "전투력 랭킹 히스토리"),
+                _search_subcommand("레벨랭킹", "레벨 랭킹 히스토리"),
+                _search_subcommand("전투력랭킹", "전투력 랭킹 히스토리"),
             ],
         },
         {
