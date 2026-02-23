@@ -62,11 +62,30 @@ def command_handler(event) -> dict:
     # 업데이트 커맨드
     if event.get("action", None) == "update_1D":
         logger.info("handling update action: " f"{event.get('action')}")
-        update.update_1D(event)
+
+        # 1D 업데이트 실행 후 결과에 따라 메시지와 상태 코드 결정
+        update_result: dict = update.update_1D(event)
+
+        is_ok: bool = bool(update_result.get("ok"))
+        status_text: str = str(update_result.get("status", "failed"))
+
+        if is_ok:
+            message = "업데이트 완료"
+            status_code = 200
+
+        elif status_text == "partial_failure":
+            message = "업데이트 일부 실패"
+            status_code = 500
+
+        else:
+            message = "업데이트 실패"
+            status_code = 500
 
         return {
-            "statusCode": 200,
-            "body": json.dumps({"message": "업데이트 완료"}, ensure_ascii=False),
+            "statusCode": status_code,
+            "body": json.dumps(
+                {"message": message, "result": update_result}, ensure_ascii=False
+            ),
         }
 
     body: dict = json.loads(event["body"])
