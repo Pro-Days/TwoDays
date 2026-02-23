@@ -443,7 +443,11 @@ def get_rank_info(start: int, end: int, target_date: datetime.date, metric: str)
 
     for i in range(rank_count):
         raw_value = data["Value"][i]
-        value_text = f"{int(raw_value):,}" if metric == "power" else f"{raw_value:.1f}"
+        value_text = (
+            f"{int(raw_value):,}"
+            if metric == "power"
+            else f"Lv.{int(raw_value)} {raw_value % 1 * 100:.2f}%"
+        )
         row = {
             "Rank": str(data["Rank"][i]),
             "Name": data["Name"][i],
