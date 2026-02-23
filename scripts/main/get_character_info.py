@@ -21,7 +21,7 @@ import misc
 import numpy as np
 import pandas as pd
 from log_utils import get_logger
-from models import CharacterData, PlayerSearchData
+from models import CharacterData, MetricRankEntry, PlayerSearchData
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -54,7 +54,7 @@ def _find_rank_position(
 ) -> int | None:
     """주어진 UUID의 캐릭터가 특정 날짜의 랭킹에서 몇 위인지 찾는 함수"""
 
-    ranks: list[CharacterData]
+    ranks: list[MetricRankEntry]
 
     if target_date == misc.get_today():
         ranks = gri.get_current_rank_data(metric=metric)
@@ -886,7 +886,8 @@ def _get_character_rank_history_data(
 
     rank_field: str = "Power_Rank" if metric == "power" else "Level_Rank"
     today: datetime.date = misc.get_today()
-    current_data: list[CharacterData] = (
+
+    current_data: list[MetricRankEntry] = (
         gri.get_current_rank_data(metric=metric) if target_date == today else []
     )
 
@@ -1073,13 +1074,9 @@ def get_character_data(
     data: list[CharacterData] = []
 
     for item in sorted(db_data, key=lambda row: row.get("SK", "")):
-        sk = item.get("SK")
-        if not isinstance(sk, str) or not sk.startswith("SNAP#"):
-            continue
-        if "Level" not in item:
-            continue
+        sk: str = item["SK"]
 
-        date = datetime.datetime.strptime(sk.removeprefix("SNAP#"), "%Y-%m-%d").date()
+        date: datetime.date = dm.manager.date_from_snapshot_sk(sk)
 
         data.append(
             CharacterData(

@@ -23,7 +23,7 @@ import pandas as pd
 import register_player
 import requests
 from log_utils import get_logger
-from models import CharacterData, RankRow
+from models import CharacterData, MetricRankEntry, RankRow
 from PIL import Image, ImageDraw, ImageFont
 
 if TYPE_CHECKING:
@@ -154,7 +154,7 @@ def get_rank_data(
     start: int = 1,
     end: int = 100,
     metric: str = "level",
-) -> list[CharacterData]:
+) -> list[MetricRankEntry]:
     """
     특정 날짜의 랭킹 데이터를 가져오는 함수
     """
@@ -169,8 +169,10 @@ def get_rank_data(
 
     if metric == "level":
         rows: list[dict] = _get_official_level_rows(target_date, limit=end)
+
     elif metric == "power":
         rows = _get_internal_power_rows(target_date, limit=end)
+
     else:
         raise ValueError(f"unsupported rank metric: {metric}")
 
@@ -180,23 +182,17 @@ def get_rank_data(
         )
         return []
 
-    rank_data: list[CharacterData] = []
+    rank_data: list[MetricRankEntry] = []
 
     for item in rows:
-        pk = item.get("PK")
-        if not isinstance(pk, str):
-            continue
-
-        rank_data.append(
-            CharacterData(
-                uuid=data_manager.manager.uuid_from_user_pk(pk),
-                level=item["Level"],
-                date=target_date,
-                power=item["Power"],
-            )
+        entry = MetricRankEntry(
+            uuid=data_manager.manager.uuid_from_user_pk(item["PK"]),
+            metric=metric,
+            value=item["Level"] if metric == "level" else item["Power"],
         )
+        rank_data.append(entry)
 
-    result = rank_data[start - 1 : end]
+    result: list[MetricRankEntry] = rank_data[start - 1 : end]
 
     logger.info(
         "get_rank_data complete: "
@@ -213,7 +209,7 @@ def get_current_rank_data(
     end: int = 100,
     metric: str = "level",
     target_date: datetime.date | None = None,
-) -> list[CharacterData]:
+) -> list[MetricRankEntry]:
     """
     현재 랭킹 데이터를 가져오는 함수
     등록되지 않은 플레이어는 등록시킴
@@ -229,19 +225,29 @@ def get_current_rank_data(
 
     players: list[dict] = register_player.get_registered_players()
 
-    rank_data: list[CharacterData] = [
+    current_characters: list[CharacterData] = [
         gci.get_current_character_data(player["uuid"], target_date=target_date)
         for player in players
     ]
 
     if metric == "level":
-        rank_data.sort(key=lambda x: x.level, reverse=True)
+        current_characters.sort(key=lambda x: x.level, reverse=True)
+
     elif metric == "power":
-        rank_data.sort(key=lambda x: x.power, reverse=True)
+        current_characters.sort(key=lambda x: x.power, reverse=True)
+
     else:
         raise ValueError(f"unsupported rank metric: {metric}")
 
-    result = rank_data[start - 1 : end]
+    result: list[MetricRankEntry] = [
+        MetricRankEntry(
+            uuid=row.uuid,
+            metric=metric,
+            value=row.power if metric == "power" else row.level,
+        )
+        for row in current_characters[start - 1 : end]
+    ]
+
     logger.info(
         "get_current_rank_data complete: "
         f"players={len(players)} "
@@ -265,7 +271,7 @@ def _to_current_rank_rows(
     향후 실제 크롤링으로 내부만 교체
     """
 
-    rank_data: list[CharacterData] = get_current_rank_data(
+    rank_data: list[MetricRankEntry] = get_current_rank_data(
         start=start, end=end, metric=metric, target_date=target_date
     )
     rows: list[RankRow] = []
@@ -276,8 +282,8 @@ def _to_current_rank_rows(
             RankRow(
                 name=name,
                 rank=Decimal(idx),
-                level=row.level if metric == "level" else None,
-                power=row.power if metric == "power" else None,
+                level=row.value if metric == "level" else None,
+                power=row.value if metric == "power" else None,
                 metric=metric,
             )
         )
@@ -314,7 +320,9 @@ def get_current_power_rank_rows(
     )
 
 
-def get_rank_info(start: int, end: int, target_date: datetime.date, metric: str):
+def get_rank_info(
+    start: int, end: int, target_date: datetime.date, metric: str
+) -> tuple:
 
     logger.info(
         "get_rank_info start: "
@@ -325,7 +333,7 @@ def get_rank_info(start: int, end: int, target_date: datetime.date, metric: str)
     )
 
     if target_date == misc.get_today():
-        current_data: list[CharacterData] = get_current_rank_data(
+        current_data: list[MetricRankEntry] = get_current_rank_data(
             start, end, metric=metric
         )
 
@@ -366,9 +374,7 @@ def get_rank_info(start: int, end: int, target_date: datetime.date, metric: str)
             name = "알 수 없음"
 
         data["Name"].append(name)
-        current_value: Decimal = (
-            current_data[i].power if metric == "power" else current_data[i].level
-        )
+        current_value: Decimal = current_data[i].value
         data["Value"].append(current_value)
 
         prev_snapshot: dict | None = data_manager.manager.get_user_snapshot(
@@ -680,7 +686,7 @@ def get_rank_history(
     )
 
     today: datetime.date = misc.get_today()
-    current_data: list[CharacterData] = (
+    current_data: list[MetricRankEntry] = (
         get_current_rank_data(metric=metric) if target_date == today else []
     )
 
