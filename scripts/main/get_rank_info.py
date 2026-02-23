@@ -311,16 +311,23 @@ def get_current_power_rank_rows(
     )
 
 
-def get_rank_info(start: int, end: int, target_date: datetime.date):
+def get_rank_info(start: int, end: int, target_date: datetime.date, metric: str):
 
     logger.info(
-        "get_rank_info start: " f"start={start} " f"end={end} " f"date={target_date}"
+        "get_rank_info start: "
+        f"start={start} "
+        f"end={end} "
+        f"date={target_date} "
+        f"metric={metric}"
     )
 
     if target_date == misc.get_today():
-        current_data: list[CharacterData] = get_current_rank_data(start, end)
+        current_data: list[CharacterData] = get_current_rank_data(
+            start, end, metric=metric
+        )
+
     else:
-        current_data: list[CharacterData] = get_rank_data(target_date, start, end)
+        current_data = get_rank_data(target_date, start, end, metric=metric)
 
     if not current_data:
 
@@ -328,16 +335,20 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
             "get_rank_info no data: "
             f"start={start} "
             f"end={end} "
-            f"date={target_date}"
+            f"date={target_date} "
+            f"metric={metric}"
         )
 
         return None, None
 
-    rank_count = min(end - start + 1, len(current_data))
+    rank_count: int = min(end - start + 1, len(current_data))
+    rank_metric_text: str = "전투력" if metric == "power" else "레벨"
+    rank_field: str = "Power_Rank" if metric == "power" else "Level_Rank"
+
     data: dict[str, list] = {
         "Rank": list(range(start, start + rank_count)),
         "Name": [],
-        "Level": [],
+        "Value": [],
         "Change": [],
     }
 
@@ -352,23 +363,28 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
             name = "알 수 없음"
 
         data["Name"].append(name)
-        data["Level"].append(current_data[i].level)
+        current_value: Decimal = (
+            current_data[i].power if metric == "power" else current_data[i].level
+        )
+        data["Value"].append(current_value)
 
-        prev_snapshot = data_manager.manager.get_user_snapshot(
+        prev_snapshot: dict | None = data_manager.manager.get_user_snapshot(
             uuid=uuid, snapshot_date=prev_date
         )
-        if not prev_snapshot or "Level_Rank" not in prev_snapshot:
+
+        if not prev_snapshot or rank_field not in prev_snapshot:
             data["Change"].append(None)
+
         else:
-            diff: int = int(prev_snapshot["Level_Rank"]) - (i + start)
+            diff: int = int(prev_snapshot[rank_field]) - (i + start)
             data["Change"].append(diff)
 
     # 랭킹에 해당하는 플레이어의 머리 이미지 다운로드
     avatar_images: list[str] = [""] * rank_count
 
-    os_name = platform.system()
+    os_name: str = platform.system()
     if os_name == "Linux":
-        head_path = misc.convert_path(f"\\tmp\\player_heads\\player.png")
+        head_path: str = misc.convert_path(f"\\tmp\\player_heads\\player.png")
     else:
         head_path = misc.convert_path(f"assets\\player_heads\\player.png")
 
@@ -378,7 +394,7 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
     # rank_count개의 스레드 생성
     threads: list[threading.Thread] = []
     for i in range(rank_count):
-        url = f"https://mineskin.eu/helm/{data['Name'][i]}/100.png"
+        url: str = f"https://mineskin.eu/helm/{data['Name'][i]}/100.png"
         thread = threading.Thread(
             target=download_image,
             args=(url, i, avatar_images),
@@ -390,8 +406,8 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
     for thread in threads:
         thread.join()
 
-    header_text = ["순위", "닉네임", "레벨", "변동"]
-    header_widths = [160, 580, 280, 240]
+    header_text = ["순위", "닉네임", rank_metric_text, "변동"]
+    header_widths = [160, 560, 360, 240] if metric == "power" else [160, 580, 280, 240]
 
     header_height = 100
     row_height = 100
@@ -419,17 +435,19 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
             misc.convert_path("assets\\fonts\\NanumSquareRoundEB.ttf"), 40
         )
 
-    x_offset = -10
-    x_list = [34, 110, 90, 68]
+    x_offset: int = -10
+    x_list: list[int] = [34, 110, 90, 68]
     for i, text in enumerate(header_text):
         draw.text((x_offset + x_list[i] + 24, 30), text, fill="black", font=font)
         x_offset += header_widths[i]
 
     for i in range(rank_count):
+        raw_value = data["Value"][i]
+        value_text = f"{int(raw_value):,}" if metric == "power" else f"{raw_value:.1f}"
         row = {
             "Rank": str(data["Rank"][i]),
             "Name": data["Name"][i],
-            "Level": f"{data['Level'][i]:.1f}",
+            "Value": value_text,
             "Change": data["Change"][i],
         }
 
@@ -464,8 +482,8 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
         x_offset += header_widths[1]
 
         draw.text(
-            (x_offset + 140 - len(row["Level"]) * 12, text_y_offset),
-            row["Level"],
+            (x_offset + 140 - len(row["Value"]) * 12, text_y_offset),
+            row["Value"],
             fill="black",
             font=font,
         )
@@ -623,13 +641,14 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
         else target_date.strftime("%Y년 %m월 %d일")
     )
 
-    msg = f"{text_day} {start}~{end}위 캐릭터 랭킹을 보여드릴게요."
+    msg = f"{text_day} {start}~{end}위 캐릭터 {rank_metric_text} 랭킹을 보여드릴게요."
 
     logger.info(
         "get_rank_info complete: "
         f"start={start} "
         f"end={end} "
         f"date={target_date} "
+        f"metric={metric} "
         f"image={image_path}"
     )
 
@@ -637,7 +656,11 @@ def get_rank_info(start: int, end: int, target_date: datetime.date):
 
 
 def get_rank_history(
-    start: int, end: int, period: int, target_date: datetime.date
+    start: int,
+    end: int,
+    period: int,
+    target_date: datetime.date,
+    metric: str,
 ) -> tuple:
 
     logger.info(
@@ -645,12 +668,13 @@ def get_rank_history(
         f"start={start} "
         f"end={end} "
         f"period={period} "
-        f"date={target_date}"
+        f"date={target_date} "
+        f"metric={metric}"
     )
 
-    today = misc.get_today()
+    today: datetime.date = misc.get_today()
     current_data: list[CharacterData] = (
-        get_current_rank_data() if target_date == today else []
+        get_current_rank_data(metric=metric) if target_date == today else []
     )
 
     rank_count: int = end - start + 1
@@ -665,7 +689,7 @@ def get_rank_history(
         if day == target_date and target_date == today:
             day_data = current_data[start - 1 : end]
         else:
-            day_data = get_rank_data(day, start, end)
+            day_data = get_rank_data(day, start, end, metric=metric)
 
         for i, row in enumerate(day_data):
             data.append(
@@ -682,7 +706,8 @@ def get_rank_history(
             f"start={start} "
             f"end={end} "
             f"period={period} "
-            f"date={target_date}"
+            f"date={target_date} "
+            f"metric={metric}"
         )
         return None, None
 
@@ -928,7 +953,11 @@ def get_rank_history(
     plt.savefig(image_path, dpi=200, bbox_inches="tight")
     plt.close()
 
-    msg = f"{period}일 동안의 {start}~{end}위 랭킹 히스토리를 보여드릴게요."
+    rank_metric_text: str = "전투력" if metric == "power" else "레벨"
+    msg = (
+        f"{period}일 동안의 {start}~{end}위 {rank_metric_text} 랭킹 히스토리를 "
+        "보여드릴게요."
+    )
 
     logger.info(
         "get_rank_history complete: "
@@ -936,6 +965,7 @@ def get_rank_history(
         f"end={end} "
         f"period={period} "
         f"target_date={target_date} "
+        f"metric={metric} "
         f"image={image_path} "
         f"rows={len(data)}"
     )
@@ -948,7 +978,7 @@ if __name__ == "__main__":
     today = misc.get_today()
 
     # print(get_rank_history([1, 30], 10, today))
-    print(get_rank_info(1, 30, today))
+    # print(get_rank_info(1, 30, today))
     # print(get_current_rank_data())
     # print(get_prev_player_rank(50, "2025-01-01"))
     # print(get_rank_data(datetime.date(2025, 2, 1)))

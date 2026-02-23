@@ -170,12 +170,28 @@ def _parse_date(day_expression: str | None) -> datetime.date | None:
 def cmd_ranking(event: dict, options: list[dict]) -> dict:
     logger.debug(f"cmd_ranking options={truncate_text(options, 1000)}")
 
+    ranking_options: list[dict] = options
+
+    if not (options and "options" in options[0]):
+        return sm.send(event, "랭킹 종류가 올바르지 않습니다.")
+
+    ranking_type: str = options[0]["name"]
+
+    if ranking_type == "전투력":
+        metric = "power"
+    elif ranking_type == "레벨":
+        metric = "level"
+    else:
+        return sm.send(event, "랭킹 종류가 올바르지 않습니다.")
+
+    ranking_options = options[0].get("options", [])
+
     range_str: str = "1..10"
     date_expression: str | None = None
     period: str | None = None
 
     # 옵션에서 입력값 가져오기
-    for i in options:
+    for i in ranking_options:
         if i["name"] == "랭킹범위":
             range_str = i["value"]
 
@@ -220,26 +236,36 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
             "fetching rank info: "
             f"start={rank_start} "
             f"end={rank_end} "
+            f"metric={metric} "
             f"date={target_date}"
         )
 
-        msg, image_path = gri.get_rank_info(rank_start, rank_end, target_date)
+        msg, image_path = gri.get_rank_info(
+            rank_start, rank_end, target_date, metric=metric
+        )
 
     # 기간이 입력되었다면 랭킹 변화량 정보 가져오기
     else:
-        if not period.isdigit() or int(period) < 1:
+        if isinstance(period, str) and period.isdigit():
+            period_int = int(period)
+
+        else:
+            return sm.send(event, "기간은 1 이상의 숫자로 입력해주세요.")
+
+        if period_int < 1:
             return sm.send(event, "기간은 1 이상의 숫자로 입력해주세요.")
 
         logger.info(
             "fetching rank history: "
             f"start={rank_start} "
             f"end={rank_end} "
-            f"period={period} "
+            f"period={period_int} "
+            f"metric={metric} "
             f"date={target_date}"
         )
 
         msg, image_path = gri.get_rank_history(
-            rank_start, rank_end, int(period), target_date
+            rank_start, rank_end, period_int, target_date, metric=metric
         )
 
     # 랭킹 정보 가져오기에 실패했다면
@@ -252,11 +278,14 @@ def cmd_ranking(event: dict, options: list[dict]) -> dict:
 def cmd_search(event: dict, options: list[dict]) -> dict:
     logger.debug(f"cmd_search options={truncate_text(options, 1000)}")
 
-    # 검색 타입 확인 (레벨 / 랭킹 / 전투력 / 전투력 랭킹)
+    # 검색 타입 확인 (레벨 / 전투력)
+    if not options:
+        return sm.send(event, "검색 종류를 선택해주세요.")
+
     _type = options[0]["name"]
 
     name: str | None = None
-    period: str = "7"
+    period: str | None = "7"
     today: str | None = None
 
     for i in options[0]["options"]:
@@ -288,9 +317,14 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
         )
 
     # period 확인
-    if period is not None and not period.isdigit():
+    if isinstance(period, str) and period.isdigit():
+        period_int = int(period)
+
+    elif period is None:
+        period_int = 7
+
+    else:
         return sm.send(event, "기간은 숫자로 입력해주세요.")
-    period_int: int = int(period) if period is not None else 7
 
     # name이 등록되어있지 않다면 등록하기
     register_msg: str = ""
@@ -339,32 +373,6 @@ def cmd_search(event: dict, options: list[dict]) -> dict:
 
         msg, image_path = gci.get_character_power_info(
             uuid, real_name, period_int, target_date
-        )
-
-    # 랭킹 검색이라면 레벨 랭킹 변화량 정보 가져오기
-    elif _type == "레벨 랭킹":
-        logger.info(
-            "running rank search: "
-            f"uuid={uuid} "
-            f"period={period_int} "
-            f"date={target_date}"
-        )
-
-        msg, image_path = gci.get_character_rank_history(
-            uuid, name, period_int, target_date, metric="level"
-        )
-
-    # 전투력 랭킹 검색이라면 전투력 랭킹 변화량 정보 가져오기
-    elif _type == "전투력 랭킹":
-        logger.info(
-            "running power rank search: "
-            f"uuid={uuid} "
-            f"period={period_int} "
-            f"date={target_date}"
-        )
-
-        msg, image_path = gci.get_character_rank_history(
-            uuid, name, period_int, target_date, metric="power"
         )
 
     else:
