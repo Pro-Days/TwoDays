@@ -137,7 +137,7 @@ def _ranking_subcommand(name: str, description: str) -> dict[str, Any]:
         [
             _string_option(
                 "랭킹범위",
-                "랭킹 범위: (a)..(b) (예시: 1..10, 70..100)",
+                "랭킹 범위: 시작..끝 (예시: 1..10, 70..100)",
             ),
             _period_option(f"{description}를 조회할 기간"),
             _date_option(f"{description}를 조회할 기준 날짜"),
