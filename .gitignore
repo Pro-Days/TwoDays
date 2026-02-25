@@ -3,11 +3,12 @@ note/
 assets/images/
 assets/player_heads/
 .venv/
-.env
-*__pycache__
 scripts/temp
-image.png
 test/*
 legacy/
+.vscode/
+
+.env
+*__pycache__
+image.png
 AGENTS.md
-.vscode
