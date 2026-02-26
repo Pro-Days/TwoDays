@@ -208,14 +208,14 @@ def _handle_message_delete(event: dict, body: dict) -> dict:
         return sm.send(
             event,
             "삭제할 메시지를 찾을 수 없습니다.",
-            log_type=sm.LogType.COMMAND_ERROR,
+            log_type=sm.LogType.COMMAND,
         )
 
     if not _is_bot_message(target, DISCORD_APP_ID):
         return sm.send(
             event,
             "봇이 보낸 메시지만 삭제할 수 있습니다.",
-            log_type=sm.LogType.COMMAND_ERROR,
+            log_type=sm.LogType.COMMAND,
         )
 
     requester_id: str | None = ip.resolve_requester_id(body)
@@ -230,7 +230,7 @@ def _handle_message_delete(event: dict, body: dict) -> dict:
         return sm.send(
             event,
             "삭제 권한이 없습니다.",
-            log_type=sm.LogType.COMMAND_ERROR,
+            log_type=sm.LogType.COMMAND,
         )
 
     result: ma.DiscordHttpResult = ma.delete_message(
@@ -253,7 +253,7 @@ def _handle_message_delete(event: dict, body: dict) -> dict:
     return sm.send(
         event,
         "메시지 삭제에 실패했습니다.",
-        log_type=sm.LogType.COMMAND_ERROR,
+        log_type=sm.LogType.COMMAND,
         error=error_text,
     )
 
