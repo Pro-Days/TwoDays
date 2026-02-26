@@ -447,11 +447,20 @@ def get_rank_info(
 
     font_path: str = get_font_path()
     font: ImageFont.FreeTypeFont = ImageFont.truetype(font_path, 40)
+    font_stroke_width: int = 1
+    font_stroke_fill: str = "black"
 
     x_offset: int = -10
     x_list: list[int] = [34, 110, 90, 68]
     for i, text in enumerate(header_text):
-        draw.text((x_offset + x_list[i] + 24, 30), text, fill="black", font=font)
+        draw.text(
+            (x_offset + x_list[i] + 24, 30),
+            text,
+            fill="black",
+            font=font,
+            stroke_width=font_stroke_width,
+            stroke_fill=font_stroke_fill,
+        )
         x_offset += header_widths[i]
 
     for i in range(rank_count):
@@ -489,6 +498,8 @@ def get_rank_info(
             str(row["Rank"]),
             fill="black",
             font=font,
+            stroke_width=font_stroke_width,
+            stroke_fill=font_stroke_fill,
         )
         x_offset += header_widths[0]
 
@@ -519,7 +530,14 @@ def get_rank_info(
                 width=2,
             )
 
-        draw.text((x_offset + 124, text_y_offset), row["Name"], fill="black", font=font)
+        draw.text(
+            (x_offset + 124, text_y_offset),
+            row["Name"],
+            fill="black",
+            font=font,
+            stroke_width=font_stroke_width,
+            stroke_fill=font_stroke_fill,
+        )
         x_offset += header_widths[1]
 
         draw.text(
@@ -527,6 +545,8 @@ def get_rank_info(
             row["Value"],
             fill="black",
             font=font,
+            stroke_width=font_stroke_width,
+            stroke_fill=font_stroke_fill,
         )
         x_offset += header_widths[2]
 
@@ -541,10 +561,19 @@ def get_rank_info(
                 "New",
                 fill="green",
                 font=font,
+                stroke_width=font_stroke_width,
+                stroke_fill=font_stroke_fill,
             )
 
         elif change == 0:
-            draw.text((x_offset + 110, text_y_offset), "-", fill="black", font=font)
+            draw.text(
+                (x_offset + 110, text_y_offset),
+                "-",
+                fill="black",
+                font=font,
+                stroke_width=font_stroke_width,
+                stroke_fill=font_stroke_fill,
+            )
 
         elif change > 0:
             if change >= 10:
@@ -553,6 +582,8 @@ def get_rank_info(
                     "+" + str(change),
                     fill="red",
                     font=font,
+                    stroke_width=font_stroke_width,
+                    stroke_fill=font_stroke_fill,
                 )
 
             else:
@@ -561,6 +592,8 @@ def get_rank_info(
                     "+" + str(change),
                     fill="red",
                     font=font,
+                    stroke_width=font_stroke_width,
+                    stroke_fill=font_stroke_fill,
                 )
 
         elif change < 0:
@@ -570,6 +603,8 @@ def get_rank_info(
                     str(change),
                     fill="blue",
                     font=font,
+                    stroke_width=font_stroke_width,
+                    stroke_fill=font_stroke_fill,
                 )
 
             else:
@@ -578,6 +613,8 @@ def get_rank_info(
                     str(change),
                     fill="blue",
                     font=font,
+                    stroke_width=font_stroke_width,
+                    stroke_fill=font_stroke_fill,
                 )
 
         draw.line(
@@ -902,7 +939,7 @@ def get_rank_history(
                         last_rank,
                         player_label,
                         color="black",
-                        fontweight="bold",
+                        fontweight="black",
                         fontsize=10,
                         va="center",
                         zorder=1000,  # 마커보다 위에 표시
@@ -929,7 +966,7 @@ def get_rank_history(
                             last_rank + 0.4,  # 데이터 포인트보다 약간 아래에
                             player_label,
                             color="black",
-                            fontweight="bold",
+                            fontweight="black",
                             fontsize=10,
                             ha="center",
                             zorder=1000,  # 마커보다 위에 표시
@@ -941,7 +978,7 @@ def get_rank_history(
                             last_rank - 0.2,  # 데이터 포인트보다 약간 위에
                             player_label,
                             color="black",
-                            fontweight="bold",
+                            fontweight="black",
                             fontsize=10,
                             ha="center",
                             zorder=1000,  # 마커보다 위에 표시
@@ -1009,11 +1046,11 @@ def get_rank_history(
 if __name__ == "__main__":
     # today = datetime.datetime.strptime("2025-05-16", "%Y-%m-%d").date()
     today: datetime.date = get_today()
-    r: list[RankRow] = get_current_level_rank_rows()
+    # r: list[RankRow] = get_current_level_rank_rows()
 
-    for row in r:
-        if row.name == "ProDays":
-            print(row)
+    # for row in r:
+    #     if row.name == "ProDays":
+    #         print(row)
 
     # print(get_rank_history([1, 30], 10, today))
     # print(get_rank_info(1, 30, today))

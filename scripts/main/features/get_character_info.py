@@ -398,6 +398,7 @@ def _render_metric_history_chart(
             xytext=(0, 10),
             ha="center",
             fontsize=8,
+            fontweight="semibold",
         )
 
     _style_minimal_axes(ax)
@@ -467,6 +468,7 @@ def _render_rank_history_chart(
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
+            fontweight="semibold",
         )
 
     # 최고 랭킹에 텍스트 추가
@@ -480,6 +482,7 @@ def _render_rank_history_chart(
             textcoords="offset points",
             xytext=(0, 10),
             ha="center",
+            fontweight="semibold",
         )
 
     _style_minimal_axes(ax)
