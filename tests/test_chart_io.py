@@ -20,7 +20,7 @@ class ChartIoTest(unittest.TestCase):
                 "scripts.main.shared.chart.chart_io.uuid.uuid4", return_value=fake_uuid
             ):
                 path = chart_io.get_chart_image_path("img.png")
-        self.assertEqual(path, "/tmp/outputs/img_abc123.png")
+        self.assertEqual(path, "/tmp/img_abc123.png")
 
     def test_get_chart_image_path_non_linux_uses_convert_path(self) -> None:
         fake_uuid = SimpleNamespace(hex="xyz")
