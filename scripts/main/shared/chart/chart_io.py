@@ -15,9 +15,9 @@ def get_chart_image_path(filename: str = "image.png") -> str:
 
     # 운영(Linux)과 로컬(Windows) 저장 위치 규칙을 공통화
     if platform.system() == "Linux":
-        return f"/tmp/{unique_filename}"
+        return f"/tmp/outputs/{unique_filename}"
 
-    return convert_path(unique_filename)
+    return convert_path(f"outputs/{unique_filename}")
 
 
 def save_and_close_chart(plt, dpi: int = 250, filename: str = "image.png") -> str:

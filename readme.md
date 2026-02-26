@@ -195,6 +195,26 @@
 4. 메인 Lambda가 슬래시 명령 또는 스케줄 액션(`update_1D`)을 처리
 5. Discord API / 외부 프로필 조회 / 저장소(DB) 연동 후 결과 응답 또는 후속 메시지 전송
 
+### 실제 데이터 통합 실행
+
+`lambda_function` 경로를 통해 실제 데이터를 한 번에 실행하고, 생성된 이미지를 `output_dir`로 복사하여 확인할 수 있습니다. Discord 전송은 실제로 수행하지 않고 결과만 기록합니다. `output_dir`는 필수이며 없으면 오류가 발생합니다.
+
+필수 환경 변수:
+- `DISCORD_LOG_CHANNEL_ID`
+- `DISCORD_ADMIN_ID`
+- `DISCORD_TOKEN`
+- `DISCORD_APP_ID`
+- `SINGLE_TABLE_NAME`
+- `AWS_REGION`
+- `AWS_ACCESS_KEY`
+- `AWS_SECRET_ACCESS_KEY`
+- `FONT_PATH`
+- `REAL_DATA_PLAYER_NAME` (검색/등록에 사용할 닉네임)
+
+실행 예시:
+- CLI: `.venv/bin/python scripts/main/lambda_real_data_runner.py --output-dir /tmp/twodays_lambda_outputs`
+- pytest: `RUN_REAL_DATA_LAMBDA_TESTS=1 .venv/bin/python -m pytest -q tests/test_lambda_real_data.py`
+
 ### 디렉터리 구조
 
 ```text
