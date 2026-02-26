@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 logger: Logger = get_logger(__name__)
 
+FONT_PATH_ENV_VAR: str = "FONT_PATH"
+
 
 def convert_path(path: str) -> str:
     """
@@ -29,3 +31,28 @@ def convert_path(path: str) -> str:
     logger.debug("convert_path: " f"input={path} " f"output={converted}")
 
     return converted
+
+
+def get_font_path() -> str:
+    """폰트 경로 환경 변수를 읽어 정규화된 경로를 반환한다."""
+
+    env_font_path: str | None = os.getenv(FONT_PATH_ENV_VAR)
+    if env_font_path:
+        font_path: str = os.path.normpath(env_font_path)
+        logger.debug(
+            "get_font_path: "
+            f"source=env "
+            f"env_var={FONT_PATH_ENV_VAR} "
+            f"path={font_path}"
+        )
+
+        return font_path
+
+    message: str = (
+        "FONT_PATH environment variable is required for font loading. "
+        f"env_var={FONT_PATH_ENV_VAR}"
+    )
+    logger.error(
+        "get_font_path failed: " f"reason=missing_env " f"env_var={FONT_PATH_ENV_VAR}"
+    )
+    raise RuntimeError(message)

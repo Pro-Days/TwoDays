@@ -244,6 +244,7 @@ pip install -r requirements.txt
 - `AWS_ACCESS_KEY` (로컬 개발 시 선택)
 - `AWS_SECRET_ACCESS_KEY` (로컬 개발 시 선택)
 - `TWODAYS_LOG_LEVEL` (선택, 기본 `INFO`)
+- `FONT_PATH` (필수, 예: 로컬 `assets/fonts/font.ttf`, 배포 환경 `/opt/font.ttf`)
 
 #### 이벤트 핸들러 Lambda 관련
 
