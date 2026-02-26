@@ -59,6 +59,25 @@ class SharedUtilsAndDomainTest(unittest.TestCase):
             ):
                 self.assertEqual(path_utils.convert_path("a\\b\\c"), "a/b/c")
 
+    def test_get_font_path_uses_env_var(self) -> None:
+        with mock.patch.dict(
+            "os.environ", {path_utils.FONT_PATH_ENV_VAR: "/opt/custom-font.ttf"}
+        ):
+            with mock.patch(
+                "scripts.main.shared.utils.path_utils.os.path.normpath",
+                side_effect=lambda value: value,
+            ):
+                self.assertEqual(
+                    path_utils.get_font_path(),
+                    "/opt/custom-font.ttf",
+                )
+
+    def test_get_font_path_raises_when_env_missing(self) -> None:
+        with mock.patch.dict("os.environ", {}, clear=True):
+            with self.assertRaises(RuntimeError) as exc_info:
+                path_utils.get_font_path()
+        self.assertIn("FONT_PATH", str(exc_info.exception))
+
     def test_log_utils_helpers(self) -> None:
         with mock.patch.dict("os.environ", {"TWODAYS_LOG_LEVEL": "debug"}, clear=False):
             self.assertEqual(log_utils._resolve_level(None), logging.DEBUG)

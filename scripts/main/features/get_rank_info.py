@@ -20,7 +20,7 @@ from scripts.main.shared.chart.chart_style import (
     apply_default_chart_style,
     setup_agg_backend,
 )
-from scripts.main.shared.utils.path_utils import convert_path
+from scripts.main.shared.utils.path_utils import get_font_path
 
 # 차트 환경 설정을 공통 모듈로 위임해 다른 차트 모듈과 동작을 맞춤
 setup_agg_backend()
@@ -445,14 +445,8 @@ def get_rank_info(
         width=2,
     )
 
-    if os_name == "Linux":
-        font: ImageFont.FreeTypeFont = ImageFont.truetype(
-            "/opt/NanumSquareRoundEB.ttf", 40
-        )
-    else:
-        font = ImageFont.truetype(
-            convert_path("assets\\fonts\\NanumSquareRoundEB.ttf"), 40
-        )
+    font_path: str = get_font_path()
+    font: ImageFont.FreeTypeFont = ImageFont.truetype(font_path, 40)
 
     x_offset: int = -10
     x_list: list[int] = [34, 110, 90, 68]
