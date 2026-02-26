@@ -42,12 +42,14 @@ class DiscordHttpAndAdminTest(unittest.TestCase):
         patch_resp = _FakeResponse(json_value={"ok": True})
         post_resp = _FakeResponse(json_value={"id": 1})
         multipart_resp = _FakeResponse(json_value=ValueError("bad"), text="fallback")
+        delete_resp = _FakeResponse(json_value={"deleted": True})
 
         with mock.patch(
             "scripts.main.integrations.discord.discord_client.requests.patch",
             return_value=patch_resp,
         ) as patch_mock:
             result = dc.patch_json("u", headers={"A": "B"}, payload={"x": 1})
+
         self.assertEqual(result.body, {"ok": True})
         patch_mock.assert_called_once()
 
@@ -56,6 +58,7 @@ class DiscordHttpAndAdminTest(unittest.TestCase):
             return_value=post_resp,
         ) as post_mock:
             result2 = dc.post_json("u", headers={"A": "B"}, payload={"x": 1})
+
         self.assertEqual(result2.body, {"id": 1})
         self.assertEqual(post_mock.call_args.kwargs["headers"], {"A": "B"})
 
@@ -64,8 +67,18 @@ class DiscordHttpAndAdminTest(unittest.TestCase):
             return_value=multipart_resp,
         ) as post_multi_mock:
             result3 = dc.post_multipart("u", multipart_data={"file": b"x"})
+
         self.assertEqual(result3.body, "fallback")
         self.assertEqual(post_multi_mock.call_args.kwargs["files"], {"file": b"x"})
+
+        with mock.patch(
+            "scripts.main.integrations.discord.discord_client.requests.delete",
+            return_value=delete_resp,
+        ) as delete_mock:
+            result4 = dc.delete_json("u", headers={"A": "B"})
+
+        self.assertEqual(result4.body, {"deleted": True})
+        delete_mock.assert_called_once()
 
     def test_discord_admin_api_helpers(self) -> None:
         ip_resp = _FakeResponse(json_value={"ip": "1.2.3.4"})
@@ -77,6 +90,7 @@ class DiscordHttpAndAdminTest(unittest.TestCase):
             return_value=ip_resp,
         ) as get_mock:
             self.assertEqual(daa.get_ip(), "1.2.3.4")
+
         get_mock.assert_called_once()
 
         with mock.patch.dict("os.environ", {"DISCORD_TOKEN": "token"}, clear=False):
@@ -85,6 +99,7 @@ class DiscordHttpAndAdminTest(unittest.TestCase):
                 return_value=guild_name_resp,
             ) as get_mock2:
                 self.assertEqual(daa.get_guild_name("123"), "Guild")
+
             self.assertIn("Authorization", get_mock2.call_args.kwargs["headers"])
 
             with mock.patch(
@@ -92,6 +107,7 @@ class DiscordHttpAndAdminTest(unittest.TestCase):
                 return_value=guild_list_resp,
             ) as get_mock3:
                 self.assertEqual(daa.get_guild_list(), [{"id": "1", "name": "G"}])
+
             self.assertEqual(get_mock3.call_args.kwargs["timeout"], daa.HTTP_TIMEOUT)
 
 

@@ -21,10 +21,12 @@ import scripts.main.features.get_level_distribution as gld
 import scripts.main.features.get_rank_info as gri
 import scripts.main.features.register_player as rp
 import scripts.main.integrations.discord.discord_admin_api as daa
+import scripts.main.integrations.discord.message_actions as ma
 import scripts.main.integrations.discord.send_msg as sm
 import scripts.main.integrations.minecraft.minecraft_profile_service as mps
 import scripts.main.interface.command_parsers as cp
 import scripts.main.interface.command_validation as cv
+import scripts.main.interface.interaction_parsers as ip
 import scripts.main.jobs.update as update
 from scripts.main.shared.utils.log_utils import (
     get_logger,
@@ -42,6 +44,8 @@ logger: Logger = get_logger(__name__)
 ADMIN_ID: str | None = os.getenv("DISCORD_ADMIN_ID")
 if ADMIN_ID is None:
     raise Exception("DISCORD_ADMIN_ID is not set")
+
+DISCORD_APP_ID: str | None = os.getenv("DISCORD_APP_ID")
 
 
 def lambda_handler(event, context) -> dict:
@@ -105,8 +109,13 @@ def command_handler(event) -> dict:
         }
 
     body: dict = json.loads(event["body"])
-    cmd: str = body["data"]["name"]
-    options: list[dict[str, str]] = body["data"].get("options", [])
+    data: dict = body.get("data", {})
+    cmd: str = data.get("name", "")
+    options: list[dict[str, str]] = data.get("options", []) or []
+    cmd_type: int | None = data.get("type")
+
+    if cmd_type == ip.ApplicationCommandType.MESSAGE and cmd == "메시지 삭제":
+        return _handle_message_delete(event, body)
 
     logger.info(
         "discord command received: "
@@ -114,15 +123,17 @@ def command_handler(event) -> dict:
         f"options={truncate_text(options, 1000)}"
     )
 
+    requester_id: str | None = ip.resolve_requester_id(body)
+
     # 어드민 커맨드
-    if body["member"]["user"]["id"] == ADMIN_ID:
+    if requester_id == ADMIN_ID:
         # ip 주소
         # TODO: 제거 고려
         if cmd == "ip":
-            ip: str = daa.get_ip()
+            ip_address: str = daa.get_ip()
 
             return sm.send(
-                event, f"아이피 주소: {ip}", log_type=sm.LogType.ADMIN_COMMAND
+                event, f"아이피 주소: {ip_address}", log_type=sm.LogType.ADMIN_COMMAND
             )
 
         # 등록된 유저 수
@@ -172,6 +183,79 @@ def command_handler(event) -> dict:
             error=f"unhandled command: {cmd}",
         )
         return {"statusCode": 400, "body": json.dumps(f"unhandled command: {cmd}")}
+
+
+def _is_bot_message(
+    target: ip.MessageContextTarget,
+    app_id: str | None,
+) -> bool:
+    if not app_id:
+        return False
+
+    if target.author_id == app_id:
+        return True
+
+    if target.application_id == app_id:
+        return True
+
+    return False
+
+
+def _handle_message_delete(event: dict, body: dict) -> dict:
+    target: ip.MessageContextTarget | None = ip.resolve_message_target(body)
+
+    if target is None:
+        return sm.send(
+            event,
+            "삭제할 메시지를 찾을 수 없습니다.",
+            log_type=sm.LogType.COMMAND_ERROR,
+        )
+
+    if not _is_bot_message(target, DISCORD_APP_ID):
+        return sm.send(
+            event,
+            "봇이 보낸 메시지만 삭제할 수 있습니다.",
+            log_type=sm.LogType.COMMAND_ERROR,
+        )
+
+    requester_id: str | None = ip.resolve_requester_id(body)
+    can_delete: bool = ip.can_delete_message(
+        requester_id,
+        ADMIN_ID,
+        DISCORD_APP_ID,
+        target,
+    )
+
+    if not can_delete:
+        return sm.send(
+            event,
+            "삭제 권한이 없습니다.",
+            log_type=sm.LogType.COMMAND_ERROR,
+        )
+
+    result: ma.DiscordHttpResult = ma.delete_message(
+        target.channel_id, target.message_id
+    )
+    status_code: int = result.response.status_code
+
+    if status_code in (200, 204):
+        return sm.send(
+            event,
+            "메시지를 삭제했습니다.",
+            log_type=sm.LogType.COMMAND,
+        )
+
+    response_text: str = truncate_text(result.body, 600)
+    error_text: str = (
+        f"message delete failed: status={status_code} response={response_text}"
+    )
+
+    return sm.send(
+        event,
+        "메시지 삭제에 실패했습니다.",
+        log_type=sm.LogType.COMMAND_ERROR,
+        error=error_text,
+    )
 
 
 def cmd_ranking(event: dict, options: list[dict]) -> dict:

@@ -190,6 +190,11 @@ def build_global_commands() -> list[dict[str, Any]]:
                 _ephemeral_option(),
             ],
         },
+        {
+            "name": "메시지 삭제",
+            "type": 3,
+            "integration_types": INTEGRATION_TYPES,
+        },
     ]
 
 

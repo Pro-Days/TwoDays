@@ -25,7 +25,6 @@ def safe_response_body(response: requests.Response) -> Any:
         return response.text
 
 
-# *
 def patch_json(
     url: str,
     *,
@@ -44,7 +43,6 @@ def patch_json(
     return DiscordHttpResult(response=response, body=safe_response_body(response))
 
 
-# *
 def post_json(
     url: str,
     *,
@@ -62,7 +60,21 @@ def post_json(
     return DiscordHttpResult(response=response, body=safe_response_body(response))
 
 
-# *
+def delete_json(
+    url: str,
+    *,
+    headers: dict[str, str],
+    timeout: tuple[float, float] = DISCORD_HTTP_TIMEOUT,
+) -> DiscordHttpResult:
+    response: requests.Response = requests.delete(
+        url,
+        headers=headers,
+        timeout=timeout,
+    )
+
+    return DiscordHttpResult(response=response, body=safe_response_body(response))
+
+
 def post_multipart(
     url: str,
     *,

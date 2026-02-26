@@ -18,6 +18,35 @@ from nacl.signing import VerifyKey
 PUBLIC_KEY: str | None = os.getenv("DISCORD_PUBLIC_KEY")
 
 
+def _resolve_interaction_flags(body: dict) -> int:
+    """
+    플래그 계산
+    - 64: 나만보기
+    - 128: 응답이 로딩 중임을 나타냄 (기본값)
+    """
+
+    flag: int = 128
+    data: dict = body.get("data", {})
+    command_type: int | None = data.get("type")
+
+    if command_type == 3:
+        return flag + 64
+
+    options: list[dict] = data.get("options", []) or []
+    for i in options:
+        if i.get("name") == "나만보기" and i.get("value"):
+            flag += 64
+            break
+
+        elif "options" in i:
+            for j in i["options"]:
+                if j.get("name") == "나만보기" and j.get("value"):
+                    flag += 64
+                    break
+
+    return flag
+
+
 def lambda_handler(event, context):
     try:
         print(f"start!\nevent: {event}")
@@ -76,24 +105,7 @@ def lambda_handler(event, context):
             )
 
             body: dict = json.loads(event["body"])
-
-            # 옵션에서 "나만보기"가 켜져 있는지 확인
-            options: list[dict] = (
-                body["data"]["options"] if "options" in body["data"] else []
-            )
-
-            # "나만보기" 옵션이 켜져 있으면 flag에 64 더하기
-            flag: int = 128
-            for i in options:
-                if i["name"] == "나만보기" and i["value"]:
-                    flag += 64
-                    break
-
-                elif "options" in i:
-                    for j in i["options"]:
-                        if j["name"] == "나만보기" and j["value"]:
-                            flag += 64
-                            break
+            flag: int = _resolve_interaction_flags(body)
 
             # 람다 함수 호출 후 바로 응답 반환
             return {
