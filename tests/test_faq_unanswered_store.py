@@ -8,8 +8,8 @@ from decimal import Decimal
 
 import pytest
 
-from tests.support import bootstrap  # noqa: F401
 from scripts.main.infrastructure.persistence import faq_unanswered_store as fus
+from tests.support import bootstrap
 
 
 def test_unanswered_store_requires_env(monkeypatch) -> None:
@@ -23,7 +23,9 @@ def test_unanswered_store_requires_env(monkeypatch) -> None:
 
 def test_save_unanswered_question_builds_keys(monkeypatch) -> None:
     # 환경 변수/고정 시간/UUID 준비
-    monkeypatch.setenv("FAQ_UNANSWERED_TABLE", "faq-table")
+    monkeypatch.setenv("FAQ_UNANSWERED_TABLE", "Hanwol_Bot_DEV_FAQ_Table")
+    # boto3 세션 스텁 주입
+    monkeypatch.setattr(fus.boto3, "Session", bootstrap.FakeBoto3Session)
     fixed_time = datetime.datetime(
         2026,
         2,

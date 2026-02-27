@@ -316,7 +316,8 @@ def _build_candidates(
 
     # 점수 상위 후보 선택
     limit: int = min(top_k, scores.size)
-    sorted_indices: np.ndarray = np.argsort(scores)[::-1][:limit]
+    # 동점 점수는 원본 인덱스 순서 유지
+    sorted_indices: np.ndarray = np.argsort(-scores, kind="mergesort")[:limit]
     candidates: list[FaqMatch] = []
 
     for idx in sorted_indices:
@@ -409,18 +410,18 @@ def answer_question(question: str) -> FaqAnswerResult:
     return result
 
 
-# def reset_cache_for_tests() -> None:
-#     global _CACHE
+def reset_cache_for_tests() -> None:
+    global _CACHE
 
-#     if _CACHE is not None:
-#         _CACHE.clear()
+    if _CACHE is not None:
+        _CACHE.clear()
 
-#     _CACHE = None
+    _CACHE = None
 
 
-# def reset_index_for_tests() -> None:
-#     global _INDEX, _INDEX_PATH, _DATA_PATH
+def reset_index_for_tests() -> None:
+    global _INDEX, _INDEX_PATH, _DATA_PATH
 
-#     _INDEX = None
-#     _INDEX_PATH = None
-#     _DATA_PATH = None
+    _INDEX = None
+    _INDEX_PATH = None
+    _DATA_PATH = None

@@ -117,6 +117,9 @@ def test_answer_question_unmatched(monkeypatch, tmp_path: Path) -> None:
     assert result.matched is False
     assert "답변을 찾지 못했어요" in result.message
     assert result.top_ids == ["faq-001", "faq-002"]
+    lines = result.message.splitlines()
+    assert lines[1] == "1. 봇 사용법이 궁금해요."
+    assert lines[2] == "2. 데이터가 갱신되는 시간은 언제인가요?"
 
 
 def test_answer_question_cache(monkeypatch, tmp_path: Path) -> None:
