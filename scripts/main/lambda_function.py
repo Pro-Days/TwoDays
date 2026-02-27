@@ -1,4 +1,4 @@
-"""메인 Lambda 엔트리포인트와 디스코드 명령 라우팅을 담당한다."""
+"""메인 Lambda 엔트리포인트 및 디스코드 명령 라우팅."""
 
 from __future__ import annotations
 
@@ -16,10 +16,12 @@ except ImportError:
 
 from typing import TYPE_CHECKING
 
+import scripts.main.features.faq_answer as faq
 import scripts.main.features.get_character_info as gci
 import scripts.main.features.get_level_distribution as gld
 import scripts.main.features.get_rank_info as gri
 import scripts.main.features.register_player as rp
+import scripts.main.infrastructure.persistence.faq_unanswered_store as fus
 import scripts.main.integrations.discord.discord_admin_api as daa
 import scripts.main.integrations.discord.message_actions as ma
 import scripts.main.integrations.discord.send_msg as sm
@@ -172,6 +174,9 @@ def command_handler(event) -> dict:
 
     elif cmd == "등록":
         return cmd_register(event, options)
+
+    elif cmd == "질문":
+        return cmd_question(event, options)
 
     else:
         logger.warning("unhandled command: " f"{cmd}")
@@ -547,42 +552,108 @@ def cmd_register(event: dict, options: list[dict]) -> dict:
     return sm.send(event, f"{real_name}님을 등록했어요.\n\n")
 
 
-if __name__ == "__main__":
-    lambda_handler({"action": "update_1D"}, None)
-    event = {
-        "body": """
-        {"authorizing_integration_owners":
-            {
-                "0":"738633695186911232",
-                "1":"407775594714103808"
-            },
-        "channel":
-            {
-                "id":"1248627932037910558",
-                "name":"채팅"
-            },
-        "data":{
-            "name":"랭킹",
-            "options":[
-                {
-                    "name":"랭킹 범위",
-                    "value":"80..90"
-                },
-                {
-                    "name":"기간",
-                    "value":5
-                }
-            ]
-        },
-        "guild_id":"738633695186911232",
-        "member":{
-            "user":{
-                "global_name":"데이즈",
-                "id":"407775594714103808",
-                "username":"prodays"
-                }
-            }
-        }""",
+def cmd_question(event: dict, options: list[dict]) -> dict:
+    logger.debug(f"cmd_question options={truncate_text(options, 1000)}")
+
+    # 옵션 질문 텍스트 추출
+    question: str | None = None
+
+    for i in options:
+        if i.get("name") == "질문":
+            value = i.get("value")
+
+            if value is not None:
+                question = str(value).strip()
+
+    if not question:
+        # 질문 공백 입력 즉시 안내
+        return sm.send(event, "질문을 입력해주세요.")
+
+    # FAQ 시맨틱 검색 답변 생성
+    result: faq.FaqAnswerResult = faq.answer_question(question)
+
+    if result.matched:
+        # 매칭 답변 요청/응답 로그 기록
+        log_message: str = f"질문: {question}\n답변: {result.message}"
+        return sm.send(event, result.message, error=log_message)
+
+    # 유사 질문 안내 시 미응답 질문 저장
+    body: dict = json.loads(event["body"])
+    guild_id: str | None = body.get("guild_id")
+    channel_id: str | None = body.get("channel_id") or body.get("channel", {}).get("id")
+    requester_id: str | None = ip.resolve_requester_id(body)
+
+    try:
+        store = fus.FaqUnansweredStore()
+        store.save_unanswered_question(
+            fus.UnansweredQuestionInput(
+                question=question,
+                top_score=result.top_score,
+                top_ids=result.top_ids,
+                guild_id=guild_id,
+                channel_id=channel_id,
+                requester_id=requester_id,
+            )
+        )
+
+    except Exception:
+        # 저장 실패 시 명령 흐름 보호 로그 기록
+        logger.exception(
+            "faq unanswered save failed: " f"question={truncate_text(question, 200)}"
+        )
+
+    log_payload: dict[str, object] = {
+        "question": question,
+        "response": result.message,
+        "top_score": result.top_score,
+        "top_ids": result.top_ids,
     }
+    log_message: str = json.dumps(log_payload, ensure_ascii=False)
+
+    return sm.send(
+        event,
+        result.message,
+        log_type=sm.LogType.FAQ_UNMATCHED,
+        error=log_message,
+    )
+
+
+if __name__ == "__main__":
+    # lambda_handler({"action": "update_1D"}, None)
+    # event = {
+    #     "body": """
+    #     {"authorizing_integration_owners":
+    #         {
+    #             "0":"738633695186911232",
+    #             "1":"407775594714103808"
+    #         },
+    #     "channel":
+    #         {
+    #             "id":"1248627932037910558",
+    #             "name":"채팅"
+    #         },
+    #     "data":{
+    #         "name":"랭킹",
+    #         "options":[
+    #             {
+    #                 "name":"랭킹 범위",
+    #                 "value":"80..90"
+    #             },
+    #             {
+    #                 "name":"기간",
+    #                 "value":5
+    #             }
+    #         ]
+    #     },
+    #     "guild_id":"738633695186911232",
+    #     "member":{
+    #         "user":{
+    #             "global_name":"데이즈",
+    #             "id":"407775594714103808",
+    #             "username":"prodays"
+    #             }
+    #         }
+    #     }""",
+    # }
     # lambda_handler(event, None)
     pass

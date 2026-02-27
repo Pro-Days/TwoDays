@@ -21,6 +21,7 @@ class LogType(IntEnum):
     UPDATE = 4
     UPDATE_ERROR = 5
     PLAYER_UPDATE = 6
+    FAQ_UNMATCHED = 7
 
 
 def _build_fields(embed_json: dict[str, Any]) -> list[dict[str, Any]]:
@@ -44,6 +45,45 @@ def _command_text(body: dict[str, Any]) -> str | None:
     return str(cmd_name)
 
 
+def _parse_faq_unmatched_msg(raw_msg: str) -> dict[str, str | None]:
+    if not raw_msg:
+        return {"faq_error": None}
+
+    try:
+        payload: Any = json.loads(raw_msg)
+
+    except json.JSONDecodeError:
+        return {"faq_error": raw_msg}
+
+    if not isinstance(payload, dict):
+        return {"faq_error": raw_msg}
+
+    question: Any = payload.get("question")
+    response: Any = payload.get("response")
+    top_score: Any = payload.get("top_score")
+    top_ids: Any = payload.get("top_ids")
+
+    if isinstance(top_ids, list):
+        top_ids_text: str | None = ", ".join(str(item) for item in top_ids)
+
+    elif top_ids is None:
+        top_ids_text = None
+
+    else:
+        top_ids_text = str(top_ids)
+
+    top_score_text: str | None = None
+    if top_score is not None:
+        top_score_text = str(top_score)
+
+    return {
+        "faq_question": str(question) if question is not None else None,
+        "faq_response": str(response) if response is not None else None,
+        "faq_top_score": top_score_text,
+        "faq_top_ids": top_ids_text,
+    }
+
+
 def build_log_payload(
     log_type: LogType,
     event: dict[str, Any],
@@ -59,6 +99,7 @@ def build_log_payload(
         LogType.COMMAND,
         LogType.ADMIN_COMMAND,
         LogType.COMMAND_ERROR,
+        LogType.FAQ_UNMATCHED,
     ):
         raw_body: str = event.get("body", "{}")
 
@@ -144,12 +185,24 @@ def build_log_payload(
 
             fields = _build_fields(embed_json)
 
-        # LogType.COMMAND_ERROR
-        else:
+        elif log_type == LogType.COMMAND_ERROR:
             embed_json = {**common_embed, "error": msg}
             title = "투데이즈 명령어 에러 로그"
             color = 15548997
             fields: list[dict[str, Any]] = _build_fields(embed_json)
+
+        elif log_type == LogType.FAQ_UNMATCHED:
+            faq_fields: dict[str, str | None] = _parse_faq_unmatched_msg(msg)
+            embed_json = {**common_embed, **faq_fields}
+            title = "투데이즈 FAQ 미매칭 로그"
+            color = 15548997
+            fields = _build_fields(embed_json)
+
+        else:
+            embed_json = {**common_embed, "error": msg}
+            title = "투데이즈 명령어 에러 로그"
+            color = 15548997
+            fields = _build_fields(embed_json)
 
     elif log_type == LogType.UPDATE:
         embed_json = {"time": now, "cmd": event["action"]}

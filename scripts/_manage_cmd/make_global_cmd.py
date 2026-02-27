@@ -1,3 +1,5 @@
+"""디스코드 글로벌 명령 스키마 구성 및 등록."""
+
 from __future__ import annotations
 
 import os
@@ -177,6 +179,16 @@ def build_global_commands() -> list[dict[str, Any]]:
             "description": "유저 레벨 분포를 보여줍니다.",
             "options": [
                 _date_option("유저 레벨 분포를 조회할 기준 날짜"),
+                _ephemeral_option(),
+            ],
+        },
+        {
+            "name": "질문",
+            "type": 1,
+            "integration_types": INTEGRATION_TYPES,
+            "description": "자주 묻는 질문(FAQ)에 등록된 질문에 대한 답변을 보여줍니다.",
+            "options": [
+                _string_option("질문", "질문할 내용을 입력하세요.", required=True),
                 _ephemeral_option(),
             ],
         },
