@@ -28,6 +28,8 @@ jobs:
           cp scripts/main/*.py build/main/
           mkdir -p build/main/scripts
           cp -r scripts/main build/main/scripts/
+          mkdir -p build/main/assets
+          cp -r assets/faq build/main/assets/faq
           find build/main -type d -name '__pycache__' -prune -exec rm -rf {} + || true
           find build/main -type d -name 'tests' -prune -exec rm -rf {} + || true
           find build/main -type d -name 'test' -prune -exec rm -rf {} + || true
