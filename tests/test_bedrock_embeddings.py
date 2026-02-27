@@ -37,25 +37,6 @@ def test_get_client_requires_region(monkeypatch, mocker) -> None:
     session_factory.assert_not_called()
 
 
-def test_get_client_requires_credential_pair(monkeypatch, mocker) -> None:
-    # 리전/부분 자격 증명 설정
-    monkeypatch.setenv("AWS_REGION", "ap-northeast-2")
-    monkeypatch.setenv("AWS_ACCESS_KEY", "test-access")
-    monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
-    monkeypatch.delenv("AWS_SESSION_TOKEN", raising=False)
-    # 세션 생성 호출 추적
-    session_factory = mocker.patch.object(
-        bedrock_embeddings.boto3,
-        "Session",
-    )
-
-    # 자격 증명 쌍 누락 오류 검증
-    with pytest.raises(RuntimeError):
-        bedrock_embeddings._get_client()
-
-    session_factory.assert_not_called()
-
-
 def test_get_client_uses_env_region_and_credentials(monkeypatch, mocker) -> None:
     # 리전/자격 증명 환경 변수 설정
     monkeypatch.setenv("AWS_REGION", "ap-northeast-2")

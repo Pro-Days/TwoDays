@@ -51,13 +51,7 @@ def _build_session_kwargs(region_name: str) -> dict[str, str]:
         bool(session_token),
     )
 
-    if access_key or secret_key:
-        # 자격 증명 쌍 유효성 검증
-        if not (access_key and secret_key):
-            raise RuntimeError(
-                "AWS credentials require both AWS_ACCESS_KEY and AWS_SECRET_ACCESS_KEY."
-            )
-
+    if access_key and secret_key:
         session_kwargs["aws_access_key_id"] = access_key
         session_kwargs["aws_secret_access_key"] = secret_key
 
