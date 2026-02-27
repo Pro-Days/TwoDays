@@ -44,6 +44,13 @@ def _build_session_kwargs(region_name: str) -> dict[str, str]:
     session_token: str | None = os.getenv(AWS_SESSION_TOKEN_ENV)
     session_kwargs: dict[str, str] = {"region_name": region_name}
 
+    logger.info(
+        "bedrock credential env presence: access_key=%s secret_key=%s session_token=%s",
+        bool(access_key),
+        bool(secret_key),
+        bool(session_token),
+    )
+
     if access_key or secret_key:
         # 자격 증명 쌍 유효성 검증
         if not (access_key and secret_key):
