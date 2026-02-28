@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,11 +43,33 @@ def _require_env(name: str) -> str:
     return value
 
 
-def _resolve_asset_path(env_name: str) -> str:
-    # 환경 변수 기반 경로 정규화
+def _resolve_asset_path(env_name: str, override: str | None) -> str:
+    # 환경 변수/인자 기반 경로 정규화
+    if override:
+        normalized_override: str = convert_path(os.path.normpath(override))
+        return normalized_override
+
     env_value: str = _require_env(env_name)
 
     return convert_path(os.path.normpath(env_value))
+
+
+def _resolve_model_id(override: str | None) -> str:
+    # 모델 ID 우선순위 처리
+    if override and override.strip():
+        return override.strip()
+
+    return bedrock_embeddings.EMBED_MODEL_ID
+
+
+def _parse_args(argv: list[str]) -> argparse.Namespace:
+    # CLI 인자 파싱
+    parser = argparse.ArgumentParser(description="FAQ 인덱스 빌더")
+    parser.add_argument("--data-path", type=str)
+    parser.add_argument("--index-path", type=str)
+    parser.add_argument("--model-id", type=str)
+
+    return parser.parse_args(argv)
 
 
 def _normalize_string_list(value: list | None) -> list[str]:
@@ -172,10 +196,17 @@ def _load_entries(path: str) -> list[dict]:
     return entries
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    # 인자 기본값 처리
+    if argv is None:
+        argv = []
+
+    args = _parse_args(argv)
+
     # 데이터/인덱스 경로 해석
-    data_path: str = _resolve_asset_path(FAQ_DATA_PATH_ENV)
-    index_path: str = _resolve_asset_path(FAQ_INDEX_PATH_ENV)
+    data_path: str = _resolve_asset_path(FAQ_DATA_PATH_ENV, args.data_path)
+    index_path: str = _resolve_asset_path(FAQ_INDEX_PATH_ENV, args.index_path)
+    model_id: str = _resolve_model_id(args.model_id)
 
     # FAQ 데이터 텍스트/해시/ID 준비
     entries: list[dict] = _load_entries(data_path)
@@ -192,7 +223,7 @@ def main() -> None:
 
     if (
         existing_index is not None
-        and existing_index.model_id == bedrock_embeddings.EMBED_MODEL_ID
+        and existing_index.model_id == model_id
         and existing_index.schema_version == INDEX_SCHEMA_VERSION
     ):
         # 기존 인덱스 유효 시 변경 항목만 재임베딩
@@ -224,7 +255,7 @@ def main() -> None:
         if pending_texts:
             # 변경 질문 임베딩 요청
             new_embeddings: list[list[float]] = bedrock_embeddings.embed_texts(
-                pending_texts
+                pending_texts, model_id
             )
 
             if len(new_embeddings) != len(pending_texts):
@@ -249,7 +280,7 @@ def main() -> None:
 
     else:
         # 신규 인덱스/메타데이터 변경 시 전체 재빌드
-        embeddings: list[list[float]] = bedrock_embeddings.embed_texts(texts)
+        embeddings: list[list[float]] = bedrock_embeddings.embed_texts(texts, model_id)
 
         if len(embeddings) != len(entries):
             raise ValueError("FAQ embedding count mismatch.")
@@ -269,7 +300,7 @@ def main() -> None:
         embeddings=embeddings_array,
         ids=ids_array,
         hashes=hashes_array,
-        model_id=np.asarray(bedrock_embeddings.EMBED_MODEL_ID),
+        model_id=np.asarray(model_id),
         schema_version=np.asarray(INDEX_SCHEMA_VERSION),
     )
 
@@ -284,4 +315,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

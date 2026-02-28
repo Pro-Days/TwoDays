@@ -243,6 +243,48 @@ FAQ_DATA_PATH와 FAQ_INDEX_PATH 환경 변수를 설정한 뒤 실행하세요.
 - `FAQ_QUERY_CACHE_TTL_SEC` 예시: `300`
 - `FAQ_UNANSWERED_TABLE` 예시: `twodays-faq-unanswered`
 
+CLI 옵션으로 경로/모델을 직접 지정할 수 있습니다:
+
+- `--data-path`: FAQ 데이터 경로
+- `--index-path`: 인덱스 출력 경로
+- `--model-id`: 임베딩 모델 ID
+
+예시:
+
+- `.venv\\Scripts\\python.exe scripts/_manage_cmd/build_faq_index.py --data-path assets/faq/faq_data.json --index-path assets/faq/faq_index_titan.npz --model-id amazon.titan-embed-text-v2:0`
+- `.venv\\Scripts\\python.exe scripts/_manage_cmd/build_faq_index.py --data-path assets/faq/faq_data.json --index-path assets/faq/faq_index_other.npz --model-id <other-model-id>`
+
+### FAQ 모델 비교
+
+로컬에서 질문/정답을 입력하고, 모델별 FAQ 인덱스를 비교할 수 있습니다.
+`threshold`를 생략하면 `FAQ_MATCH_THRESHOLD` 환경 변수를 사용합니다.
+스크립트는 같은 폴더의 설정 파일을 자동으로 읽으며 CLI 옵션을 사용하지 않습니다.
+
+설정 파일 위치:
+
+- `scripts/_manage_cmd/faq_model_compare_runner/compare_config.json`
+
+설정 파일 예시:
+
+```json
+{
+  "data_path": "assets/faq/faq_data.json",
+  "questions": [
+    { "text": "봇 사용법이 궁금해요.", "expected_faq_id": "faq-001" }
+  ],
+  "threshold": 0.8,
+  "top_k": 3,
+  "models": [
+    { "label": "default", "index_path": "assets/faq/faq_index.npz" }
+  ],
+  "output_path": "outputs/faq_model_compare.json"
+}
+```
+
+실행:
+
+- `.venv\\Scripts\\python.exe scripts/_manage_cmd/faq_model_compare_runner/run_compare.py`
+
 ### 아키텍처 (요약)
 
 1. 디스코드가 인터랙션 요청을 `scripts/discord_event_handler/lambda_function.py`로 전달

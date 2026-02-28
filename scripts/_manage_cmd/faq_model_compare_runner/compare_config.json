@@ -1,0 +1,18 @@
+{
+  "data_path": "assets/faq/faq_data.json",
+  "threshold": 0.8,
+  "top_k": 3,
+  "questions": [
+    {
+      "text": "봇 사용법이 궁금해요.",
+      "expected_faq_id": "faq-001"
+    }
+  ],
+  "models": [
+    {
+      "label": "default",
+      "index_path": "assets/faq/faq_index.npz"
+    }
+  ],
+  "output_path": "outputs/faq_model_compare.json"
+}

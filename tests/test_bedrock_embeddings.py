@@ -94,3 +94,52 @@ def test_extract_embedding_raises_on_missing_data() -> None:
 
     with pytest.raises(ValueError):
         bedrock_embeddings._extract_embedding(payload)
+
+
+def test_embed_texts_with_model_uses_model_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 지정 모델 ID 전달 검증 시나리오 준비
+    calls: list[tuple[str, str]] = []
+    fake_client = object()
+
+    def fake_get_client() -> object:
+        return fake_client
+
+    def fake_embed_single(client: object, model_id: str, text: str) -> list[float]:
+        calls.append((model_id, text))
+        return [0.1]
+
+    monkeypatch.setattr(bedrock_embeddings, "_get_client", fake_get_client)
+    monkeypatch.setattr(bedrock_embeddings, "_embed_single", fake_embed_single)
+
+    # 임베딩 실행
+    result = bedrock_embeddings.embed_texts_with_model(
+        "test-model",
+        ["alpha", "beta"],
+    )
+
+    # 호출 파라미터 검증
+    assert result == [[0.1], [0.1]]
+    assert calls == [("test-model", "alpha"), ("test-model", "beta")]
+
+
+def test_embed_texts_with_model_empty_texts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 빈 입력 처리 시나리오 준비
+    def fake_get_client() -> object:
+        raise AssertionError("_get_client should not be called.")
+
+    monkeypatch.setattr(bedrock_embeddings, "_get_client", fake_get_client)
+
+    # 빈 입력 반환 검증
+    result = bedrock_embeddings.embed_texts_with_model("model-x", [])
+
+    assert result == []
+
+
+def test_embed_texts_with_model_requires_model_id() -> None:
+    # 모델 ID 누락 오류 검증
+    with pytest.raises(ValueError):
+        bedrock_embeddings.embed_texts_with_model(" ", ["text"])

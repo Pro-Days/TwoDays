@@ -110,10 +110,14 @@ def test_prune_deleted_entries(monkeypatch, tmp_path: Path) -> None:
     _configure_env(monkeypatch, data_path, str(index_path))
 
     # 임베딩 호출 금지 검증용 모킹
-    def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+    def fake_embed_texts(model_id: str, texts: list[str]) -> list[list[float]]:
         raise AssertionError("embed_texts should not be called.")
 
-    monkeypatch.setattr(bedrock_embeddings, "embed_texts", fake_embed_texts)
+    monkeypatch.setattr(
+        bedrock_embeddings,
+        "embed_texts_with_model",
+        fake_embed_texts,
+    )
 
     # 인덱스 갱신 실행
     build_faq_index.main()
@@ -150,10 +154,14 @@ def test_reuse_unchanged_entries(monkeypatch, tmp_path: Path) -> None:
     _configure_env(monkeypatch, data_path, str(index_path))
 
     # 임베딩 호출 금지 검증용 모킹
-    def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+    def fake_embed_texts(model_id: str, texts: list[str]) -> list[list[float]]:
         raise AssertionError("embed_texts should not be called.")
 
-    monkeypatch.setattr(bedrock_embeddings, "embed_texts", fake_embed_texts)
+    monkeypatch.setattr(
+        bedrock_embeddings,
+        "embed_texts_with_model",
+        fake_embed_texts,
+    )
 
     # 인덱스 갱신 실행
     build_faq_index.main()
@@ -190,11 +198,15 @@ def test_update_only_changed_entry(monkeypatch, tmp_path: Path) -> None:
     captured: list[list[str]] = []
 
     # 변경 항목만 임베딩 호출되도록 모킹
-    def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+    def fake_embed_texts(model_id: str, texts: list[str]) -> list[list[float]]:
         captured.append(texts)
         return [[2.0, 2.0]]
 
-    monkeypatch.setattr(bedrock_embeddings, "embed_texts", fake_embed_texts)
+    monkeypatch.setattr(
+        bedrock_embeddings,
+        "embed_texts_with_model",
+        fake_embed_texts,
+    )
 
     # 인덱스 갱신 실행
     build_faq_index.main()
@@ -228,11 +240,15 @@ def test_full_rebuild_when_metadata_missing(monkeypatch, tmp_path: Path) -> None
     captured: list[list[str]] = []
 
     # 전체 임베딩 호출 모킹
-    def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+    def fake_embed_texts(model_id: str, texts: list[str]) -> list[list[float]]:
         captured.append(texts)
         return [[3.0, 3.0], [4.0, 4.0]]
 
-    monkeypatch.setattr(bedrock_embeddings, "embed_texts", fake_embed_texts)
+    monkeypatch.setattr(
+        bedrock_embeddings,
+        "embed_texts_with_model",
+        fake_embed_texts,
+    )
 
     # 인덱스 재빌드 실행
     build_faq_index.main()
@@ -273,11 +289,15 @@ def test_full_rebuild_on_model_change(monkeypatch, tmp_path: Path) -> None:
     captured: list[list[str]] = []
 
     # 전체 임베딩 호출 모킹
-    def fake_embed_texts(texts: list[str]) -> list[list[float]]:
+    def fake_embed_texts(model_id: str, texts: list[str]) -> list[list[float]]:
         captured.append(texts)
         return [[5.0, 5.0], [6.0, 6.0]]
 
-    monkeypatch.setattr(bedrock_embeddings, "embed_texts", fake_embed_texts)
+    monkeypatch.setattr(
+        bedrock_embeddings,
+        "embed_texts_with_model",
+        fake_embed_texts,
+    )
 
     # 인덱스 재빌드 실행
     build_faq_index.main()

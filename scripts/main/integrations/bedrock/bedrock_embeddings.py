@@ -111,18 +111,27 @@ def _embed_single(client: Any, model_id: str, text: str) -> list[float]:
     return _extract_embedding(data)
 
 
-def embed_texts(texts: list[str]) -> list[list[float]]:
-    """텍스트 목록을 Bedrock 임베딩으로 변환"""
+def embed_texts(texts: list[str], model_id: str = EMBED_MODEL_ID) -> list[list[float]]:
+    """텍스트 목록을 지정 모델 Bedrock 임베딩으로 변환"""
+
+    # 모델 ID 필수값 검증
+    cleaned_model_id: str = model_id.strip()
+
+    if not cleaned_model_id:
+        raise ValueError("model_id is required.")
 
     if not texts:
         return []
 
-    logger.debug("bedrock embed_texts start: " f"count={len(texts)}")
+    logger.debug(
+        "bedrock embed_texts_with_model start: "
+        f"count={len(texts)} model_id={cleaned_model_id}"
+    )
     client = _get_client()
     embeddings: list[list[float]] = []
 
     for text in texts:
         # 배치 미지원에 따른 순차 임베딩 생성
-        embeddings.append(_embed_single(client, EMBED_MODEL_ID, text))
+        embeddings.append(_embed_single(client, cleaned_model_id, text))
 
     return embeddings
