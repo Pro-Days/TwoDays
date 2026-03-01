@@ -32,6 +32,11 @@
             "path": "categories/blacksmith.json"
         },
         {
+            "id": "equipment",
+            "label": "장비",
+            "path": "categories/equipment.json"
+        },
+        {
             "id": "mine",
             "label": "광산",
             "path": "categories/mine.json"
