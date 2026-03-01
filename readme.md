@@ -227,7 +227,19 @@ GitHub Actions 배포 워크플로우는 `assets/faq`를 Lambda 패키지에 포
 예시 파일 경로:
 
 - `assets/faq/faq_data.json`
+- `assets/faq/categories/*.json`
 - `assets/faq/faq_index.npz`
+
+FAQ 구조 예시:
+
+```json
+{
+  "schema_version": 1,
+  "categories": [
+    { "id": "bot", "label": "봇", "path": "categories/bot.json" }
+  ]
+}
+```
 
 인덱스 생성:
 

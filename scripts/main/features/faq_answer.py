@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import json
 import os
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from scripts.main.integrations.bedrock import bedrock_embeddings
+from scripts.main.shared.utils.faq_data_loader import load_faq_items
 from scripts.main.shared.utils.log_utils import get_logger, truncate_text
 from scripts.main.shared.utils.path_utils import convert_path
 
@@ -184,19 +184,11 @@ def _parse_entry(item: dict) -> FaqEntry:
 
 
 def _load_faq_data(path: str) -> dict[str, FaqEntry]:
-    # JSON 데이터 엔트리 로드 및 유효성 검증
-    with open(path, "r", encoding="utf-8") as file_obj:
-        raw_data = json.load(file_obj)
-
-    if not isinstance(raw_data, list):
-        raise ValueError("FAQ data must be a list.")
-
+    # FAQ 데이터/매니페스트 로드 및 유효성 검증
+    raw_items: list[dict[str, Any]] = load_faq_items(path)
     entries_by_id: dict[str, FaqEntry] = {}
 
-    for item in raw_data:
-        if not isinstance(item, dict):
-            raise ValueError("FAQ entry must be an object.")
-
+    for item in raw_items:
         entry: FaqEntry = _parse_entry(item)
 
         if entry.entry_id in entries_by_id:

@@ -1,16 +1,85 @@
-[
-    {
-        "id": "faq-001",
-        "question": "봇 사용법이 궁금해요.",
-        "answer": "채팅창에 `/`를 입력한 뒤 원하는 명령을 선택하세요.",
-        "aliases": ["명령어 사용법", "슬래시 명령"],
-        "tags": ["사용법", "명령어"]
-    },
-    {
-        "id": "faq-002",
-        "question": "데이터가 갱신되는 시간은 언제인가요?",
-        "answer": "일일 데이터는 보통 다음 날 00시 전후 기준으로 갱신됩니다.",
-        "aliases": ["데이터 업데이트 언제돼요?", "갱신 시간"],
-        "tags": ["업데이트", "데이터"]
-    }
-]
+{
+    "schema_version": 1,
+    "categories": [
+        {
+            "id": "server_info",
+            "label": "서버정보",
+            "path": "categories/server_info.json"
+        },
+        {
+            "id": "bot",
+            "label": "봇",
+            "path": "categories/bot.json"
+        },
+        {
+            "id": "growth",
+            "label": "성장",
+            "path": "categories/growth.json"
+        },
+        {
+            "id": "contents",
+            "label": "콘텐츠",
+            "path": "categories/contents.json"
+        },
+        {
+            "id": "village",
+            "label": "마을",
+            "path": "categories/village.json"
+        },
+        {
+            "id": "blacksmith",
+            "label": "대장장이",
+            "path": "categories/blacksmith.json"
+        },
+        {
+            "id": "mine",
+            "label": "광산",
+            "path": "categories/mine.json"
+        },
+        {
+            "id": "adventure",
+            "label": "모험",
+            "path": "categories/adventure.json"
+        },
+        {
+            "id": "guild",
+            "label": "문파",
+            "path": "categories/guild.json"
+        },
+        {
+            "id": "ship",
+            "label": "배",
+            "path": "categories/ship.json"
+        },
+        {
+            "id": "qnwjr",
+            "label": "부적",
+            "path": "categories/qnwjr.json"
+        },
+        {
+            "id": "skill",
+            "label": "무공비급",
+            "path": "categories/skill.json"
+        },
+        {
+            "id": "hunting",
+            "label": "사냥",
+            "path": "categories/hunting.json"
+        },
+        {
+            "id": "stat",
+            "label": "스탯",
+            "path": "categories/stat.json"
+        },
+        {
+            "id": "advancement",
+            "label": "경지",
+            "path": "categories/advancement.json"
+        },
+        {
+            "id": "dudeks",
+            "label": "영단",
+            "path": "categories/dudeks.json"
+        }
+    ]
+}

@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 from scripts.main.integrations.bedrock import bedrock_embeddings
+from scripts.main.shared.utils.faq_data_loader import load_faq_items
 from scripts.main.shared.utils.path_utils import convert_path
 
 FAQ_INDEX_PATH_ENV: str = "FAQ_INDEX_PATH"
@@ -169,20 +170,13 @@ def _load_existing_index(path: str) -> ExistingIndex | None:
     )
 
 
-def _load_entries(path: str) -> list[dict]:
-    # 입력 JSON 검증 및 임베딩 대상 엔트리 추출
-    with open(path, "r", encoding="utf-8") as file_obj:
-        raw_data = json.load(file_obj)
+def _load_entries(path: str) -> list[dict[str, Any]]:
+    # 입력 JSON/매니페스트 로드 및 임베딩 대상 엔트리 추출
+    raw_items: list[dict[str, Any]] = load_faq_items(path)
+    entries: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
 
-    if not isinstance(raw_data, list):
-        raise ValueError("FAQ data must be a list.")
-
-    entries: list[dict] = []
-
-    for item in raw_data:
-        if not isinstance(item, dict):
-            raise ValueError("FAQ entry must be an object.")
-
+    for item in raw_items:
         entry_id: str = str(item.get("id", "")).strip()
         question: str = str(item.get("question", "")).strip()
         answer: str = str(item.get("answer", "")).strip()
@@ -191,6 +185,11 @@ def _load_entries(path: str) -> list[dict]:
         if not entry_id or not question or not answer:
             raise ValueError("FAQ entry requires id/question/answer fields.")
 
+        # 중복 ID 방지
+        if entry_id in seen_ids:
+            raise ValueError(f"Duplicate FAQ id: {entry_id}")
+
+        seen_ids.add(entry_id)
         entries.append(item)
 
     return entries
