@@ -22,6 +22,11 @@
             "path": "categories/contents.json"
         },
         {
+            "id": "alchemy",
+            "label": "제조",
+            "path": "categories/alchemy.json"
+        },
+        {
             "id": "village",
             "label": "마을",
             "path": "categories/village.json"
