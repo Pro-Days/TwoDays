@@ -10,13 +10,6 @@ import pytest
 from scripts.main.lambda_real_data_runner import CommandRunResult
 
 
-if not os.getenv("RUN_REAL_DATA_LAMBDA_TESTS"):
-    pytest.skip(
-        "실데이터 통합 테스트는 RUN_REAL_DATA_LAMBDA_TESTS=1 일 때만 실행합니다.",
-        allow_module_level=True,
-    )
-
-
 def test_require_env_raises_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     import scripts.main.lambda_real_data_runner as runner
 
