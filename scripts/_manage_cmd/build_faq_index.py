@@ -80,17 +80,17 @@ def _normalize_string_list(value: list | None) -> list[str]:
 
 
 def _build_text_parts(entry: dict) -> list[str]:
-    # 질문/별칭/태그 결합 리스트 구성
+    # 질문/답변/별칭 결합 리스트 구성
     question: str = str(entry.get("question", "")).strip()
+    answer: str = str(entry.get("answer", "")).strip()
     aliases: list[str] = _normalize_string_list(entry.get("aliases"))
-    tags: list[str] = _normalize_string_list(entry.get("tags"))
     parts: list[str] = [question]
+
+    if answer:
+        parts.append(answer)
 
     if aliases:
         parts.extend(aliases)
-
-    if tags:
-        parts.extend(tags)
 
     return parts
 

@@ -48,7 +48,6 @@ class FaqEntry:
     question: str
     answer: str
     aliases: list[str]
-    tags: list[str]
 
 
 @dataclass(frozen=True)
@@ -172,7 +171,6 @@ def _parse_entry(item: dict) -> FaqEntry:
     question: str = str(item.get("question", "")).strip()
     answer: str = str(item.get("answer", "")).strip()
     aliases: list[str] = _normalize_string_list(item.get("aliases"))
-    tags: list[str] = _normalize_string_list(item.get("tags"))
 
     if not entry_id or not question or not answer:
         raise ValueError("FAQ entry requires id/question/answer fields.")
@@ -182,7 +180,6 @@ def _parse_entry(item: dict) -> FaqEntry:
         question=question,
         answer=answer,
         aliases=aliases,
-        tags=tags,
     )
 
 
