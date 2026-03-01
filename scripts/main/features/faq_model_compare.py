@@ -36,6 +36,7 @@ class QuestionSpec:
 class ModelSpec:
     label: str
     index_path: str
+    model_id: str | None
     threshold: float | None
     top_k: int | None
 
@@ -322,6 +323,22 @@ def _parse_required_str(value: Any, field: str) -> str:
     return cleaned
 
 
+def _parse_optional_str(value: Any, field: str) -> str | None:
+    # 선택 문자열 필드 파싱
+    if value is None:
+        return None
+
+    if not isinstance(value, str):
+        raise ValueError(f"{field} must be a string.")
+
+    cleaned: str = value.strip()
+
+    if not cleaned:
+        raise ValueError(f"{field} must not be blank.")
+
+    return cleaned
+
+
 def _parse_optional_float(value: Any, field: str) -> float | None:
     # 선택 float 필드 파싱
     if value is None:
@@ -399,6 +416,10 @@ def _parse_models(value: Any) -> list[ModelSpec]:
             item.get("index_path"),
             "models.index_path",
         )
+        model_id: str | None = _parse_optional_str(
+            item.get("model_id"),
+            "models.model_id",
+        )
         threshold: float | None = _parse_optional_float(
             item.get("threshold"),
             "models.threshold",
@@ -408,6 +429,7 @@ def _parse_models(value: Any) -> list[ModelSpec]:
             ModelSpec(
                 label=label,
                 index_path=index_path,
+                model_id=model_id,
                 threshold=threshold,
                 top_k=top_k,
             )
@@ -464,6 +486,7 @@ def load_config(path: str) -> CompareConfig:
             ModelSpec(
                 label=model.label,
                 index_path=_normalize_path(model.index_path),
+                model_id=model.model_id,
                 threshold=model.threshold,
                 top_k=model.top_k,
             )

@@ -256,7 +256,7 @@ CLI 옵션으로 경로/모델을 직접 지정할 수 있습니다:
 
 ### FAQ 모델 비교
 
-로컬에서 질문/정답을 입력하고, 모델별 FAQ 인덱스를 비교할 수 있습니다.
+로컬에서 질문/정답을 입력하고, 모델별 FAQ 인덱스를 비교할 수 있습니다. 실행 시 `data_path` 기준으로 각 모델의 인덱스를 자동 생성/갱신합니다.
 
 설정 파일 위치:
 
@@ -273,7 +273,11 @@ CLI 옵션으로 경로/모델을 직접 지정할 수 있습니다:
   "threshold": 0.8,
   "top_k": 3,
   "models": [
-    { "label": "default", "index_path": "assets/faq/faq_index.npz" }
+    {
+      "label": "default",
+      "index_path": "assets/faq/faq_index.npz",
+      "model_id": "amazon.titan-embed-text-v2:0"
+    }
   ],
   "output_path": "outputs/faq_model_compare.json"
 }
