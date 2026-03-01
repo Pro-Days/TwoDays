@@ -6,16 +6,12 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any, TypedDict
 
 import numpy as np
 
 from scripts.main.integrations.bedrock import bedrock_embeddings
 from scripts.main.shared.utils.path_utils import convert_path
-
-if TYPE_CHECKING:
-    from typing import Any
-
 
 FAQ_MATCH_THRESHOLD_ENV: str = "FAQ_MATCH_THRESHOLD"
 DEFAULT_TOP_K: int = 3
@@ -77,6 +73,64 @@ class Candidate:
     score: float
 
 
+class CandidatePayload(TypedDict):
+    entry_id: str
+    question: str
+    score: float
+    answer: str
+
+
+class ModelResultPayload(TypedDict):
+    model_label: str
+    model_id: str
+    index_path: str
+    threshold: float
+    top_score: float | None
+    confidence: float | None
+    matched: bool
+    is_correct: bool
+    top_ids: list[str]
+    answer: str
+    candidates: list[CandidatePayload]
+
+
+class QuestionReportPayload(TypedDict):
+    text: str
+    expected_faq_id: str
+    results: list[ModelResultPayload]
+
+
+class ModelAggregateState(TypedDict):
+    model_label: str
+    model_id: str
+    index_path: str
+    correct_count: int
+    total_count: int
+    confidence_sum: float
+    confidence_count: int
+
+
+class ModelAggregatePayload(TypedDict):
+    model_label: str
+    model_id: str
+    index_path: str
+    accuracy_top1: float
+    correct_count: int
+    total_count: int
+    avg_confidence: float | None
+
+
+class SettingsPayload(TypedDict):
+    threshold: float
+    top_k: int
+
+
+class CompareReportPayload(TypedDict):
+    settings: SettingsPayload
+    models: list[ModelAggregatePayload]
+    questions: list[QuestionReportPayload]
+
+
 def _require_env(name: str) -> str:
     # 필수 환경 변수 누락 검증
     value: str | None = os.getenv(name)
@@ -98,7 +152,7 @@ def _parse_float_env(name: str) -> float:
         raise RuntimeError(f"invalid float env: {name}={raw_value}") from exc
 
 
-def _normalize_string_list(value: list | None) -> list[str]:
+def _normalize_string_list(value: list[Any] | None) -> list[str]:
     # 문자열 리스트 정규화
     if value is None:
         return []
@@ -106,7 +160,7 @@ def _normalize_string_list(value: list | None) -> list[str]:
     return [str(item).strip() for item in value if str(item).strip()]
 
 
-def _parse_entry(item: dict) -> FaqEntry:
+def _parse_entry(item: dict[str, Any]) -> FaqEntry:
     # FAQ 엔트리 필수 필드 검증
     entry_id: str = str(item.get("id", "")).strip()
     question: str = str(item.get("question", "")).strip()
@@ -159,7 +213,7 @@ def _normalize_embeddings(embeddings: np.ndarray) -> np.ndarray:
     return embeddings / safe_norms[:, None]
 
 
-def _normalize_index_text(value: object) -> str:
+def _normalize_index_text(value: Any) -> str:
     # NumPy bytes 문자열 변환
     if isinstance(value, (bytes, np.bytes_)):
         return value.decode("utf-8")
@@ -255,7 +309,7 @@ def _embed_question(model_id: str, question: str) -> np.ndarray:
     return vector / norm
 
 
-def _parse_required_str(value: object, field: str) -> str:
+def _parse_required_str(value: Any, field: str) -> str:
     # 필수 문자열 필드 검증
     if not isinstance(value, str):
         raise ValueError(f"{field} must be a string.")
@@ -268,19 +322,19 @@ def _parse_required_str(value: object, field: str) -> str:
     return cleaned
 
 
-def _parse_optional_float(value: object, field: str) -> float | None:
+def _parse_optional_float(value: Any, field: str) -> float | None:
     # 선택 float 필드 파싱
     if value is None:
         return None
 
     try:
-        return float(value)
+        return float(value)  # type: ignore
 
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{field} must be a float.") from exc
 
 
-def _parse_optional_top_k(value: object, field: str) -> int | None:
+def _parse_optional_top_k(value: Any, field: str) -> int | None:
     # 선택 top_k 필드 파싱
     if value is None:
         return None
@@ -289,7 +343,7 @@ def _parse_optional_top_k(value: object, field: str) -> int | None:
         raise ValueError(f"{field} must be an integer.")
 
     try:
-        parsed = int(value)
+        parsed = int(value)  # type: ignore
 
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{field} must be an integer.") from exc
@@ -300,7 +354,7 @@ def _parse_optional_top_k(value: object, field: str) -> int | None:
     return parsed
 
 
-def _parse_questions(value: object) -> list[QuestionSpec]:
+def _parse_questions(value: Any) -> list[QuestionSpec]:
     # 질문 목록 파싱
     if not isinstance(value, list):
         raise ValueError("questions must be a list.")
@@ -329,7 +383,7 @@ def _parse_questions(value: object) -> list[QuestionSpec]:
     return questions
 
 
-def _parse_models(value: object) -> list[ModelSpec]:
+def _parse_models(value: Any) -> list[ModelSpec]:
     # 모델 목록 파싱
     if not isinstance(value, list):
         raise ValueError("models must be a list.")
@@ -392,7 +446,7 @@ def load_config(path: str) -> CompareConfig:
         payload.get("threshold"),
         "threshold",
     )
-    raw_top_k: object = payload.get("top_k", DEFAULT_TOP_K)
+    raw_top_k: Any = payload.get("top_k", DEFAULT_TOP_K)
     top_k: int = _parse_optional_top_k(raw_top_k, "top_k") or DEFAULT_TOP_K
     output_path: str | None = None
     questions: list[QuestionSpec] = _parse_questions(payload.get("questions"))
@@ -467,9 +521,9 @@ def _build_model_runtime(
     )
 
 
-def _build_candidates_payload(candidates: list[Candidate]) -> list[dict[str, object]]:
+def _build_candidates_payload(candidates: list[Candidate]) -> list[CandidatePayload]:
     # 후보 결과 변환
-    payload: list[dict[str, object]] = []
+    payload: list[CandidatePayload] = []
 
     for candidate in candidates:
         payload.append(
@@ -487,7 +541,7 @@ def _build_candidates_payload(candidates: list[Candidate]) -> list[dict[str, obj
 def _build_model_result(
     question: QuestionSpec,
     model: ModelRuntime,
-) -> dict[str, object]:
+) -> ModelResultPayload:
     # 모델별 질문 비교 수행
     # 질문 임베딩 및 점수 계산
     query_vector: np.ndarray = _embed_question(model.index.model_id, question.text)
@@ -522,13 +576,13 @@ def _build_model_result(
 def _build_report_questions(
     questions: list[QuestionSpec],
     models: list[ModelRuntime],
-) -> list[dict[str, object]]:
+) -> list[QuestionReportPayload]:
     # 질문별 비교 결과 구성
-    report: list[dict[str, object]] = []
+    report: list[QuestionReportPayload] = []
 
     for question in questions:
         # 질문별 모델 비교 리스트 구성
-        results: list[dict[str, object]] = []
+        results: list[ModelResultPayload] = []
 
         for model in models:
             # 모델별 결과 추가
@@ -547,25 +601,25 @@ def _build_report_questions(
 
 
 def _build_model_aggregates(
-    report_questions: list[dict[str, object]],
-) -> list[dict[str, object]]:
+    report_questions: list[QuestionReportPayload],
+) -> list[ModelAggregatePayload]:
     # 모델별 집계 구성
-    aggregates: dict[str, dict[str, object]] = {}
+    aggregates: dict[str, ModelAggregateState] = {}
 
     for question in report_questions:
         # 질문별 결과 추출
-        results = question.get("results", [])
+        results: list[ModelResultPayload] = question["results"]
 
         for result in results:
             # 모델별 누적 버킷 확보
-            model_label: str = str(result.get("model_label"))
-            current = aggregates.get(model_label)
+            model_label: str = result["model_label"]
+            current: ModelAggregateState | None = aggregates.get(model_label)
 
             if current is None:
                 current = {
                     "model_label": model_label,
-                    "model_id": result.get("model_id"),
-                    "index_path": result.get("index_path"),
+                    "model_id": result["model_id"],
+                    "index_path": result["index_path"],
                     "correct_count": 0,
                     "total_count": 0,
                     "confidence_sum": 0.0,
@@ -574,29 +628,27 @@ def _build_model_aggregates(
                 aggregates[model_label] = current
 
             # 전체 카운트 누적
-            current["total_count"] = int(current["total_count"]) + 1
+            current["total_count"] += 1
 
             # 정답 카운트 누적
-            if bool(result.get("is_correct")):
-                current["correct_count"] = int(current["correct_count"]) + 1
+            if result["is_correct"]:
+                current["correct_count"] += 1
 
             # 확신도 누적
-            confidence_value = result.get("confidence")
+            confidence_value: float | None = result["confidence"]
 
             if confidence_value is not None:
-                current["confidence_sum"] = float(current["confidence_sum"]) + float(
-                    confidence_value
-                )
-                current["confidence_count"] = int(current["confidence_count"]) + 1
+                current["confidence_sum"] += confidence_value
+                current["confidence_count"] += 1
 
-    aggregates_list: list[dict[str, object]] = []
+    aggregates_list: list[ModelAggregatePayload] = []
 
     for aggregate in aggregates.values():
         # 모델별 지표 계산
-        correct_count: int = int(aggregate["correct_count"])
-        total_count: int = int(aggregate["total_count"])
-        confidence_sum: float = float(aggregate["confidence_sum"])
-        confidence_count: int = int(aggregate["confidence_count"])
+        correct_count: int = aggregate["correct_count"]
+        total_count: int = aggregate["total_count"]
+        confidence_sum: float = aggregate["confidence_sum"]
+        confidence_count: int = aggregate["confidence_count"]
         accuracy_top1: float = correct_count / total_count if total_count else 0.0
         avg_confidence: float | None = (
             confidence_sum / confidence_count if confidence_count else None
@@ -616,7 +668,7 @@ def _build_model_aggregates(
     return aggregates_list
 
 
-def run_compare(config: CompareConfig) -> dict[str, object]:
+def run_compare(config: CompareConfig) -> CompareReportPayload:
     # 기본 임계값/데이터 준비
     default_threshold: float = _resolve_default_threshold(config.threshold)
     default_top_k: int = config.top_k
@@ -629,11 +681,11 @@ def run_compare(config: CompareConfig) -> dict[str, object]:
     ]
 
     # 질문별 리포트 생성
-    report_questions: list[dict[str, object]] = _build_report_questions(
+    report_questions: list[QuestionReportPayload] = _build_report_questions(
         config.questions,
         models,
     )
-    model_aggregates: list[dict[str, object]] = _build_model_aggregates(
+    model_aggregates: list[ModelAggregatePayload] = _build_model_aggregates(
         report_questions
     )
 
@@ -648,7 +700,7 @@ def run_compare(config: CompareConfig) -> dict[str, object]:
     }
 
 
-def write_report(report: dict[str, object], output_path: str | None) -> None:
+def write_report(report: CompareReportPayload, output_path: str | None) -> None:
     # 리포트 출력 경로 처리
     serialized: str = json.dumps(report, ensure_ascii=False, indent=2)
 

@@ -257,8 +257,6 @@ CLI 옵션으로 경로/모델을 직접 지정할 수 있습니다:
 ### FAQ 모델 비교
 
 로컬에서 질문/정답을 입력하고, 모델별 FAQ 인덱스를 비교할 수 있습니다.
-`threshold`를 생략하면 `FAQ_MATCH_THRESHOLD` 환경 변수를 사용합니다.
-스크립트는 같은 폴더의 설정 파일을 자동으로 읽으며 CLI 옵션을 사용하지 않습니다.
 
 설정 파일 위치:
 
@@ -283,7 +281,8 @@ CLI 옵션으로 경로/모델을 직접 지정할 수 있습니다:
 
 실행:
 
-- `.venv\\Scripts\\python.exe scripts/_manage_cmd/faq_model_compare_runner/run_compare.py`
+- Windows(CMD/PowerShell): `.venv\\Scripts\\python.exe scripts/_manage_cmd/faq_model_compare_runner/run_compare.py`
+- bash/WSL: `.venv/bin/python scripts/_manage_cmd/faq_model_compare_runner/run_compare.py`
 
 ### 아키텍처 (요약)
 

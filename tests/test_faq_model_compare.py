@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import inspect
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -202,3 +204,18 @@ def test_load_config_requires_expected_id(tmp_path: Path) -> None:
     # 설정 오류 검증
     with pytest.raises(ValueError):
         faq_model_compare.load_config(config_path)
+
+
+def test_faq_model_compare_type_hints_do_not_use_object() -> None:
+    # 함수 타입 힌트 내 object 사용 금지 검증
+    functions = inspect.getmembers(faq_model_compare, inspect.isfunction)
+
+    for _, function_obj in functions:
+        if function_obj.__module__ != faq_model_compare.__name__:
+            continue
+
+        for field_name, annotation in function_obj.__annotations__.items():
+            annotation_text: str = str(annotation)
+            assert re.search(r"\bobject\b", annotation_text) is None, (
+                f"{function_obj.__name__}.{field_name} uses object type hint"
+            )

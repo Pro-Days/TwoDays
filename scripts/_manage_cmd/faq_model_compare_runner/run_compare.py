@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from scripts.main.features import faq_model_compare
+
+if TYPE_CHECKING:
+    from scripts.main.features.faq_model_compare import (
+        CompareConfig,
+        CompareReportPayload,
+    )
 
 
 DEFAULT_CONFIG_FILENAME: str = "compare_config.json"
@@ -22,26 +30,20 @@ def resolve_default_config_path() -> str:
     return str(config_path)
 
 
-def run_with_config_path(config_path: str) -> dict[str, object]:
+def main(config_path: str) -> CompareReportPayload:
     # 설정 로드 및 비교 실행
-    config = faq_model_compare.load_config(config_path)
-    report = faq_model_compare.run_compare(config)
+    config: CompareConfig = faq_model_compare.load_config(config_path)
+    report: CompareReportPayload = faq_model_compare.run_compare(config)
     faq_model_compare.write_report(report, config.output_path)
 
     return report
 
 
-def run_default() -> dict[str, object]:
-    # 기본 설정 경로 실행
-    config_path: str = resolve_default_config_path()
-
-    return run_with_config_path(config_path)
-
-
-def main() -> None:
-    # 기본 설정 기반 비교 실행
-    run_default()
+def format_report(report: CompareReportPayload) -> str:
+    # 리포트 가독성 직렬화
+    return json.dumps(report, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
-    main()
+    report: CompareReportPayload = main(resolve_default_config_path())
+    print(format_report(report))
