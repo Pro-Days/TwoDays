@@ -90,6 +90,16 @@
             "id": "dudeks",
             "label": "영단",
             "path": "categories/dudeks.json"
+        },
+        {
+            "id": "tower",
+            "label": "수련의탑",
+            "path": "categories/tower.json"
+        },
+        {
+            "id": "dnanf",
+            "label": "우물던전",
+            "path": "categories/dnanf.json"
         }
     ]
 }
