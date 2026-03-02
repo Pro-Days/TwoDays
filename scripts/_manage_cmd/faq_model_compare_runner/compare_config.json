@@ -1,18 +1,167 @@
 {
-  "data_path": "assets/faq/faq_data.json",
-  "threshold": 0.8,
-  "top_k": 3,
-  "questions": [
-    {
-      "text": "봇 사용법이 궁금해요.",
-      "expected_faq_id": "faq-001"
-    }
-  ],
-  "models": [
-    {
-      "label": "default",
-      "index_path": "assets/faq/faq_index.npz"
-    }
-  ],
-  "output_path": "outputs/faq_model_compare.json"
+    "data_path": "assets/faq/faq_data.json",
+    "threshold": 0.8,
+    "top_k": 3,
+    "questions": [
+        {
+            "text": "한월 서버 주소가 뭐고 어디서 접속해요?",
+            "expected_faq_id": "서버정보-001"
+        },
+        {
+            "text": "슬래시 명령어는 어떻게 입력해서 쓰나요?",
+            "expected_faq_id": "봇-001"
+        },
+        {
+            "text": "직업이 따로 없다고 들었는데 성장 방식이 어떻게 되나요?",
+            "expected_faq_id": "성장-001"
+        },
+        {
+            "text": "이 서버에서 할 수 있는 대표 콘텐츠를 한 번에 알려주세요.",
+            "expected_faq_id": "콘텐츠-001"
+        },
+        {
+            "text": "약초 채집은 어디서 어떻게 진행하면 되나요?",
+            "expected_faq_id": "제조-001"
+        },
+        {
+            "text": "포션은 마을 어디에서 사나요?",
+            "expected_faq_id": "마을-002"
+        },
+        {
+            "text": "대장장이 시스템은 뭘 하는 콘텐츠예요?",
+            "expected_faq_id": "대장장이-001"
+        },
+        {
+            "text": "장비 재련하다 실패하면 단계가 어떻게 되나요?",
+            "expected_faq_id": "장비-001"
+        },
+        {
+            "text": "광질은 어떤 방식으로 하고 어디서 캐나요?",
+            "expected_faq_id": "광산-001"
+        },
+        {
+            "text": "한월 모험 콘텐츠의 핵심 특징이 궁금해요.",
+            "expected_faq_id": "모험-001"
+        },
+        {
+            "text": "문파 만들려면 레벨이랑 비용 조건이 어떻게 되나요?",
+            "expected_faq_id": "문파-001"
+        },
+        {
+            "text": "배 장비는 어떤 종류가 있고 각각 뭐가 올라가요?",
+            "expected_faq_id": "배-001"
+        },
+        {
+            "text": "부적은 최대 몇 개까지 착용할 수 있나요?",
+            "expected_faq_id": "부적-001"
+        },
+        {
+            "text": "무공비급 강화할 때 필요한 재료랑 비용을 알려주세요.",
+            "expected_faq_id": "무공비급-001"
+        },
+        {
+            "text": "몹이 나보다 레벨 높을 때 명중이나 회피가 어떻게 적용돼요?",
+            "expected_faq_id": "사냥-001"
+        },
+        {
+            "text": "레벨업하면 스탯 포인트랑 체력은 얼마나 오르나요?",
+            "expected_faq_id": "스탯-001"
+        },
+        {
+            "text": "경지 단계별로 요구 레벨이랑 포인트 지급량을 알려주세요.",
+            "expected_faq_id": "경지-001"
+        },
+        {
+            "text": "환이나 영단은 어디 가서 제조하나요?",
+            "expected_faq_id": "영단-001"
+        },
+        {
+            "text": "수련의탑은 어떤 방식으로 진행되는 콘텐츠인가요?",
+            "expected_faq_id": "수련의탑-001"
+        },
+        {
+            "text": "우물던전은 어떻게 이용하고 어떤 보상을 받나요?",
+            "expected_faq_id": "우물던전-001"
+        },
+        {
+            "text": "전용 런처로 켰는데도 접속이 안돼요.",
+            "expected_faq_id": "서버정보-010"
+        },
+        {
+            "text": "봇 일일 데이터는 보통 몇 시쯤 업데이트되나요?",
+            "expected_faq_id": "봇-002"
+        },
+        {
+            "text": "무기는 검밖에 없죠??",
+            "expected_faq_id": "성장-003"
+        },
+        {
+            "text": "환 제조할 때 재료를 어떻게 조합해야 하나요?",
+            "expected_faq_id": "제조-004"
+        },
+        {
+            "text": "진열 스탯 계산식이 어떻게 되나요?",
+            "expected_faq_id": "대장장이-012"
+        },
+        {
+            "text": "장비 재련 비용이 얼마인가요?",
+            "expected_faq_id": "장비-002"
+        },
+        {
+            "text": "광산 한 번 활성화하면 다음 채광까지 대기시간이 얼마나 걸리고, 남은 시간은 어디서 확인하나요?",
+            "expected_faq_id": "광산-002"
+        },
+        {
+            "text": "모험 콘텐츠를 아예 건너뛰고 플레이해도 진행상 큰 문제는 없나요?",
+            "expected_faq_id": "모험-002"
+        },
+        {
+            "text": "문파 인원은 기본 몇 명이고, 최대치까지 늘릴 때 1명당 금화 소모가 어떻게 되나요?",
+            "expected_faq_id": "문파-002"
+        },
+        {
+            "text": "배 한 척에 탑승 가능한 총인원, 대포 조작 가능 인원, 상대 배 탑승자 식별 가능 여부를 알려주세요.",
+            "expected_faq_id": "배-007"
+        },
+        {
+            "text": "부적 옵션 리롤하면 5금화가 맞나요? 그리고 등급은 유지된 채 종류만 랜덤으로 바뀌나요?",
+            "expected_faq_id": "부적-003"
+        },
+        {
+            "text": "비급 개화 성공률이 얼마인가요?",
+            "expected_faq_id": "무공비급-006"
+        },
+        {
+            "text": "파티 사냥하면 경험치 더 받아요?",
+            "expected_faq_id": "사냥-003"
+        },
+        {
+            "text": "스탯 초기화는 언제까지 무료로 할 수 있나요?",
+            "expected_faq_id": "스탯-002"
+        },
+        {
+            "text": "경지 시험 일일 도전 횟수가 있어요?",
+            "expected_faq_id": "경지-002"
+        },
+        {
+            "text": "영단은 약방 제조로만 만들 수 있나요?",
+            "expected_faq_id": "영단-003"
+        },
+        {
+            "text": "우물던전은 어떻게 입장해요?",
+            "expected_faq_id": "우물던전-002"
+        }
+    ],
+    "models": [
+        {
+            "label": "default",
+            "index_path": "assets/faq/faq_index.npz"
+        },
+        {
+            "label": "cohere_v4",
+            "index_path": "dev/faq/faq_index_cohere_v4.npz",
+            "model_id": "arn:aws:bedrock:ap-northeast-2:134568969711:inference-profile/global.cohere.embed-v4:0"
+        }
+    ],
+    "output_path": "outputs/faq_model_compare.json"
 }

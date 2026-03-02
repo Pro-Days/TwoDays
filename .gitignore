@@ -9,6 +9,7 @@ legacy/
 .vscode/
 outputs/
 test_outputs/
+dev/
 
 .env
 *__pycache__
