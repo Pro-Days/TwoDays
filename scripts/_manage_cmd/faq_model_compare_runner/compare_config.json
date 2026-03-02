@@ -150,6 +150,38 @@
         {
             "text": "우물던전은 어떻게 입장해요?",
             "expected_faq_id": "우물던전-002"
+        },
+        {
+            "text": "시즌 패스 보상 목록을 확인할 수 있나요?",
+            "expected_faq_id": "미등록"
+        },
+        {
+            "text": "겉날개는 어떻게 얻나요?",
+            "expected_faq_id": "미등록"
+        },
+        {
+            "text": "쉐이더 설치할 수 있나요?",
+            "expected_faq_id": "미등록"
+        },
+        {
+            "text": "후원하면 금화 어디서 받나요?",
+            "expected_faq_id": "미등록"
+        },
+        {
+            "text": "게임 내에서 길드원끼리 채팅할 수 있는 방법이 있나요?",
+            "expected_faq_id": "미등록"
+        },
+        {
+            "text": "파티채팅 어떻게 써요?",
+            "expected_faq_id": "미등록"
+        },
+        {
+            "text": "스탯 뭐가 좋아요?",
+            "expected_faq_id": "미등록"
+        },
+        {
+            "text": "건축 할 수 있나요?",
+            "expected_faq_id": "미등록"
         }
     ],
     "models": [

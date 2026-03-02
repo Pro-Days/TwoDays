@@ -30,6 +30,8 @@ CANDIDATE_COUNT: int = 3
 CACHE_MAX_SIZE: int = 256
 FAQ_SCORE_GAP_THRESHOLD: float = 0.1
 MAX_AMBIGUOUS_ANSWERS: int = 2
+FAQ_MIN_ANSWER_SCORE: float = 0.4
+FAQ_NO_ANSWER_MESSAGE: str = "관련된 FAQ를 찾지 못했습니다."
 REQUIRED_ENV_VARS: tuple[str, ...] = (
     FAQ_INDEX_PATH_ENV,
     FAQ_DATA_PATH_ENV,
@@ -325,7 +327,7 @@ def _build_candidates(
 
 def _format_candidate_message(candidates: list[FaqMatch]) -> str:
     if not candidates:
-        return "관련된 FAQ를 찾지 못했습니다."
+        return FAQ_NO_ANSWER_MESSAGE
 
     # 정확 매칭 부재 시 유사 질문 리스트 구성
     lines: list[str] = ["답변을 찾지 못했어요. 아래 질문이 비슷한지 확인해주세요:"]
@@ -338,7 +340,7 @@ def _format_candidate_message(candidates: list[FaqMatch]) -> str:
 
 def _format_multi_answer(candidates: list[FaqMatch]) -> str:
     if not candidates:
-        return "관련된 FAQ를 찾지 못했습니다."
+        return FAQ_NO_ANSWER_MESSAGE
 
     # 점수 마진이 작은 경우 복수 답변 안내
     lines: list[str] = ["비슷한 답변이 2개 있어요. 아래 내용을 확인해주세요:"]
@@ -390,17 +392,42 @@ def answer_question(question: str) -> FaqAnswerResult:
         top_score - top2_score if top_score is not None and top2_score is not None else None
     )
     # 점수/마진 조건 판별
-    is_score_match: bool = top_score is not None and top_score >= threshold
+    is_threshold_match: bool = top_score is not None and top_score >= threshold
+    is_min_score_match: bool = top_score is not None and top_score >= FAQ_MIN_ANSWER_SCORE
     is_gap_small: bool = score_gap is not None and score_gap <= FAQ_SCORE_GAP_THRESHOLD
 
-    if is_score_match:
+    if not is_min_score_match:
+        # 최소 점수 미달 시 답변 없음 메시지 반환
+        message = FAQ_NO_ANSWER_MESSAGE
+        result = FaqAnswerResult(
+            message=message,
+            matched=False,
+            top_score=top_score,
+            top_ids=top_ids,
+        )
+
+    elif is_threshold_match:
         if is_gap_small and len(candidates) > 1:
             # 점수 마진이 작은 경우 복수 답변 반환
-            limited_candidates: list[FaqMatch] = candidates[:MAX_AMBIGUOUS_ANSWERS]
-            message = _format_multi_answer(limited_candidates)
-            matched_ids: list[str] = [
-                candidate.entry.entry_id for candidate in limited_candidates
+            eligible_candidates: list[FaqMatch] = [
+                candidate
+                for candidate in candidates
+                if candidate.score >= FAQ_MIN_ANSWER_SCORE
             ]
+
+            if len(eligible_candidates) < 2:
+                # 후보 부족 시 단일 답변 반환
+                message = candidates[0].entry.answer
+                matched_ids = [candidates[0].entry.entry_id]
+
+            else:
+                limited_candidates: list[FaqMatch] = eligible_candidates[
+                    :MAX_AMBIGUOUS_ANSWERS
+                ]
+                message = _format_multi_answer(limited_candidates)
+                matched_ids = [
+                    candidate.entry.entry_id for candidate in limited_candidates
+                ]
 
         else:
             # 점수 마진이 충분한 경우 단일 답변 반환
