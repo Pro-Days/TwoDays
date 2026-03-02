@@ -18,6 +18,9 @@ logger: Logger = get_logger(__name__)
 EMBED_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
 CONTENT_TYPE: str = "application/json"
 ACCEPT_TYPE: str = "application/json"
+COHERE_EMBED_V4_MODEL_TOKEN: str = "cohere.embed-v4"
+COHERE_EMBED_V4_INPUT_TYPE_DOCUMENT: str = "search_document"
+COHERE_EMBED_V4_INPUT_TYPE_QUERY: str = "search_query"
 
 _client: Any | None = None
 
@@ -79,19 +82,62 @@ def _get_client() -> Any:
 def _extract_embedding(payload: dict[str, Any]) -> list[float]:
     # 응답 키 후보 순차 확인
     if "embedding" in payload:
-        return payload["embedding"]
+        return [float(value) for value in payload["embedding"]]
 
-    if "embeddings" in payload and payload["embeddings"]:
-        return payload["embeddings"][0]
+    embeddings_value: Any = payload.get("embeddings")
+
+    if isinstance(embeddings_value, list) and embeddings_value:
+        first_item: Any = embeddings_value[0]
+
+        if isinstance(first_item, list):
+            return [float(value) for value in first_item]
+
+    if isinstance(embeddings_value, dict) and embeddings_value:
+        for vector_group in embeddings_value.values():
+            if not isinstance(vector_group, list) or not vector_group:
+                continue
+
+            first_item: Any = vector_group[0]
+
+            if isinstance(first_item, list):
+                return [float(value) for value in first_item]
 
     raise ValueError("Bedrock embedding response does not contain embedding data.")
 
 
-def _embed_single(client: Any, model_id: str, text: str) -> list[float]:
+def _is_cohere_embed_v4_model(model_id: str) -> bool:
+    # Cohere v4 모델 식별자 판별
+    return COHERE_EMBED_V4_MODEL_TOKEN in model_id
+
+
+def _build_embed_payload(model_id: str, text: str, input_type: str | None) -> str:
+    # 모델별 임베딩 요청 스키마 분기
+    if _is_cohere_embed_v4_model(model_id):
+        # Cohere v4 입력 타입 기본값 적용
+        resolved_input_type: str = (
+            input_type if input_type is not None else COHERE_EMBED_V4_INPUT_TYPE_DOCUMENT
+        )
+
+        return json.dumps(
+            {
+                "texts": [text],
+                "input_type": resolved_input_type,
+            }
+        )
+
+    return json.dumps({"inputText": text})
+
+
+def _embed_single(
+    client: Any,
+    model_id: str,
+    text: str,
+    input_type: str | None,
+) -> list[float]:
     """단일 텍스트를 Bedrock 임베딩으로 변환"""
 
-    # Bedrock 요청 JSON 직렬화
-    payload: str = json.dumps({"inputText": text})
+    # 모델별 Bedrock 요청 본문 직렬화
+    payload: str = _build_embed_payload(model_id, text, input_type)
 
     response: dict[str, Any] = client.invoke_model(
         modelId=model_id,
@@ -111,14 +157,26 @@ def _embed_single(client: Any, model_id: str, text: str) -> list[float]:
     return _extract_embedding(data)
 
 
-def embed_texts(texts: list[str], model_id: str = EMBED_MODEL_ID) -> list[list[float]]:
+def embed_texts(
+    texts: list[str],
+    model_id: str = EMBED_MODEL_ID,
+    input_type: str | None = None,
+) -> list[list[float]]:
     """텍스트 목록을 지정 모델 Bedrock 임베딩으로 변환"""
 
     # 모델 ID 필수값 검증
     cleaned_model_id: str = model_id.strip()
+    cleaned_input_type: str | None = None
 
     if not cleaned_model_id:
         raise ValueError("model_id is required.")
+
+    if input_type is not None:
+        # 입력 타입 공백 값 방지
+        cleaned_input_type = input_type.strip()
+
+        if not cleaned_input_type:
+            raise ValueError("input_type must not be blank.")
 
     if not texts:
         return []
@@ -132,6 +190,8 @@ def embed_texts(texts: list[str], model_id: str = EMBED_MODEL_ID) -> list[list[f
 
     for text in texts:
         # 배치 미지원에 따른 순차 임베딩 생성
-        embeddings.append(_embed_single(client, cleaned_model_id, text))
+        embeddings.append(
+            _embed_single(client, cleaned_model_id, text, cleaned_input_type)
+        )
 
     return embeddings

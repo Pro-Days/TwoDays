@@ -281,6 +281,7 @@ def _embed_question(model_id: str, question: str) -> np.ndarray:
     embeddings: list[list[float]] = bedrock_embeddings.embed_texts(
         [question],
         model_id,
+        input_type=bedrock_embeddings.COHERE_EMBED_V4_INPUT_TYPE_QUERY,
     )
 
     if not embeddings:

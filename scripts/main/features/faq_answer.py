@@ -275,7 +275,10 @@ def _get_cache() -> FaqQueryCache:
 
 def _embed_question(question: str) -> np.ndarray:
     # 질문 임베딩 및 1차원 정규화
-    embeddings: list[list[float]] = bedrock_embeddings.embed_texts([question])
+    embeddings: list[list[float]] = bedrock_embeddings.embed_texts(
+        [question],
+        input_type=bedrock_embeddings.COHERE_EMBED_V4_INPUT_TYPE_QUERY,
+    )
 
     if not embeddings:
         raise ValueError("FAQ embedding result is empty.")
