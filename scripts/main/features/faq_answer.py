@@ -28,6 +28,8 @@ FAQ_UNANSWERED_TABLE_ENV: str = "FAQ_UNANSWERED_TABLE"
 
 CANDIDATE_COUNT: int = 3
 CACHE_MAX_SIZE: int = 256
+FAQ_SCORE_GAP_THRESHOLD: float = 0.1
+MAX_AMBIGUOUS_ANSWERS: int = 2
 REQUIRED_ENV_VARS: tuple[str, ...] = (
     FAQ_INDEX_PATH_ENV,
     FAQ_DATA_PATH_ENV,
@@ -334,6 +336,20 @@ def _format_candidate_message(candidates: list[FaqMatch]) -> str:
     return "\n".join(lines)
 
 
+def _format_multi_answer(candidates: list[FaqMatch]) -> str:
+    if not candidates:
+        return "관련된 FAQ를 찾지 못했습니다."
+
+    # 점수 마진이 작은 경우 복수 답변 안내
+    lines: list[str] = ["비슷한 답변이 2개 있어요. 아래 내용을 확인해주세요:"]
+
+    for idx, candidate in enumerate(candidates, start=1):
+        lines.append(f"{idx}. {candidate.entry.question}")
+        lines.append(candidate.entry.answer)
+
+    return "\n".join(lines)
+
+
 def answer_question(question: str) -> FaqAnswerResult:
     # 환경 변수 누락 즉시 실패 처리
     _validate_required_envs()
@@ -368,15 +384,34 @@ def answer_question(question: str) -> FaqAnswerResult:
 
     top_ids: list[str] = [candidate.entry.entry_id for candidate in candidates]
     top_score: float | None = candidates[0].score if candidates else None
+    top2_score: float | None = candidates[1].score if len(candidates) > 1 else None
+    # 점수 마진 계산
+    score_gap: float | None = (
+        top_score - top2_score if top_score is not None and top2_score is not None else None
+    )
+    # 점수/마진 조건 판별
+    is_score_match: bool = top_score is not None and top_score >= threshold
+    is_gap_small: bool = score_gap is not None and score_gap <= FAQ_SCORE_GAP_THRESHOLD
 
-    if candidates and candidates[0].score >= threshold:
-        # 최고 점수 임계값 이상 시 답변 반환
-        message: str = candidates[0].entry.answer
+    if is_score_match:
+        if is_gap_small and len(candidates) > 1:
+            # 점수 마진이 작은 경우 복수 답변 반환
+            limited_candidates: list[FaqMatch] = candidates[:MAX_AMBIGUOUS_ANSWERS]
+            message = _format_multi_answer(limited_candidates)
+            matched_ids: list[str] = [
+                candidate.entry.entry_id for candidate in limited_candidates
+            ]
+
+        else:
+            # 점수 마진이 충분한 경우 단일 답변 반환
+            message = candidates[0].entry.answer
+            matched_ids = [candidates[0].entry.entry_id]
+
         result = FaqAnswerResult(
             message=message,
             matched=True,
             top_score=top_score,
-            top_ids=top_ids[:1],
+            top_ids=matched_ids,
         )
 
     else:

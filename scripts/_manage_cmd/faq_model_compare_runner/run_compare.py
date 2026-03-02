@@ -1,4 +1,4 @@
-"""FAQ 모델 비교 실행 러너(인덱스 자동 갱신 포함)."""
+"""FAQ 모델 비교 실행 러너(인덱스 자동 갱신 및 요약 출력 포함)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from scripts._manage_cmd import build_faq_index
+from scripts._manage_cmd.faq_model_compare_runner import render_summary
 from scripts.main.features import faq_model_compare
 
 if TYPE_CHECKING:
@@ -54,10 +55,18 @@ def main(config_path: str) -> CompareReportPayload:
     report: CompareReportPayload = faq_model_compare.run_compare(config)
     faq_model_compare.write_report(report, config.output_path)
 
+    if config.output_path:
+        # 요약 리포트 경로 계산
+        report_path = Path(config.output_path)
+        summary_path: Path = report_path.with_name(f"{report_path.stem}_summary.md")
+
+        # 요약 리포트 생성
+        render_summary.main(input_path=str(report_path), output_path=str(summary_path))
+
     return report
 
 
 if __name__ == "__main__":
     report: CompareReportPayload = main(resolve_default_config_path())
 
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    # print(json.dumps(report, ensure_ascii=False, indent=2))
