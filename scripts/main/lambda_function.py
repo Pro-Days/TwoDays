@@ -574,7 +574,7 @@ def cmd_question(event: dict, options: list[dict]) -> dict:
 
     if result.matched:
         # 매칭 답변 요청/응답 로그 기록
-        log_message: str = f"질문: {question}\n답변: {result.message}"
+        log_message: str = result.message
         return sm.send(event, result.message, error=log_message)
 
     # 유사 질문 안내 시 미응답 질문 저장

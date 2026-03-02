@@ -338,6 +338,10 @@ def _format_candidate_message(candidates: list[FaqMatch]) -> str:
     return "\n".join(lines)
 
 
+def _format_single_answer(question: str, answer: str) -> str:
+    return f"질문: {question}\n답변: {answer}"
+
+
 def _format_multi_answer(candidates: list[FaqMatch]) -> str:
     if not candidates:
         return FAQ_NO_ANSWER_MESSAGE
@@ -346,8 +350,9 @@ def _format_multi_answer(candidates: list[FaqMatch]) -> str:
     lines: list[str] = ["비슷한 답변이 2개 있어요. 아래 내용을 확인해주세요:"]
 
     for idx, candidate in enumerate(candidates, start=1):
-        lines.append(f"{idx}. {candidate.entry.question}")
-        lines.append(candidate.entry.answer)
+        lines.append(f"{idx}. 질문: {candidate.entry.question}")
+        lines.append(f"답변: {candidate.entry.answer}")
+
 
     return "\n".join(lines)
 
@@ -417,7 +422,10 @@ def answer_question(question: str) -> FaqAnswerResult:
 
             if len(eligible_candidates) < 2:
                 # 후보 부족 시 단일 답변 반환
-                message = candidates[0].entry.answer
+                message = _format_single_answer(
+                    normalized_question,
+                    candidates[0].entry.answer,
+                )
                 matched_ids = [candidates[0].entry.entry_id]
 
             else:
@@ -431,7 +439,10 @@ def answer_question(question: str) -> FaqAnswerResult:
 
         else:
             # 점수 마진이 충분한 경우 단일 답변 반환
-            message = candidates[0].entry.answer
+            message = _format_single_answer(
+                normalized_question,
+                candidates[0].entry.answer,
+            )
             matched_ids = [candidates[0].entry.entry_id]
 
         result = FaqAnswerResult(
