@@ -250,7 +250,6 @@ FAQ_DATA_PATH와 FAQ_INDEX_PATH 환경 변수를 설정한 뒤 실행하세요.
 
 - `FAQ_DATA_PATH` 예시: `assets/faq/faq_data.json`
 - `FAQ_INDEX_PATH` 예시: `assets/faq/faq_index.npz`
-- `FAQ_MATCH_THRESHOLD` 예시: `0.8`
 - `FAQ_QUERY_CACHE_TTL_SEC` 예시: `300`
 - `FAQ_UNANSWERED_TABLE` 예시: `twodays-faq-unanswered`
 

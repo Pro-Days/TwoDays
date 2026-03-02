@@ -22,19 +22,15 @@ logger: Logger = get_logger(__name__)
 
 FAQ_INDEX_PATH_ENV: str = "FAQ_INDEX_PATH"
 FAQ_DATA_PATH_ENV: str = "FAQ_DATA_PATH"
-FAQ_MATCH_THRESHOLD_ENV: str = "FAQ_MATCH_THRESHOLD"
 FAQ_QUERY_CACHE_TTL_ENV: str = "FAQ_QUERY_CACHE_TTL_SEC"
 FAQ_UNANSWERED_TABLE_ENV: str = "FAQ_UNANSWERED_TABLE"
 
-CANDIDATE_COUNT: int = 3
+CANDIDATE_COUNT: int = 1
 CACHE_MAX_SIZE: int = 256
-FAQ_SCORE_GAP_THRESHOLD: float = 0.1
-MAX_AMBIGUOUS_ANSWERS: int = 2
 FAQ_NO_ANSWER_MESSAGE: str = "관련된 FAQ를 찾지 못했습니다."
 REQUIRED_ENV_VARS: tuple[str, ...] = (
     FAQ_INDEX_PATH_ENV,
     FAQ_DATA_PATH_ENV,
-    FAQ_MATCH_THRESHOLD_ENV,
     FAQ_QUERY_CACHE_TTL_ENV,
     FAQ_UNANSWERED_TABLE_ENV,
 )
@@ -136,17 +132,6 @@ def _resolve_asset_path(env_name: str) -> str:
     env_value: str = _require_env(env_name)
 
     return convert_path(os.path.normpath(env_value))
-
-
-def _parse_float_env(name: str) -> float:
-    # 환경 변수 float 파싱
-    raw_value: str = _require_env(name)
-
-    try:
-        return float(raw_value)
-
-    except ValueError as exc:
-        raise RuntimeError(f"invalid float env: {name}={raw_value}") from exc
 
 
 def _parse_int_env(name: str) -> int:
@@ -324,36 +309,8 @@ def _build_candidates(
     return candidates
 
 
-def _format_candidate_message(candidates: list[FaqMatch]) -> str:
-    if not candidates:
-        return FAQ_NO_ANSWER_MESSAGE
-
-    # 정확 매칭 부재 시 유사 질문 리스트 구성
-    lines: list[str] = ["답변을 찾지 못했어요. 아래 질문이 비슷한지 확인해주세요:"]
-
-    for idx, candidate in enumerate(candidates, start=1):
-        lines.append(f"{idx}. {candidate.entry.question}")
-
-    return "\n".join(lines)
-
-
 def _format_single_answer(question: str, answer: str) -> str:
-    return f"질문: {question}\n답변: {answer}"
-
-
-def _format_multi_answer(candidates: list[FaqMatch]) -> str:
-    if not candidates:
-        return FAQ_NO_ANSWER_MESSAGE
-
-    # 점수 마진이 작은 경우 복수 답변 안내
-    lines: list[str] = ["비슷한 답변이 2개 있어요. 아래 내용을 확인해주세요:"]
-
-    for idx, candidate in enumerate(candidates, start=1):
-        lines.append(f"{idx}. 질문: {candidate.entry.question}")
-        lines.append(f"답변: {candidate.entry.answer}")
-
-
-    return "\n".join(lines)
+    return f"질문: {question}\n\n답변: {answer}"
 
 
 def answer_question(question: str) -> FaqAnswerResult:
@@ -378,8 +335,7 @@ def answer_question(question: str) -> FaqAnswerResult:
         # 캐시 히트 즉시 반환
         return cached
 
-    # 임계값/인덱스 준비 및 코사인 유사도 계산
-    threshold: float = _parse_float_env(FAQ_MATCH_THRESHOLD_ENV)
+    # 인덱스 준비 및 코사인 유사도 계산
     top_k: int = CANDIDATE_COUNT
     index: FaqIndex = _get_index()
 
@@ -388,59 +344,25 @@ def answer_question(question: str) -> FaqAnswerResult:
 
     candidates: list[FaqMatch] = _build_candidates(index, scores, top_k)
 
-    top_ids: list[str] = [candidate.entry.entry_id for candidate in candidates]
-    top_score: float | None = candidates[0].score if candidates else None
-    top2_score: float | None = candidates[1].score if len(candidates) > 1 else None
-    # 점수 마진 계산
-    score_gap: float | None = (
-        top_score - top2_score if top_score is not None and top2_score is not None else None
-    )
-    # 점수/마진 조건 판별
-    is_threshold_match: bool = top_score is not None and top_score >= threshold
-    is_gap_small: bool = score_gap is not None and score_gap <= FAQ_SCORE_GAP_THRESHOLD
-
-    if is_threshold_match:
-        if is_gap_small and len(candidates) > 1:
-            # 점수 마진이 작은 경우 복수 답변 반환
-            limited_candidates: list[FaqMatch] = candidates[:MAX_AMBIGUOUS_ANSWERS]
-
-            if len(limited_candidates) < 2:
-                # 후보 부족 시 단일 답변 반환
-                message = _format_single_answer(
-                    normalized_question,
-                    candidates[0].entry.answer,
-                )
-                matched_ids = [candidates[0].entry.entry_id]
-
-            else:
-                message = _format_multi_answer(limited_candidates)
-                matched_ids = [
-                    candidate.entry.entry_id for candidate in limited_candidates
-                ]
-
-        else:
-            # 점수 마진이 충분한 경우 단일 답변 반환
-            message = _format_single_answer(
-                normalized_question,
-                candidates[0].entry.answer,
-            )
-            matched_ids = [candidates[0].entry.entry_id]
-
+    if not candidates:
         result = FaqAnswerResult(
-            message=message,
-            matched=True,
-            top_score=top_score,
-            top_ids=matched_ids,
+            message=FAQ_NO_ANSWER_MESSAGE,
+            matched=False,
+            top_score=None,
+            top_ids=[],
         )
 
     else:
-        # 임계값 미달 시 유사 질문 목록 제공
-        message: str = _format_candidate_message(candidates)
+        top_match: FaqMatch = candidates[0]
+        message = _format_single_answer(
+            normalized_question,
+            top_match.entry.answer,
+        )
         result = FaqAnswerResult(
             message=message,
-            matched=False,
-            top_score=top_score,
-            top_ids=top_ids,
+            matched=True,
+            top_score=top_match.score,
+            top_ids=[top_match.entry.entry_id],
         )
 
     # 동일 질문 중복 호출 방지 캐시 저장
