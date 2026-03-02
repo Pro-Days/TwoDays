@@ -1,6 +1,6 @@
 {
     "data_path": "assets/faq/faq_data.json",
-    "threshold": 0.8,
+    "threshold": 0.55,
     "top_k": 3,
     "questions": [
         {
@@ -8,7 +8,31 @@
             "expected_faq_id": "서버정보-001"
         },
         {
+            "text": "언제 오픈해요?",
+            "expected_faq_id": "서버정보-004"
+        },
+        {
+            "text": "언제 오픈 해요?",
+            "expected_faq_id": "서버정보-004"
+        },
+        {
+            "text": "서버 언제 오픈 해요?",
+            "expected_faq_id": "서버정보-004"
+        },
+        {
+            "text": "서버 오픈날짜가 언제인가요?",
+            "expected_faq_id": "서버정보-004"
+        },
+        {
             "text": "슬래시 명령어는 어떻게 입력해서 쓰나요?",
+            "expected_faq_id": "봇-001"
+        },
+        {
+            "text": "봇 어떻게써??",
+            "expected_faq_id": "봇-001"
+        },
+        {
+            "text": "봇 어떻게 써??",
             "expected_faq_id": "봇-001"
         },
         {
@@ -188,12 +212,13 @@
         {
             "label": "default",
             "index_path": "assets/faq/faq_index.npz"
-        },
-        {
-            "label": "cohere_v4",
-            "index_path": "dev/faq/faq_index_cohere_v4.npz",
-            "model_id": "arn:aws:bedrock:ap-northeast-2:134568969711:inference-profile/global.cohere.embed-v4:0"
         }
     ],
-    "output_path": "outputs/faq_model_compare.json"
+    "output_path": "outputs/faq_model_compare.json",
+
+    "_unused_field": {
+        "label": "cohere_v4",
+        "index_path": "dev/faq/faq_index_cohere_v4.npz",
+        "model_id": "arn:aws:bedrock:ap-northeast-2:134568969711:inference-profile/global.cohere.embed-v4:0"
+    }
 }

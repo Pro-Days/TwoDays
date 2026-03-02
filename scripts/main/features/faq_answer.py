@@ -30,7 +30,6 @@ CANDIDATE_COUNT: int = 3
 CACHE_MAX_SIZE: int = 256
 FAQ_SCORE_GAP_THRESHOLD: float = 0.1
 MAX_AMBIGUOUS_ANSWERS: int = 2
-FAQ_MIN_ANSWER_SCORE: float = 0.4
 FAQ_NO_ANSWER_MESSAGE: str = "관련된 FAQ를 찾지 못했습니다."
 REQUIRED_ENV_VARS: tuple[str, ...] = (
     FAQ_INDEX_PATH_ENV,
@@ -398,29 +397,14 @@ def answer_question(question: str) -> FaqAnswerResult:
     )
     # 점수/마진 조건 판별
     is_threshold_match: bool = top_score is not None and top_score >= threshold
-    is_min_score_match: bool = top_score is not None and top_score >= FAQ_MIN_ANSWER_SCORE
     is_gap_small: bool = score_gap is not None and score_gap <= FAQ_SCORE_GAP_THRESHOLD
 
-    if not is_min_score_match:
-        # 최소 점수 미달 시 답변 없음 메시지 반환
-        message = FAQ_NO_ANSWER_MESSAGE
-        result = FaqAnswerResult(
-            message=message,
-            matched=False,
-            top_score=top_score,
-            top_ids=top_ids,
-        )
-
-    elif is_threshold_match:
+    if is_threshold_match:
         if is_gap_small and len(candidates) > 1:
             # 점수 마진이 작은 경우 복수 답변 반환
-            eligible_candidates: list[FaqMatch] = [
-                candidate
-                for candidate in candidates
-                if candidate.score >= FAQ_MIN_ANSWER_SCORE
-            ]
+            limited_candidates: list[FaqMatch] = candidates[:MAX_AMBIGUOUS_ANSWERS]
 
-            if len(eligible_candidates) < 2:
+            if len(limited_candidates) < 2:
                 # 후보 부족 시 단일 답변 반환
                 message = _format_single_answer(
                     normalized_question,
@@ -429,9 +413,6 @@ def answer_question(question: str) -> FaqAnswerResult:
                 matched_ids = [candidates[0].entry.entry_id]
 
             else:
-                limited_candidates: list[FaqMatch] = eligible_candidates[
-                    :MAX_AMBIGUOUS_ANSWERS
-                ]
                 message = _format_multi_answer(limited_candidates)
                 matched_ids = [
                     candidate.entry.entry_id for candidate in limited_candidates
