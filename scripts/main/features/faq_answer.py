@@ -355,7 +355,7 @@ def answer_question(question: str) -> FaqAnswerResult:
     else:
         top_match: FaqMatch = candidates[0]
         message = _format_single_answer(
-            normalized_question,
+            top_match.entry.question,
             top_match.entry.answer,
         )
         result = FaqAnswerResult(
